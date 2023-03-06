@@ -1,0 +1,16 @@
+*.o
+*.log
+Makefile
+*.Po
+config.h
+config.status
+stamp-h1
+config.h
+config.status
+stamp-h1
+*.a
+listener/hl
+.dirstamp
+autom4te.cache/*
+configure~
+
