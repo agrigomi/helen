@@ -1,20 +1,18 @@
-#include <vector>
-#include <string.h>
-#include <stdlib.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
-#include <sys/wait.h>
 #include <arpa/inet.h>
-#include <pthread.h>
+#include <string.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <malloc.h>
-#include "cfg.h"
+#include <pthread.h>
+#include <vector>
 #include "config.h"
 #include "json.h"
 #include "trace.h"
+#include "cfg.h"
 
 static std::vector<_listen_t> _gv_listen;
 
