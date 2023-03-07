@@ -15,8 +15,8 @@
 typedef struct {
 	_char_t name[MAX_LISTEN_NAME]; 	// process name
 	_u32	port;			// listen port
-	_cstr_t	argv[MAX_ARGV];		// process arguments
-	_cstr_t	env[MAX_ENV];		// environment variables (optional)
+	_str_t	argv[MAX_ARGV];		// process arguments
+	_str_t	env[MAX_ENV];		// environment variables (optional)
 	pthread_t thread;		// thread context
 	int 	server_fd;		// server socket FD
 	volatile _u32 flags;		// flags for internal use
@@ -31,6 +31,16 @@ _err_t cfg_load(_cstr_t fname);
 Enumeration of configured listeners
 */
 void cfg_enum_listen(void (*)(_listen_t *));
+
+/**
+Start listen threads
+*/
+void cfg_start(void);
+
+/**
+Stop listen threads
+*/
+void cfg_stop(void);
 
 #endif
 

@@ -1,10 +1,12 @@
 #include <stdio.h>
-#include "config.h"
+#include <unistd.h>
+#include <stdlib.h>
 #include <sys/wait.h>
 #include "config.h"
 #include "argv.h"
 #include "sig.h"
 #include "trace.h"
+#include "cfg.h"
 
 #define OPT_SHELP	"h"
 #define OPT_HELP	"help"
@@ -50,6 +52,21 @@ int main(int argc, char *argv[]) {
 		TRACE("SIGSEGV\n");
 		dump_stack();
 	});
+	signal(SIGINT, [](__attribute__((unused)) int sig) {
+		TRACE("SIGINT\n");
+		cfg_stop();
+		exit(0);
+	});
+	signal(SIGKILL, [](__attribute__((unused)) int sig) {
+		TRACE("SIGKILL\n");
+		cfg_stop();
+		exit(0);
+	});
+	signal(SIGTERM, [](__attribute__((unused)) int sig) {
+		TRACE("SIGTERM\n");
+		cfg_stop();
+		exit(0);
+	});
 
 	if(argv_parse(argc, (_cstr_t *)argv, args)) {
 		if(argv_check(OPT_SHELP) || argv_check(OPT_HELP))
@@ -57,7 +74,16 @@ int main(int argc, char *argv[]) {
 		if(argv_check(OPT_SVERSION))
 			printf("%s\n", VERSION);
 
-		//...
+		_cstr_t cfg_file = argv_value(OPT_CFG);
+
+		if(cfg_file) {
+			cfg_load(cfg_file);
+			cfg_start();
+
+			while(1)
+				usleep(1000000);
+		} else
+			usage();
 	} else
 		usage();
 
