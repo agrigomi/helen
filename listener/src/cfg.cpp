@@ -74,8 +74,10 @@ static void server_accept(_listen_t *pl) {
 				if((cpid = fork()) == 0) {
 					dup2(sl, STDIN_FILENO);
 					dup2(sl, STDOUT_FILENO);
+					dup2(sl, STDERR_FILENO);
 					if(execve(pl->argv[0], pl->argv, pl->env) == -1)
 						TRACE("hl: Unable to execute '%s'\n", pl->argv[0]);
+					exit(0);
 				} else {
 					TRACE("hl: Running '%s'; PID: %d; '", pl->name, cpid);
 					while(pl->argv[i]) {
