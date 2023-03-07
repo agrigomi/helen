@@ -46,24 +46,24 @@ int main(int argc, char *argv[]) {
 		int status = -1;
 
 		waitpid(siginfo->si_pid, &status, WNOHANG);
-		TRACE("SIGCHLD: PID=%u, STATUS=%d\n", siginfo->si_pid, status);
+		TRACE("hl: SIGCHLD: PID=%u, STATUS=%d\n", siginfo->si_pid, status);
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
-		TRACE("SIGSEGV\n");
+		TRACE("hl: SIGSEGV\n");
 		dump_stack();
 	});
 	signal(SIGINT, [](__attribute__((unused)) int sig) {
-		TRACE("SIGINT\n");
+		TRACE("hl: SIGINT\n");
 		cfg_stop();
 		exit(0);
 	});
 	signal(SIGKILL, [](__attribute__((unused)) int sig) {
-		TRACE("SIGKILL\n");
+		TRACE("hl: SIGKILL\n");
 		cfg_stop();
 		exit(0);
 	});
 	signal(SIGTERM, [](__attribute__((unused)) int sig) {
-		TRACE("SIGTERM\n");
+		TRACE("hl: SIGTERM\n");
 		cfg_stop();
 		exit(0);
 	});

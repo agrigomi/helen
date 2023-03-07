@@ -53,7 +53,7 @@ static void server_accept(_listen_t *pl) {
 		pl->flags |= LISTEN_RUNNING;
 
 		pthread_setname_np(pl->thread, pl->name);
-		TRACE("Server '%s' running\n", pl->name);
+		TRACE("hl: Server '%s' running\n", pl->name);
 		while(pl->flags & LISTEN_RUNNING) {
 			int sl;
 			struct sockaddr_in client;
@@ -70,14 +70,14 @@ static void server_accept(_listen_t *pl) {
 				getpeername(sl, (struct sockaddr*)&addr, &_len);
 				inet_ntop(AF_INET, &s->sin_addr, strip, sizeof(strip));
 
-				TRACE("Incoming connection from [%s] on port %d\n", strip, pl->port);
+				TRACE("hl: Incoming connection from [%s] on port %d\n", strip, pl->port);
 				if((cpid = fork()) == 0) {
 					dup2(sl, STDIN_FILENO);
 					dup2(sl, STDOUT_FILENO);
 					if(execve(pl->argv[0], pl->argv, pl->env) == -1)
-						TRACE("Unable to execute '%s'\n", pl->argv[0]);
+						TRACE("hl: Unable to execute '%s'\n", pl->argv[0]);
 				} else {
-					TRACE("Running '%s'; PID: %d; '", pl->name, cpid);
+					TRACE("hl: Running '%s'; PID: %d; '", pl->name, cpid);
 					while(pl->argv[i]) {
 						TRACE("%s ", pl->argv[i]);
 						i++;
@@ -88,7 +88,7 @@ static void server_accept(_listen_t *pl) {
 			}
 		}
 
-		TRACE("\nServer '%s' stopped.\n", pl->name);
+		TRACE("\nhl: Server '%s' stopped.\n", pl->name);
 
 		pl->flags |= LISTEN_STOPPED;
 		return NULL;
@@ -117,7 +117,7 @@ void cfg_start(void) {
 
 void cfg_stop(void) {
 	cfg_enum_listen([](_listen_t *p) {
-		TRACE("Waiting '%s' to stop. ", p->name);
+		TRACE("hl: Waiting '%s' to stop. ", p->name);
 		p->flags &= ~LISTEN_RUNNING;
 		if(p->server_fd > 0) {
 			shutdown(p->server_fd, SHUT_RDWR);
@@ -274,7 +274,7 @@ _err_t cfg_load(_cstr_t fname) {
 
 			r = E_OK;
 		} else {
-			TRACEfl("Failed to parse JSON file '%s'\n", fname);
+			TRACEfl("hl: Failed to parse JSON file '%s'\n", fname);
 		}
 
 		json_destroy_context(p_jcxt);
