@@ -28,7 +28,8 @@ void dump_stack(void) {
 #endif
 }
 
-static void signal_action(int signum, siginfo_t *info, void *) {
+static void signal_action(int signum, siginfo_t *info,
+			__attribute__((unused)) void *arg) {
         dump_stack();
 
         // info->si_addr holds the dereferenced pointer address
