@@ -4187,14 +4187,13 @@ See \`config.log' for more details" "$LINENO" 5; }
 fi
 
 
-as_ac_Lib=`$as_echo "ac_cv_lib_ssl, SSL_library_init''_" | $as_tr_sh`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for  in -lssl, SSL_library_init" >&5
-$as_echo_n "checking for  in -lssl, SSL_library_init... " >&6; }
-if eval \${$as_ac_Lib+:} false; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OPENSSL_init_ssl in -lssl" >&5
+$as_echo_n "checking for OPENSSL_init_ssl in -lssl... " >&6; }
+if ${ac_cv_lib_ssl_OPENSSL_init_ssl+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lssl, SSL_library_init  $LIBS"
+LIBS="-lssl  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -4204,77 +4203,38 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char  ();
+char OPENSSL_init_ssl ();
 int
 main ()
 {
-return  ();
+return OPENSSL_init_ssl ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  eval "$as_ac_Lib=yes"
+  ac_cv_lib_ssl_OPENSSL_init_ssl=yes
 else
-  eval "$as_ac_Lib=no"
+  ac_cv_lib_ssl_OPENSSL_init_ssl=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-eval ac_res=\$$as_ac_Lib
-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-if eval test \"x\$"$as_ac_Lib"\" = x"yes"; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "could not find ssl
-See \`config.log' for more details" "$LINENO" 5; }
-fi
-
-as_ac_Lib=`$as_echo "ac_cv_lib_crypto, CRYPTO_new_ex_data''_" | $as_tr_sh`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for  in -lcrypto, CRYPTO_new_ex_data" >&5
-$as_echo_n "checking for  in -lcrypto, CRYPTO_new_ex_data... " >&6; }
-if eval \${$as_ac_Lib+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcrypto, CRYPTO_new_ex_data  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char  ();
-int
-main ()
-{
-return  ();
-  ;
-  return 0;
-}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_OPENSSL_init_ssl" >&5
+$as_echo "$ac_cv_lib_ssl_OPENSSL_init_ssl" >&6; }
+if test "x$ac_cv_lib_ssl_OPENSSL_init_ssl" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBSSL 1
 _ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  eval "$as_ac_Lib=yes"
+
+  LIBS="-lssl $LIBS"
+
 else
-  eval "$as_ac_Lib=no"
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-eval ac_res=\$$as_ac_Lib
-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-if eval test \"x\$"$as_ac_Lib"\" = x"yes"; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "could not find crypto librar
-See \`config.log' for more details" "$LINENO" 5; }
+
+              echo "Error: Could not find SSL."
+              exit 1
+
 fi
 
 
