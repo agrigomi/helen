@@ -102,7 +102,7 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(includedir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
-am_hl_OBJECTS = src/main.$(OBJEXT) src/cfg.$(OBJEXT)
+am_hl_OBJECTS = src/main.$(OBJEXT) src/cfg.$(OBJEXT) src/ssl.$(OBJEXT)
 hl_OBJECTS = $(am_hl_OBJECTS)
 hl_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -120,7 +120,8 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = src/$(DEPDIR)/cfg.Po src/$(DEPDIR)/main.Po
+am__depfiles_remade = src/$(DEPDIR)/cfg.Po src/$(DEPDIR)/main.Po \
+	src/$(DEPDIR)/ssl.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -287,7 +288,8 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 nobase_include_HEADERS = src/cfg.h
 hl_SOURCES = src/main.cpp \
-	src/cfg.cpp
+	src/cfg.cpp \
+	src/ssl.cpp
 
 all: all-am
 
@@ -372,6 +374,7 @@ src/$(DEPDIR)/$(am__dirstamp):
 	@: > src/$(DEPDIR)/$(am__dirstamp)
 src/main.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/cfg.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/ssl.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 
 hl$(EXEEXT): $(hl_OBJECTS) $(hl_DEPENDENCIES) $(EXTRA_hl_DEPENDENCIES) 
 	@rm -f hl$(EXEEXT)
@@ -386,6 +389,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/cfg.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/ssl.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -564,6 +568,7 @@ clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 distclean: distclean-am
 		-rm -f src/$(DEPDIR)/cfg.Po
 	-rm -f src/$(DEPDIR)/main.Po
+	-rm -f src/$(DEPDIR)/ssl.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -611,6 +616,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 		-rm -f src/$(DEPDIR)/cfg.Po
 	-rm -f src/$(DEPDIR)/main.Po
+	-rm -f src/$(DEPDIR)/ssl.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

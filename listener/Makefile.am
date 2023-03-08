@@ -5,5 +5,6 @@ LIBS += ../lib/libtools.a
 LDFLAGS += -lpthread -lstdc++ -lssl -lcrypto
 nobase_include_HEADERS = src/cfg.h
 hl_SOURCES = src/main.cpp \
-	src/cfg.cpp
+	src/cfg.cpp \
+	src/ssl.cpp
 
