@@ -106,11 +106,6 @@ void cfg_start(void) {
 
 			setsockopt(p->server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 			setsockopt(p->server_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
-			setsockopt(p->server_fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt));
-			opt = 10;
-			setsockopt(p->server_fd, SOL_TCP, TCP_KEEPIDLE, &opt, sizeof(opt));
-			opt = 3;
-			setsockopt(p->server_fd, SOL_TCP, TCP_KEEPCNT, &opt, sizeof(opt));
 
 			serv.sin_family = AF_INET;
 			serv.sin_port = htons(p->port);
