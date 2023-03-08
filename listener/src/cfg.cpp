@@ -1,6 +1,8 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdlib.h>
@@ -100,6 +102,16 @@ void cfg_start(void) {
 		struct sockaddr_in serv;
 
 		if((p->server_fd = socket(AF_INET, SOCK_STREAM, 0)) > 0) {
+			_s32 opt = 1;
+
+			setsockopt(p->server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+			setsockopt(p->server_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+			setsockopt(p->server_fd, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt));
+			opt = 10;
+			setsockopt(p->server_fd, SOL_TCP, TCP_KEEPIDLE, &opt, sizeof(opt));
+			opt = 3;
+			setsockopt(p->server_fd, SOL_TCP, TCP_KEEPCNT, &opt, sizeof(opt));
+
 			serv.sin_family = AF_INET;
 			serv.sin_port = htons(p->port);
 			serv.sin_addr.s_addr = htonl(INADDR_ANY);
