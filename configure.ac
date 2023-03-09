@@ -13,6 +13,7 @@ AC_CHECK_LIB([ssl],
              ])
 AC_DEFINE([_DEBUG_], [], [For debugging])
 AC_DEFINE([_TRACE_], [], [For enable tracing])
+AC_DEFINE([OPENSSL_API_COMPAT], [0x10000000L], [SSL API version])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_CXX
 AC_PROG_CC

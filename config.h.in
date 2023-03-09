@@ -30,6 +30,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* SSL API version */
+#undef OPENSSL_API_COMPAT
+
 /* Name of package */
 #undef PACKAGE
 

@@ -1,8 +1,6 @@
 #include <string.h>
 #include <stdio.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include "dtype.h"
+#include "api_ssl.h"
 
 static _char_t _g_error_string_[2048] = "";
 typedef const SSL_METHOD *_ssl_methodcb_t(void);
@@ -14,7 +12,6 @@ typedef struct {
 
 static _ssl_method_t _g_ssl_method_map[] = {
 	{"SSLv23",	SSLv23_server_method},
-	{"TLS",		TLS_server_method},
 	{"DTLS",	DTLS_server_method},
 	{NULL,		NULL}
 };

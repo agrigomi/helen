@@ -4243,6 +4243,9 @@ $as_echo "#define _DEBUG_ /**/" >>confdefs.h
 
 $as_echo "#define _TRACE_ /**/" >>confdefs.h
 
+
+$as_echo "#define OPENSSL_API_COMPAT 0x10000000L" >>confdefs.h
+
 ac_config_headers="$ac_config_headers config.h"
 
 ac_ext=cpp
