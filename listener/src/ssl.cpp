@@ -12,7 +12,9 @@ typedef struct {
 
 static _ssl_method_t _g_ssl_method_map[] = {
 	{"SSLv23",	SSLv23_server_method},
+	{"TLSv1_2",	TLSv1_2_server_method},
 	{"DTLS",	DTLS_server_method},
+	{"TLS",		TLS_server_method},
 	{NULL,		NULL}
 };
 
