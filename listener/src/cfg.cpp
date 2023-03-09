@@ -16,6 +16,8 @@
 #include "trace.h"
 #include "cfg.h"
 
+extern void ssl_io(_listen_t *, SSL *);
+
 static std::vector<_listen_t> _gv_listen;
 
 static _u8 *map_file(_cstr_t fname, int *fd, _u64 *size) {
@@ -36,11 +38,11 @@ static _u8 *map_file(_cstr_t fname, int *fd, _u64 *size) {
 	return r;
 }
 
-void cfg_enum_listen(void (*pcb)(_listen_t *)) {
+void cfg_enum_listen(void (*pcb)(_listen_t *, void *), void *udata) {
 	std::vector<_listen_t>::iterator it = _gv_listen.begin();
 
 	while(it != _gv_listen.end()) {
-		pcb(&(*it));
+		pcb(&(*it),udata);
 		it++;
 	}
 }
@@ -90,34 +92,40 @@ static void server_accept(_listen_t *pl) {
 
 				TRACE("hl: Incoming connection from [%s] on port %d\n", strip, pl->port);
 
-				// SSL
-				if(pl->ssl_enable && pl->ssl_context) {
-					SSL *cl_cxt = SSL_new(pl->ssl_context);
+				if((cpid = fork()) == 0) { // child
+					// SSL
+					if(pl->ssl_enable && pl->ssl_context) {
+						SSL *cl_cxt = SSL_new(pl->ssl_context);
 
-					if(cl_cxt) {
-						SSL_set_fd(cl_cxt, sl);
-						// start SSL IO
-						//...
-					} else {
-						TRACE("hl: Failed to allocate SSL conection context\n");
-					}
-				} else {
-					if((cpid = fork()) == 0) {
+						if(cl_cxt) {
+							cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *arg) {
+								p->flags &= ~LISTEN_RUNNING;
+								close(p->server_fd);
+							}, pl);
+
+							SSL_set_fd(cl_cxt, sl);
+							// start SSL IO
+							ssl_io(pl, cl_cxt);
+						} else {
+							TRACE("hl: Failed to allocate SSL conection context\n");
+						}
+					} else { // execute chile
 						dup2(sl, STDIN_FILENO);
 						dup2(sl, STDOUT_FILENO);
 						dup2(sl, STDERR_FILENO);
 						if(execve(pl->argv[0], pl->argv, pl->env) == -1)
 							TRACE("hl: Unable to execute '%s'\n", pl->argv[0]);
-						exit(0);
-					} else {
-						TRACE("hl: Running '%s'; PID: %d; '", pl->name, cpid);
-						while(pl->argv[i]) {
-							TRACE("%s ", pl->argv[i]);
-							i++;
-						}
-						TRACE("'\n");
-						close(sl);
 					}
+
+					exit(0);
+				} else {
+					TRACE("hl: Running '%s'; PID: %d; '", pl->name, cpid);
+					while(pl->argv[i]) {
+						TRACE("%s ", pl->argv[i]);
+						i++;
+					}
+					TRACE("'\n");
+					close(sl);
 				}
 			}
 		}
@@ -130,7 +138,7 @@ static void server_accept(_listen_t *pl) {
 }
 
 void cfg_start(void) {
-	cfg_enum_listen([](_listen_t *p) {
+	cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *udata) {
 		struct sockaddr_in serv;
 
 		if((p->server_fd = socket(AF_INET, SOCK_STREAM, 0)) > 0) {
@@ -151,11 +159,11 @@ void cfg_start(void) {
 			} else
 				close(p->server_fd);
 		}
-	});
+	}, NULL);
 }
 
 void cfg_stop(void) {
-	cfg_enum_listen([](_listen_t *p) {
+	cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *udata) {
 		TRACE("hl: Waiting '%s' to stop. ", p->name);
 		p->flags &= ~LISTEN_RUNNING;
 		if(p->server_fd > 0) {
@@ -166,11 +174,11 @@ void cfg_stop(void) {
 			TRACE(".");
 			usleep(100000);
 		}
-	});
+	}, NULL);
 }
 
 static void init_config(void) {
-	cfg_enum_listen([](_listen_t *p) {
+	cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *udata) {
 		int i = 0;
 
 		for(i = 0; i < MAX_ARGV && p->argv[i]; i++)
@@ -178,7 +186,7 @@ static void init_config(void) {
 
 		for(i = 0; i < MAX_ENV && p->env[i]; i++)
 			free(p->env[i]);
-	});
+	}, NULL);
 
 	_gv_listen.clear();
 }

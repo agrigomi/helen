@@ -39,7 +39,7 @@ _err_t cfg_load(_cstr_t fname);
 /**
 Enumeration of configured listeners
 */
-void cfg_enum_listen(void (*)(_listen_t *));
+void cfg_enum_listen(void (*)(_listen_t *, void *));
 
 /**
 Start listen threads

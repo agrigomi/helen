@@ -7,5 +7,6 @@ nobase_include_HEADERS = src/cfg.h \
 			src/api_ssl.h
 hl_SOURCES = src/main.cpp \
 	src/cfg.cpp \
-	src/ssl.cpp
+	src/ssl.cpp \
+	src/ssl_io.cpp
 
