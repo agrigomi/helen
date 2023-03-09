@@ -90,21 +90,34 @@ static void server_accept(_listen_t *pl) {
 
 				TRACE("hl: Incoming connection from [%s] on port %d\n", strip, pl->port);
 
-				if((cpid = fork()) == 0) {
-					dup2(sl, STDIN_FILENO);
-					dup2(sl, STDOUT_FILENO);
-					dup2(sl, STDERR_FILENO);
-					if(execve(pl->argv[0], pl->argv, pl->env) == -1)
-						TRACE("hl: Unable to execute '%s'\n", pl->argv[0]);
-					exit(0);
-				} else {
-					TRACE("hl: Running '%s'; PID: %d; '", pl->name, cpid);
-					while(pl->argv[i]) {
-						TRACE("%s ", pl->argv[i]);
-						i++;
+				// SSL
+				if(pl->ssl_enable && pl->ssl_context) {
+					SSL *cl_cxt = SSL_new(pl->ssl_context);
+
+					if(cl_cxt) {
+						SSL_set_fd(cl_cxt, sl);
+						// start SSL IO
+						//...
+					} else {
+						TRACE("hl: Failed to allocate SSL conection context\n");
 					}
-					TRACE("'\n");
-					close(sl);
+				} else {
+					if((cpid = fork()) == 0) {
+						dup2(sl, STDIN_FILENO);
+						dup2(sl, STDOUT_FILENO);
+						dup2(sl, STDERR_FILENO);
+						if(execve(pl->argv[0], pl->argv, pl->env) == -1)
+							TRACE("hl: Unable to execute '%s'\n", pl->argv[0]);
+						exit(0);
+					} else {
+						TRACE("hl: Running '%s'; PID: %d; '", pl->name, cpid);
+						while(pl->argv[i]) {
+							TRACE("%s ", pl->argv[i]);
+							i++;
+						}
+						TRACE("'\n");
+						close(sl);
+					}
 				}
 			}
 		}
@@ -239,11 +252,29 @@ static void parse_env_array(_json_array_t *pja_env, _str_t dst_arr[], _u32 arr_s
 	}
 }
 
+static void parse_ssl_object(_json_context_t *p_jcxt, _json_object_t *pjo_ssl, _listen_t *pl) {
+	_json_value_t *pjv_enable = json_select(p_jcxt, "enable", pjo_ssl);
+	_json_value_t *pjv_method = json_select(p_jcxt, "method", pjo_ssl);
+	_json_value_t *pjv_cert = json_select(p_jcxt, "certificate", pjo_ssl);
+	_json_value_t *pjv_key = json_select(p_jcxt, "key", pjo_ssl);
+
+	if(pjv_enable && pjv_method && pjv_cert && pjv_key) {
+		pl->ssl_enable = (pjv_enable->jvt == JSON_TRUE);
+		strncpy(pl->ssl_method, pjv_method->string.data,
+			((sizeof(pl->ssl_method)-1) < pjv_method->string.size) ? sizeof(pl->ssl_method)-1 : pjv_method->string.size);
+		strncpy(pl->ssl_cert, pjv_cert->string.data,
+			((sizeof(pl->ssl_cert)-1) < pjv_cert->string.size) ? sizeof(pl->ssl_cert)-1 : pjv_cert->string.size);
+		strncpy(pl->ssl_key, pjv_key->string.data,
+			((sizeof(pl->ssl_key)-1) < pjv_key->string.size) ? sizeof(pl->ssl_key)-1 : pjv_key->string.size);
+	}
+}
+
 static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 	_listen_t l;
 	_json_value_t *pjv_port = json_select(p_jcxt, "port", &(p_jp->value.object));
 	_json_value_t *pjv_exec = json_select(p_jcxt, "exec", &(p_jp->value.object));
 	_json_value_t *pjv_env  = json_select(p_jcxt, "env",  &(p_jp->value.object));
+	_json_value_t *pjv_ssl  = json_select(p_jcxt, "ssl",  &(p_jp->value.object));
 
 	memset(&l, 0, sizeof(_listen_t));
 	strncpy(l.name, p_jp->name.data, (p_jp->name.size < (sizeof(l.name)-1)) ? p_jp->name.size : sizeof(l.name) - 1);
@@ -257,6 +288,44 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 				parse_env_object(&pjv_env->object, l.env, MAX_ENV);
 			else if(pjv_env->jvt == JSON_ARRAY)
 				parse_env_array(&pjv_env->array, l.env, MAX_ENV);
+		}
+
+		if(pjv_ssl) {
+			if(pjv_ssl->jvt == JSON_OBJECT)
+				parse_ssl_object(p_jcxt, &pjv_ssl->object, &l);
+		}
+
+		if(l.ssl_enable) {
+			const SSL_METHOD *ssl_method = ssl_select_method(l.ssl_method);
+
+			TRACE("hl: Setup SSL/%s for incoming connections on port %d\n", l.ssl_method, l.port);
+			if(ssl_method) {
+				if((l.ssl_context = ssl_create_context(ssl_method))) {
+					if(SSL_CTX_use_certificate_file(l.ssl_context, l.ssl_cert, SSL_FILETYPE_PEM) > 0) {
+						if(SSL_CTX_use_PrivateKey_file(l.ssl_context, l.ssl_key, SSL_FILETYPE_PEM) > 0) {
+							if(!SSL_CTX_check_private_key(l.ssl_context)) {
+								TRACE("hl: Private key does not match the public certificate");
+								SSL_CTX_free(l.ssl_context);
+								l.ssl_context = NULL;
+								l.ssl_enable = false;
+							}
+						} else {
+							TRACE("hl: Failed to load key file '%s'\n", l.ssl_key);
+							SSL_CTX_free(l.ssl_context);
+							l.ssl_context = NULL;
+							l.ssl_enable = false;
+						}
+					} else {
+						TRACE("hl: Failed to load certificate file '%s'\n", l.ssl_cert);
+						SSL_CTX_free(l.ssl_context);
+						l.ssl_context = NULL;
+						l.ssl_enable = false;
+					}
+				} else {
+					TRACE("hl: Failed to create SSL context\n");
+					l.ssl_enable = false;
+				}
+			}
 		}
 
 		l.flags = LISTEN_STOPPED;
