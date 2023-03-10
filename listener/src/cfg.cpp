@@ -90,7 +90,7 @@ static void server_accept(_listen_t *pl) {
 				setsockopt(sl, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
 				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
-				TRACE("hl: Incoming connection from [%s] on port %d\n", strip, pl->port);
+				TRACE("hl[%d]: Incoming connection from [%s] on port %d\n", getpid(), strip, pl->port);
 
 				if((cpid = fork()) == 0) { // child
 					// SSL
@@ -104,7 +104,8 @@ static void server_accept(_listen_t *pl) {
 							}, pl);
 
 							SSL_set_fd(cl_cxt, sl);
-							// start SSL IO
+							SSL_set_accept_state(cl_cxt);
+							TRACE("hl[%d] Running SSL tunel.\n", getpid());
 							ssl_io(pl, cl_cxt);
 						} else {
 							TRACE("hl: Failed to allocate SSL conection context\n");
@@ -119,7 +120,7 @@ static void server_accept(_listen_t *pl) {
 
 					exit(0);
 				} else {
-					TRACE("hl: Running '%s'; PID: %d; '", pl->name, cpid);
+					TRACE("hl[%d]: Running '%s'; PID: %d; '", getpid(), pl->name, cpid);
 					while(pl->argv[i]) {
 						TRACE("%s ", pl->argv[i]);
 						i++;
