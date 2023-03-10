@@ -200,6 +200,7 @@ static void split_by_space(_cstr_t str, _u32 str_size, _str_t dst_arr[], _u32 ar
 		_str_t token;
 		_u32 i = 0, l = 0;
 
+		memset(p_str, 0, str_size + 1);
 		strncpy(p_str, str, str_size);
 
 		for(token = strtok_r(p_str, " ", &rest); token != NULL; token = strtok_r(NULL, " ", &rest)) {
