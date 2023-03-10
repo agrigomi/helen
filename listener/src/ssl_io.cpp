@@ -36,34 +36,29 @@ void ssl_io(_listen_t *pl, SSL *cl_cxt) {
 
 				if((nout = proc_read(&p_io_cxt->proc, p_io_cxt->out, MAX_BUFFER_SIZE)) > 0)
 					SSL_write(p_io_cxt->ssl, p_io_cxt->out, nout);
-				else if(nout < 0) {
-					TRACE("hl[%d] Exit SSL I/O thread by %d\n", getpid(), nout);
+				else
 					break;
-				}
 			}
 
 			p_io_cxt->flags = IO_STOPPED;
 			return NULL;
 		}, &io_cxt);
 
-		usleep(10000);
+		pthread_setname_np(pl->thread, "SSL tunel");
+		while(!(io_cxt.flags & IO_RUNNING))
+			usleep(10000);
 
 		while((io_cxt.flags & IO_RUNNING) && proc_status(&io_cxt.proc) == -1) {
 			int nin = 0;
 
-			if((nin = SSL_read(io_cxt.ssl, io_cxt.in, MAX_BUFFER_SIZE)) > 0)
+			if((nin = SSL_read(io_cxt.ssl, io_cxt.in, MAX_BUFFER_SIZE)) > 0) {
+				TRACE("hl[%d] %s\n", getpid(), io_cxt.in);
 				proc_write(&io_cxt.proc, io_cxt.in, nin);
-			else {
-				TRACE("hl[%d] Exit SSL I/O loop by %d received\n", getpid(), nin);
-
+			} else
 				break;
-			}
 		}
 
-		TRACE("hl[%d] Exit SSL I/O\n", getpid());
-
 		_ulong err = ERR_get_error();
-
 		if(err) {
 			_char_t error_string[2048] = "";
 
@@ -72,6 +67,9 @@ void ssl_io(_listen_t *pl, SSL *cl_cxt) {
 		}
 
 		proc_break(&io_cxt.proc);
+		usleep(100000);
+		if(proc_status(&io_cxt.proc) == (_s8)-1)
+			proc_kill(&io_cxt.proc);
 	}
 
 	free(io_cxt.in);

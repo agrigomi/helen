@@ -7,6 +7,7 @@
 #include "sig.h"
 #include "trace.h"
 #include "cfg.h"
+#include "api_ssl.h"
 
 #define OPT_SHELP	"h"
 #define OPT_HELP	"help"
@@ -21,6 +22,8 @@ static _argv_t args[] = {
 	//...
 	{ NULL,		0,				NULL,		NULL }
 };
+
+bool _g_fork_ = false;
 
 static void usage(void) {
 	int n = 0;
@@ -46,26 +49,29 @@ int main(int argc, char *argv[]) {
 		int status = -1;
 
 		waitpid(siginfo->si_pid, &status, WNOHANG);
-		TRACE("hl: SIGCHLD: PID=%u, STATUS=%d\n", siginfo->si_pid, status);
+		TRACE("hl[%d]: SIGCHLD: PID=%u, STATUS=%d\n", getpid(), siginfo->si_pid, status);
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
 		TRACE("hl: SIGSEGV\n");
 		dump_stack();
 	});
 	signal(SIGINT, [](__attribute__((unused)) int sig) {
-		TRACE("hl: SIGINT\n");
+		TRACE("hl[%d]: SIGINT\n", getpid());
 		cfg_stop();
 		exit(0);
 	});
 	signal(SIGKILL, [](__attribute__((unused)) int sig) {
-		TRACE("hl: SIGKILL\n");
+		TRACE("hl[%d]: SIGKILL\n", getpid());
 		cfg_stop();
 		exit(0);
 	});
 	signal(SIGTERM, [](__attribute__((unused)) int sig) {
-		TRACE("hl: SIGTERM\n");
+		TRACE("hl[%d]: SIGTERM\n", getpid());
 		cfg_stop();
 		exit(0);
+	});
+	signal(SIGPIPE, [](__attribute__((unused)) int sig) {
+		TRACE("hl[%d]: SIGPIPE\n", getpid());
 	});
 
 	if(argv_parse(argc, (_cstr_t *)argv, args)) {
@@ -77,6 +83,7 @@ int main(int argc, char *argv[]) {
 		_cstr_t cfg_file = argv_value(OPT_CFG);
 
 		if(cfg_file) {
+			ssl_init();
 			cfg_load(cfg_file);
 			cfg_start();
 

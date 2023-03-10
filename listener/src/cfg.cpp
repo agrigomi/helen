@@ -11,12 +11,15 @@
 #include <malloc.h>
 #include <pthread.h>
 #include <vector>
+#include <string>
+#include <sys/wait.h>
 #include "config.h"
 #include "json.h"
 #include "trace.h"
 #include "cfg.h"
 
 extern void ssl_io(_listen_t *, SSL *);
+extern bool _g_fork_;
 
 static std::vector<_listen_t> _gv_listen;
 
@@ -45,6 +48,25 @@ void cfg_enum_listen(void (*pcb)(_listen_t *, void *), void *udata) {
 		pcb(&(*it),udata);
 		it++;
 	}
+}
+
+static std::string jv_string(_json_value_t *pjv) {
+	std::string r("");
+
+	if(pjv && (pjv->jvt == JSON_STRING || pjv->jvt == JSON_NUMBER))
+		r.assign(pjv->string.data, pjv->string.size);
+
+	return r;
+}
+
+static void jv_string(_json_value_t *pjv, _char_t *dst, unsigned int sz_dst) {
+	if(pjv && (pjv->jvt == JSON_STRING || pjv->jvt == JSON_NUMBER))
+		strncpy(dst, pjv->string.data, ((sz_dst-1) < pjv->string.size) ? (sz_dst-1) : pjv->string.size);
+}
+
+static void jv_string(_json_string_t *pjs, _char_t *dst, unsigned int sz_dst) {
+	if(pjs)
+		strncpy(dst, pjs->data, ((sz_dst-1) < pjs->size) ? (sz_dst-1) : pjs->size);
 }
 
 static void server_accept(_listen_t *pl) {
@@ -83,16 +105,19 @@ static void server_accept(_listen_t *pl) {
 				opt = 3;
 				setsockopt(sl, SOL_TCP, TCP_KEEPCNT, &opt, sizeof(opt));
 
-				struct timeval timeout;
-				timeout.tv_sec = 10;
-				timeout.tv_usec = 0;
+				if(pl->timeout > 0) {
+					struct timeval timeout;
+					timeout.tv_sec = 240;
+					timeout.tv_usec = 0;
 
-				setsockopt(sl, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
-				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+					setsockopt(sl, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
+					setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+				}
 
 				TRACE("hl[%d]: Incoming connection from [%s] on port %d\n", getpid(), strip, pl->port);
 
 				if((cpid = fork()) == 0) { // child
+					_g_fork_ = true;
 					// SSL
 					if(pl->ssl_enable && pl->ssl_context) {
 						SSL *cl_cxt = SSL_new(pl->ssl_context);
@@ -101,12 +126,13 @@ static void server_accept(_listen_t *pl) {
 							cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *arg) {
 								p->flags &= ~LISTEN_RUNNING;
 								close(p->server_fd);
+								p->server_fd = -1;
 							}, pl);
 
 							SSL_set_fd(cl_cxt, sl);
 							SSL_set_accept_state(cl_cxt);
-							TRACE("hl[%d] Running SSL tunel.\n", getpid());
 							ssl_io(pl, cl_cxt);
+							SSL_free(cl_cxt);
 						} else {
 							TRACE("hl: Failed to allocate SSL conection context\n");
 						}
@@ -168,12 +194,17 @@ void cfg_stop(void) {
 		TRACE("hl: Waiting '%s' to stop. ", p->name);
 		p->flags &= ~LISTEN_RUNNING;
 		if(p->server_fd > 0) {
-			shutdown(p->server_fd, SHUT_RDWR);
-		}
+			if(_g_fork_)
+				close(p->server_fd);
+			else
+				shutdown(p->server_fd, SHUT_RDWR);
 
-		while(!(p->flags & LISTEN_STOPPED)) {
-			TRACE(".");
-			usleep(100000);
+			if(!_g_fork_) {
+				while(!(p->flags & LISTEN_STOPPED)) {
+					TRACE(".");
+					usleep(100000);
+				}
+			}
 		}
 	}, NULL);
 }
@@ -231,10 +262,9 @@ static void parse_env_object(_json_object_t *pjo_env, _str_t dst_arr[], _u32 arr
 		memset(lb_name, 0, sizeof(lb_name));
 		memset(lb_value, 0, sizeof(lb_value));
 
-		strncpy(lb_name, p_jp->name.data, (sizeof(lb_name) < p_jp->name.size) ? sizeof(lb_name) - 1 : p_jp->name.size);
+		jv_string(&p_jp->name, lb_name, sizeof(lb_name));
 		if(p_jp->value.jvt == JSON_STRING)
-			strncpy(lb_value, p_jp->value.string.data,
-				((sizeof(lb_value)-1) < p_jp->value.string.size) ? sizeof(lb_value) - 1 : p_jp->value.string.size);
+			jv_string(&p_jp->value, lb_value, sizeof(lb_value));
 
 		l = strlen(lb_name) + strlen(lb_value) + 2;
 		if((dst_arr[i] = (_str_t)malloc(l))) {
@@ -270,12 +300,9 @@ static void parse_ssl_object(_json_context_t *p_jcxt, _json_object_t *pjo_ssl, _
 
 	if(pjv_enable && pjv_method && pjv_cert && pjv_key) {
 		pl->ssl_enable = (pjv_enable->jvt == JSON_TRUE);
-		strncpy(pl->ssl_method, pjv_method->string.data,
-			((sizeof(pl->ssl_method)-1) < pjv_method->string.size) ? sizeof(pl->ssl_method)-1 : pjv_method->string.size);
-		strncpy(pl->ssl_cert, pjv_cert->string.data,
-			((sizeof(pl->ssl_cert)-1) < pjv_cert->string.size) ? sizeof(pl->ssl_cert)-1 : pjv_cert->string.size);
-		strncpy(pl->ssl_key, pjv_key->string.data,
-			((sizeof(pl->ssl_key)-1) < pjv_key->string.size) ? sizeof(pl->ssl_key)-1 : pjv_key->string.size);
+		jv_string(pjv_method, pl->ssl_method, sizeof(pl->ssl_method));
+		jv_string(pjv_cert, pl->ssl_cert, sizeof(pl->ssl_cert));
+		jv_string(pjv_key, pl->ssl_key, sizeof(pl->ssl_key));
 	}
 }
 
@@ -284,13 +311,14 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 	_json_value_t *pjv_port = json_select(p_jcxt, "port", &(p_jp->value.object));
 	_json_value_t *pjv_exec = json_select(p_jcxt, "exec", &(p_jp->value.object));
 	_json_value_t *pjv_env  = json_select(p_jcxt, "env",  &(p_jp->value.object));
+	_json_value_t *pjv_tout = json_select(p_jcxt, "timeout",  &(p_jp->value.object));
 	_json_value_t *pjv_ssl  = json_select(p_jcxt, "ssl",  &(p_jp->value.object));
 
 	memset(&l, 0, sizeof(_listen_t));
-	strncpy(l.name, p_jp->name.data, (p_jp->name.size < (sizeof(l.name)-1)) ? p_jp->name.size : sizeof(l.name) - 1);
+	jv_string(&p_jp->name, l.name, sizeof(l.name));
 
 	if(pjv_port && pjv_port->jvt == JSON_STRING &&  pjv_exec && pjv_exec->jvt == JSON_STRING) {
-		l.port = atoi(pjv_port->string.data);
+		l.port = atoi(jv_string(pjv_port).c_str());
 		split_by_space(pjv_exec->string.data, pjv_exec->string.size, l.argv, MAX_ARGV);
 
 		if(pjv_env) {
@@ -299,6 +327,8 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 			else if(pjv_env->jvt == JSON_ARRAY)
 				parse_env_array(&pjv_env->array, l.env, MAX_ENV);
 		}
+
+		l.timeout = atoi(jv_string(pjv_tout).c_str());
 
 		if(pjv_ssl) {
 			if(pjv_ssl->jvt == JSON_OBJECT)
@@ -335,6 +365,8 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 					TRACE("hl: Failed to create SSL context\n");
 					l.ssl_enable = false;
 				}
+			} else {
+				TRACE("hl[%d] Unsupported SSL method '%s'\n", l.ssl_method);
 			}
 		}
 
