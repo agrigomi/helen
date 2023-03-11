@@ -118,11 +118,10 @@ static void server_accept(_listen_t *pl) {
 
 				if((cpid = fork()) == 0) { // child
 					_g_fork_ = true;
-					// SSL
-					if(pl->ssl_enable && pl->ssl_context) {
+					if(pl->ssl_enable && pl->ssl_context) { // SSL case
 						SSL *cl_cxt = SSL_new(pl->ssl_context);
 
-						if(cl_cxt) {
+						if(cl_cxt) { // stop listen threads
 							cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *arg) {
 								p->flags &= ~LISTEN_RUNNING;
 								close(p->server_fd);
@@ -131,17 +130,17 @@ static void server_accept(_listen_t *pl) {
 
 							SSL_set_fd(cl_cxt, sl);
 							SSL_set_accept_state(cl_cxt);
-							ssl_io(pl, cl_cxt);
+							ssl_io(pl, cl_cxt); // start I/O thread
 							SSL_free(cl_cxt);
 						} else {
-							TRACE("hl: Failed to allocate SSL conection context\n");
+							TRACE("hl[%d]: Failed to allocate SSL conection context\n", getpid());
 						}
-					} else { // execute chile
+					} else { // execute child
 						dup2(sl, STDIN_FILENO);
 						dup2(sl, STDOUT_FILENO);
 						dup2(sl, STDERR_FILENO);
 						if(execve(pl->argv[0], pl->argv, pl->env) == -1)
-							TRACE("hl: Unable to execute '%s'\n", pl->argv[0]);
+							TRACE("hl[%d]: Unable to execute '%s'\n", getpid(), pl->argv[0]);
 					}
 
 					exit(0);
@@ -152,8 +151,9 @@ static void server_accept(_listen_t *pl) {
 						i++;
 					}
 					TRACE("'\n");
-					close(sl);
 				}
+
+				close(sl);
 			}
 		}
 
@@ -366,7 +366,7 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 					l.ssl_enable = false;
 				}
 			} else {
-				TRACE("hl[%d] Unsupported SSL method '%s'\n", l.ssl_method);
+				TRACE("hl[%d] Unsupported SSL method '%s'\n", getpid(), l.ssl_method);
 			}
 		}
 

@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
 		TRACE("hl: SIGSEGV\n");
 		dump_stack();
+		exit(0);
 	});
 	signal(SIGINT, [](__attribute__((unused)) int sig) {
 		TRACE("hl[%d]: SIGINT\n", getpid());
