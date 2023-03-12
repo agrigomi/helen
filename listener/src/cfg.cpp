@@ -196,10 +196,9 @@ void cfg_stop(void) {
 		if(p->server_fd > 0) {
 			if(_g_fork_)
 				close(p->server_fd);
-			else
+			else {
 				shutdown(p->server_fd, SHUT_RDWR);
 
-			if(!_g_fork_) {
 				while(!(p->flags & LISTEN_STOPPED)) {
 					TRACE(".");
 					usleep(100000);
@@ -383,20 +382,23 @@ _err_t cfg_load(_cstr_t fname) {
 	_u8 *content = map_file(fname, &cfg_fd, &cfg_size);
 
 	if(content) {
+		// Stop listen threads
 		cfg_stop();
+		// Initializing listen storage
 		init_config();
 
 		_json_context_t *p_jcxt = json_create_context(
+						// memory allocation
 						[](_u32 size, __attribute__((unused)) void *udata) ->void* {
 							return malloc(size);
 						},
+						// memory free
 						[](void *ptr, __attribute__((unused)) _u32 size,
 								__attribute__((unused)) void *udata) {
 							free(ptr);
 						}, NULL);
-		_json_err_t jerr = json_parse(p_jcxt, content, cfg_size);
 
-		if(jerr == JSON_OK) {
+		if(json_parse(p_jcxt, content, cfg_size) == JSON_OK) {
 			_json_value_t *p_jv = json_select(p_jcxt, "listen", NULL);
 
 			if(p_jv && p_jv->jvt == JSON_OBJECT) {
