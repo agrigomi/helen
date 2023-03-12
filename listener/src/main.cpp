@@ -43,13 +43,15 @@ static void usage(void) {
 int main(int argc, char *argv[]) {
 	int r = 0;
 
-	handle(SIGCHLD, [](__attribute__((unused)) int signum,
-			siginfo_t *siginfo,
-			__attribute__((unused)) void *arg) {
-		int status = -1;
+	signal(SIGCHLD, [](__attribute__((unused)) int sig) {
+		int stat;
+		pid_t	pid;
 
-		waitpid(siginfo->si_pid, &status, WNOHANG);
-		TRACE("hl[%d]: SIGCHLD: PID=%u, STATUS=%d\n", getpid(), siginfo->si_pid, status);
+		while(1) {
+			if((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) <= 0)
+				break;
+			TRACE("hl[%d]: SIGCHLD: PID=%u, STATUS=%d\n", getpid(), pid, stat);
+		}
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
 		TRACE("hl: SIGSEGV\n");
