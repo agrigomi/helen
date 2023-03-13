@@ -115,7 +115,7 @@ static void server_accept(_listen_t *pl) {
 					setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 				}
 
-				TRACE("hl[%d]: Incoming connection from [%s:%d]\n", getpid(), strip, pl->port);
+				TRACE("hl[%d]: Incoming connection from %s on port %d\n", getpid(), strip, pl->port);
 
 				if((cpid = fork()) == 0) { // child
 					_g_fork_ = true;
