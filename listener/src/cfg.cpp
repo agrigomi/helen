@@ -17,6 +17,7 @@
 #include "json.h"
 #include "trace.h"
 #include "cfg.h"
+#include "argv.h"
 
 extern void ssl_io(_listen_t *, SSL *);
 extern bool _g_fork_;
@@ -138,7 +139,8 @@ static void server_accept(_listen_t *pl) {
 					} else { // execute child
 						dup2(sl, STDIN_FILENO);
 						dup2(sl, STDOUT_FILENO);
-						dup2(sl, STDERR_FILENO);
+						if(pl->no_stderr == false)
+							dup2(sl, STDERR_FILENO);
 						if(execve(pl->argv[0], pl->argv, pl->env) == -1)
 							TRACE("hl[%d]: Unable to execute '%s'\n", getpid(), pl->argv[0]);
 					}
@@ -311,6 +313,7 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 	_json_value_t *pjv_exec = json_select(p_jcxt, "exec", &(p_jp->value.object));
 	_json_value_t *pjv_env  = json_select(p_jcxt, "env",  &(p_jp->value.object));
 	_json_value_t *pjv_tout = json_select(p_jcxt, "timeout",  &(p_jp->value.object));
+	_json_value_t *pjv_nostderr = json_select(p_jcxt, "no-stderr",  &(p_jp->value.object));
 	_json_value_t *pjv_ssl  = json_select(p_jcxt, "ssl",  &(p_jp->value.object));
 
 	memset(&l, 0, sizeof(_listen_t));
@@ -328,6 +331,9 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 		}
 
 		l.timeout = atoi(jv_string(pjv_tout).c_str());
+
+		if(pjv_nostderr)
+			l.no_stderr = (pjv_nostderr->jvt == JSON_TRUE);
 
 		if(pjv_ssl) {
 			if(pjv_ssl->jvt == JSON_OBJECT)

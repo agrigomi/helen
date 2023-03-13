@@ -9,11 +9,6 @@
 #include "cfg.h"
 #include "api_ssl.h"
 
-#define OPT_SHELP	"h"
-#define OPT_HELP	"help"
-#define OPT_SVERSION	"v"
-#define OPT_CFG		"config"
-
 static _argv_t args[] = {
 	{ OPT_SHELP,	0,				NULL,		"Print this help" },
 	{ OPT_HELP,	OF_LONG,			NULL,		"Print this help" },

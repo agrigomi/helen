@@ -6,6 +6,12 @@
 #include "dtype.h"
 #include "api_ssl.h"
 
+#define OPT_SHELP	"h"
+#define OPT_HELP	"help"
+#define OPT_SVERSION	"v"
+#define OPT_CFG		"config"
+
+
 #define MAX_LISTEN_NAME	64
 #define MAX_ARGV	256
 #define MAX_ENV		256
@@ -23,6 +29,7 @@ typedef struct {
 	pthread_t thread;			// thread context
 	int 	server_fd;			// server socket FD
 	int	timeout;			// Client socket timeout in seconds
+	bool	no_stderr;			// Ignore stderr channel
 	volatile _u32 flags;			// flags for internal use
 	bool	ssl_enable;			// enable / disable SSL
 	_char_t	ssl_method[MAX_SSL_METHOD];	// SSL method name
