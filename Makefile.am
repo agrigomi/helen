@@ -1,3 +1,4 @@
 SUBDIRS = lib \
-	listener
+	listener \
+	http
 AUTOMAKE_OPTIONS = foreign subdir-objects

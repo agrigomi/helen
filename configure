@@ -3252,7 +3252,7 @@ END
   fi
 fi
 
-ac_config_files="$ac_config_files Makefile lib/Makefile listener/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile listener/Makefile http/Makefile"
 
 
 
@@ -6862,6 +6862,7 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "listener/Makefile") CONFIG_FILES="$CONFIG_FILES listener/Makefile" ;;
+    "http/Makefile") CONFIG_FILES="$CONFIG_FILES http/Makefile" ;;
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
 

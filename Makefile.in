@@ -292,7 +292,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = lib \
-	listener
+	listener \
+	http
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 all: config.h
