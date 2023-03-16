@@ -46,7 +46,7 @@ void ssl_io(_listen_t *pl, SSL *cl_cxt) {
 
 		pthread_setname_np(pl->thread, "SSL tunnel");
 		while(!(io_cxt.flags & IO_RUNNING))
-			usleep(10000);
+			usleep(10);
 
 		while((io_cxt.flags & IO_RUNNING) && proc_status(&io_cxt.proc) == -1) {
 			int nin = 0;
