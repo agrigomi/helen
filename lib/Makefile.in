@@ -110,7 +110,7 @@ libtools_a_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libtools_a_OBJECTS = src/context.$(OBJEXT) src/json.$(OBJEXT) \
 	src/argv.$(OBJEXT) src/sig.$(OBJEXT) src/respawn.$(OBJEXT) \
-	src/trace.$(OBJEXT)
+	src/trace.$(OBJEXT) src/sha1.$(OBJEXT)
 libtools_a_OBJECTS = $(am_libtools_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -129,7 +129,8 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = src/$(DEPDIR)/argv.Po src/$(DEPDIR)/context.Po \
 	src/$(DEPDIR)/json.Po src/$(DEPDIR)/respawn.Po \
-	src/$(DEPDIR)/sig.Po src/$(DEPDIR)/trace.Po
+	src/$(DEPDIR)/sha1.Po src/$(DEPDIR)/sig.Po \
+	src/$(DEPDIR)/trace.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -302,14 +303,16 @@ nobase_include_HEADERS = include/context.h \
 			include/sig.h \
 			include/respawn.h \
 			include/trace.h \
-			include/err.h
+			include/err.h \
+			include/sha1.h
 
 libtools_a_SOURCES = src/context.c \
 			src/json.c \
 			src/argv.c \
 			src/sig.c \
 			src/respawn.c \
-			src/trace.c
+			src/trace.c \
+			src/sha1.c
 
 all: all-am
 
@@ -361,6 +364,7 @@ src/sig.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/respawn.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/trace.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/sha1.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 
 libtools.a: $(libtools_a_OBJECTS) $(libtools_a_DEPENDENCIES) $(EXTRA_libtools_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libtools.a
@@ -378,6 +382,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/context.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/json.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/respawn.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/sha1.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/sig.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/trace.Po@am__quote@ # am--include-marker
 
@@ -559,6 +564,7 @@ distclean: distclean-am
 	-rm -f src/$(DEPDIR)/context.Po
 	-rm -f src/$(DEPDIR)/json.Po
 	-rm -f src/$(DEPDIR)/respawn.Po
+	-rm -f src/$(DEPDIR)/sha1.Po
 	-rm -f src/$(DEPDIR)/sig.Po
 	-rm -f src/$(DEPDIR)/trace.Po
 	-rm -f Makefile
@@ -610,6 +616,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f src/$(DEPDIR)/context.Po
 	-rm -f src/$(DEPDIR)/json.Po
 	-rm -f src/$(DEPDIR)/respawn.Po
+	-rm -f src/$(DEPDIR)/sha1.Po
 	-rm -f src/$(DEPDIR)/sig.Po
 	-rm -f src/$(DEPDIR)/trace.Po
 	-rm -f Makefile

@@ -8,11 +8,13 @@ nobase_include_HEADERS = include/context.h \
 			include/sig.h \
 			include/respawn.h \
 			include/trace.h \
-			include/err.h
+			include/err.h \
+			include/sha1.h
 libtools_a_SOURCES = src/context.c \
 			src/json.c \
 			src/argv.c \
 			src/sig.c \
 			src/respawn.c \
-			src/trace.c
+			src/trace.c \
+			src/sha1.c
 CFLAGS += -Wall -Wextra -Iinclude
