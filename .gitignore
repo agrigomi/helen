@@ -12,5 +12,5 @@ stamp-h1
 listener/hl
 .dirstamp
 autom4te.cache/*
-configure~
-
+*~
+http/http
