@@ -5,6 +5,7 @@
 
 #define HF_INVALID_OFFSET	0xffffffffffffffff
 #define HF_MAX_PATH		512
+#define HF_MAX_EMPTY_BLOCK	4096
 
 /* File header */
 typedef struct __attribute__((packed)) {
@@ -24,7 +25,6 @@ typedef struct __attribute__((packed)) {
 /* hash file context */
 typedef struct {
 	char		path[HF_MAX_PATH];	/* Path to file */
-	int		flags;		/* file access flags */
 	int		fd;		/* file descriptor */
 	unsigned long	size;		/* total file size */
 	_hf_hdr_t 	*hdr;		/* file content (mapping) */
@@ -66,6 +66,17 @@ key	- record identifier
 sz_key	- size of record identifier
 returns pointer to record or NULL  */
 void *hf_get(_hf_context_t *, void *key, int sz_key);
+
+/**
+Append empty block to hash file
+n	- number of empty blocks (n * HF_MAX_EMPTY_BLOCK)
+returns 0 for siccess or -1 for fail */
+int hf_append(_hf_context_t *, int n);
+
+/**
+Extend hash table (capacity * 2)
+returns 0 for success or < 0 for fail */
+int hf_extend(_hf_context_t *);
 
 #ifdef __cplusplus
 }
