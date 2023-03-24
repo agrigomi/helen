@@ -27,12 +27,12 @@ static std::vector<_listen_t> _gv_listen;
 static _u8 *map_file(_cstr_t fname, int *fd, _u64 *size) {
 	_u8 *r = NULL;
 	int _fd = open(fname, O_RDONLY);
-	_u64 _size = 0;
+	size_t _size = 0;
 
 	if(_fd > 0) {
 		_size = lseek(_fd, 0, SEEK_END);
 		lseek(_fd, 0, SEEK_SET);
-		if((r = (_u8 *)mmap(NULL, _fd, PROT_READ, MAP_SHARED, _fd, 0))) {
+		if((r = (_u8 *)mmap(NULL, _size, PROT_READ, MAP_SHARED, _fd, 0))) {
 			*fd = _fd;
 			*size = _size;
 		} else
