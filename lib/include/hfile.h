@@ -1,18 +1,20 @@
 #ifndef __HFILE_H__
 #define __HFILE_H__
 
+#include <fcntl.h>
 #include "sha1.h"
 
 #define HF_INVALID_OFFSET	0xffffffffffffffff
 #define HF_MAX_PATH		512
-#define HF_MAX_EMPTY_BLOCK	4096
+#define HF_MAX_RECORD_SIZE	(64 * 1024)
 
 /* File header */
 typedef struct __attribute__((packed)) {
+	unsigned char 	reserved[12];
 	unsigned int	capacity;	/* hash table capacity */
 	unsigned int	records;	/* number of used slots */
 	unsigned int	collisions;	/* number of collisions */
-	unsigned long	dsize;		/* size of data area */
+	unsigned long	dused;		/* size of used data */
 } _hf_hdr_t;
 
 /* record header */
@@ -37,13 +39,17 @@ extern "C" {
 #endif
 
 /**
-Create hash file */
-int hf_create(_hf_context_t *, const char *path, unsigned int capacity);
+Create hash file.
+path	- path to file
+capacity- size of hash table
+dataK	- size of data area in kilobytes
+hash file remains open for read and write */
+int hf_create(_hf_context_t *, const char *path, unsigned int capacity, unsigned int dataK);
 
 /**
 Open hash file.
 path	- path to file
-flags	- O_RDONLY or O_RDWR ... see open (man 2 open)
+flags	- combination of O_RDWR and O_RDONLY
 returns 0 for success or -1 for fail */
 int hf_open(_hf_context_t *, const char *path, int flags);
 
@@ -69,9 +75,9 @@ void *hf_get(_hf_context_t *, void *key, int sz_key);
 
 /**
 Append empty block to hash file
-n	- number of empty blocks (n * HF_MAX_EMPTY_BLOCK)
+n	- size of empty block in kilobytes
 returns 0 for siccess or -1 for fail */
-int hf_append(_hf_context_t *, int n);
+int hf_append(_hf_context_t *, unsigned int n);
 
 /**
 Extend hash table (capacity * 2)
