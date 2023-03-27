@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include "sha1.h"
 
-#define HF_INVALID_OFFSET	0xffffffffffffffff
+#define HF_INVALID_OFFSET	0xffffffff
 #define HF_MAX_PATH		512
 #define HF_MAX_RECORD_SIZE	(64 * 1024)
 
@@ -20,7 +20,8 @@ typedef struct __attribute__((packed)) {
 /* record header */
 typedef struct __attribute__((packed)) {
 	unsigned char	hash[SHA1HashSize]; /* key hash */
-	unsigned long	next;		/* next record in chain (offset om data area) */
+	unsigned int	reserved;
+	unsigned int	next;		/* next record in chain (offset om data area) */
 	unsigned int	size;		/* record size */
 } _hf_rec_hdr_t;
 
@@ -30,7 +31,7 @@ typedef struct {
 	int		fd;		/* file descriptor */
 	unsigned long	size;		/* total file size */
 	_hf_hdr_t 	*hdr;		/* file content (mapping) */
-	unsigned long	*htable;	/* pointer to first element in hash table */
+	unsigned int	*htable;	/* pointer to first element in hash table */
 	_hf_rec_hdr_t 	*first;		/* pointer to first data record */
 } _hf_context_t;
 
@@ -80,9 +81,20 @@ returns 0 for siccess or -1 for fail */
 int hf_append(_hf_context_t *, unsigned int n);
 
 /**
-Extend hash table (capacity * 2)
+returns pointer to file header. */
+_hf_hdr_t *hf_header(_hf_context_t *);
+
+/**
+Enumeration of records
+pcb	- pointer to callback (will be called for every record)
+	  return 0 from pcb means continue enumeration, less than zero means break
+udata	- pointer to user defined data */
+void hf_enum(_hf_context_t *, int (*pcb)(void *rec_ptr, unsigned int size,void *udata), void *udata);
+
+/**
+Extend hash table to 'new_capacity'
 returns 0 for success or < 0 for fail */
-int hf_extend(_hf_context_t *);
+int hf_extend(_hf_context_t *, unsigned int new_capacity);
 
 #ifdef __cplusplus
 }
