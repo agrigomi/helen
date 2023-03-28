@@ -181,6 +181,53 @@ static _hf_rec_hdr_t *rec_ptr(_hf_context_t *p_cxt, unsigned int off) {
 	return (_hf_rec_hdr_t *)((unsigned char *)p_cxt->first + off);
 }
 
+static void *add_record(_hf_context_t *p_cxt,
+		unsigned int idx,
+		_hf_rec_hdr_t *p_rh,
+		void *data, int sz_data) {
+	void *r = NULL;
+	unsigned int off;
+
+_fit_record_:
+	/* offset in data area for newly added record */
+	off = write_record(p_cxt, p_rh, data, sz_data);
+
+	if (off != HF_INVALID_OFFSET) {
+		if (p_cxt->htable[idx] == HF_INVALID_OFFSET)
+			/* OK, no collision */
+			p_cxt->htable[idx] = off;
+		else {
+			/* COLLISION !!! chain record */
+			_hf_rec_hdr_t *p_ro = rec_ptr(p_cxt, p_cxt->htable[idx]); /* original record */
+
+			while (p_ro->next != HF_INVALID_OFFSET)
+				p_ro = rec_ptr(p_cxt, p_ro->next);
+
+			if (memcmp(p_ro->hash, p_rh->hash, sizeof(p_rh->hash)) != 0)
+				/* chaining */
+				p_ro->next = off;
+			else
+				/* same key, return pointer to original record content */
+				return (void *)(p_ro + 1);
+
+			p_cxt->hdr->collisions++;
+		}
+
+		/* return value is pointer to record content in data area */
+		r = (void *)p_cxt->first + off + sizeof(_hf_rec_hdr_t);
+
+		/* updates the amount of data area used */
+		p_cxt->hdr->dused += sizeof(_hf_rec_hdr_t) + sz_data;
+		p_cxt->hdr->records++;
+	} else {
+		/* append empty block to file */
+		if (hf_append(p_cxt, 64) == 0)
+			goto _fit_record_;
+	}
+
+	return r;
+}
+
 /**
 Add record to hash file.
 key	- record identifier
@@ -191,8 +238,6 @@ returns pointer to record content in case of success, or NULL */
 void *hf_add(_hf_context_t *p_cxt, void *key, int sz_key, void *data, int sz_data) {
 	void *r = NULL;
 	_hf_rec_hdr_t rh;
-	unsigned int idx;
-	unsigned int off;
 
 	memset(&rh, 0, sizeof(_hf_rec_hdr_t));
 	rh.next = HF_INVALID_OFFSET;
@@ -200,43 +245,9 @@ void *hf_add(_hf_context_t *p_cxt, void *key, int sz_key, void *data, int sz_dat
 
 	if (p_cxt->fd > 0 && p_cxt->hdr) {
 		/* produces an index in hash table */
-		idx = key_to_index(key, sz_key, p_cxt->hdr->capacity, rh.hash);
-_fit_record_:
-		/* offset in data area for newly added record */
-		off = write_record(p_cxt, &rh, data, sz_data);
+		unsigned int idx = key_to_index(key, sz_key, p_cxt->hdr->capacity, rh.hash);
 
-		if (off != HF_INVALID_OFFSET) {
-			if (p_cxt->htable[idx] == HF_INVALID_OFFSET)
-				/* OK, no collision */
-				p_cxt->htable[idx] = off;
-			else {
-				/* COLLISION !!! chain record */
-				_hf_rec_hdr_t *p_ro = rec_ptr(p_cxt, p_cxt->htable[idx]); /* original record */
-
-				while (p_ro->next != HF_INVALID_OFFSET)
-					p_ro = rec_ptr(p_cxt, p_ro->next);
-
-				if (memcmp(p_ro->hash, rh.hash, sizeof(rh.hash)) != 0)
-					/* chaining */
-					p_ro->next = off;
-				else
-					/* same key, return pointer to original record content */
-					return (void *)(p_ro + 1);
-
-				p_cxt->hdr->collisions++;
-			}
-
-			/* return value is pointer to record content in data area */
-			r = (void *)p_cxt->first + off + sizeof(_hf_rec_hdr_t);
-
-			/* updates the amount of data area used */
-			p_cxt->hdr->dused += sizeof(_hf_rec_hdr_t) + sz_data;
-			p_cxt->hdr->records++;
-		} else {
-			/* append empty block to file */
-			if (hf_append(p_cxt, 64) == 0)
-				goto _fit_record_;
-		}
+		r = add_record(p_cxt, idx, &rh, data, sz_data);
 	}
 
 	return r;
@@ -301,8 +312,13 @@ void *hf_get(_hf_context_t *p_cxt, void *key, int sz_key) {
 Enumeration of records
 pcb	- pointer to callback (will be called for every record)
 	  return 0 from pcb means continue enumeration, less than zero means break
-udata	- pointer to user defined data */
-void hf_enum(_hf_context_t *p_cxt, int (*pcb)(void *rec_ptr, unsigned int size,void *udata), void *udata) {
+udata	- pointer to user defined data
+returns 0 for success, otherwise -1 */
+int hf_enum(_hf_context_t *p_cxt,
+			int (*pcb)(void *rec_ptr, unsigned int size,void *udata),
+			void *udata) {
+	int r = -1;
+
 	if (p_cxt->fd > 0 && p_cxt->hdr) {
 		unsigned int i = 0, n = p_cxt->hdr->records;
 		_hf_rec_hdr_t *p_rec_hdr = p_cxt->first;
@@ -310,12 +326,28 @@ void hf_enum(_hf_context_t *p_cxt, int (*pcb)(void *rec_ptr, unsigned int size,v
 		for (; i < n; i++) {
 			unsigned int size = p_rec_hdr->size;
 
-			if (pcb((void *)(p_rec_hdr + 1), size, udata) < 0)
+			if ((r = pcb((void *)(p_rec_hdr + 1), size, udata)) < 0)
 				break;
 
-			p_rec_hdr = (_hf_rec_hdr_t *)((void *)p_rec_hdr + sizeof(_hf_rec_hdr_t) + size);
+			p_rec_hdr = (_hf_rec_hdr_t *)((void *)p_rec_hdr +
+					sizeof(_hf_rec_hdr_t) +
+					size);
 		}
 	}
+
+	return r;
+}
+
+static int enum_cb(void *p_rec, unsigned int size, void *udata) {
+	int r = -1;
+	_hf_context_t *p_cxt = (_hf_context_t *)udata;
+	_hf_rec_hdr_t *p_rh = (_hf_rec_hdr_t *)(p_rec - sizeof(_hf_rec_hdr_t));
+	unsigned int idx = hash(p_rh->hash, SHA1HashSize) % p_cxt->hdr->capacity;
+
+	if (add_record(p_cxt, idx, p_rh, p_rec, size))
+		r = 0; /* continue */
+
+	return r;
 }
 
 /**
@@ -323,9 +355,35 @@ Extend hash table to 'new_capacity'
 returns 0 for success or < 0 for fail */
 int hf_extend(_hf_context_t *p_cxt, unsigned int new_capacity) {
 	int r = -1;
+	_hf_context_t new_cxt;
+	char new_path[HF_MAX_PATH];
+	unsigned long dsizeK = (p_cxt->size -
+				sizeof(_hf_hdr_t) -
+				(p_cxt->hdr->capacity * sizeof(unsigned int))) /
+				1024;
 
-	
+	memset(&new_cxt, 0, sizeof(_hf_context_t));
+	memset(new_path, 0, sizeof(new_path));
 
+	if (p_cxt->fd > 0 && p_cxt->hdr && sizeof(new_path) > (strlen(p_cxt->path) + 1)) {
+		strncpy(new_path, p_cxt->path, sizeof(new_path));
+		strcat(new_path, "~");
+
+		if (hf_create(&new_cxt, new_path, new_capacity, dsizeK) == 0) {
+			if (hf_enum(p_cxt, enum_cb, &new_cxt) == 0) {
+				hf_close(p_cxt);
+				hf_close(&new_cxt);
+
+				rename(new_path, p_cxt->path);
+				unlink(new_path);
+
+				r = open_context(p_cxt, p_cxt->path, O_RDWR);
+			} else {
+				hf_close(&new_cxt);
+				unlink(new_path);
+			}
+		}
+	}
 
 	return r;
 }

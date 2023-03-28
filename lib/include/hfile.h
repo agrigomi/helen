@@ -88,8 +88,9 @@ _hf_hdr_t *hf_header(_hf_context_t *);
 Enumeration of records
 pcb	- pointer to callback (will be called for every record)
 	  return 0 from pcb means continue enumeration, less than zero means break
-udata	- pointer to user defined data */
-void hf_enum(_hf_context_t *, int (*pcb)(void *rec_ptr, unsigned int size,void *udata), void *udata);
+udata	- pointer to user defined data
+returns 0 for success, otherwise -1 */
+int hf_enum(_hf_context_t *, int (*pcb)(void *rec_ptr, unsigned int size,void *udata), void *udata);
 
 /**
 Extend hash table to 'new_capacity'
