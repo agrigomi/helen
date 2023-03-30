@@ -45,21 +45,21 @@ const SSL_METHOD *ssl_select_method(_cstr_t method) {
 	return r;
 }
 
-bool ssl_load_cert(SSL_CTX *ssl_cxt, _cstr_t cert) {
-	bool r = false;
+_bool ssl_load_cert(SSL_CTX *ssl_cxt, _cstr_t cert) {
+	_bool r = _false;
 
 	if(SSL_CTX_use_certificate_file(ssl_cxt, cert, SSL_FILETYPE_PEM) > 0)
-		r = true;
+		r = _true;
 
 	return r;
 }
 
-bool ssl_load_key(SSL_CTX *ssl_cxt, _cstr_t key) {
-	bool r = false;
+_bool ssl_load_key(SSL_CTX *ssl_cxt, _cstr_t key) {
+	_bool r = _false;
 
 	if(SSL_CTX_use_PrivateKey_file(ssl_cxt, key, SSL_FILETYPE_PEM) > 0) {
 		if(SSL_CTX_check_private_key(ssl_cxt))
-			r = true;
+			r = _true;
 	}
 
 	return r;
