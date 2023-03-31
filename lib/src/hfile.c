@@ -200,8 +200,12 @@ _fit_record_:
 			/* COLLISION !!! chain record */
 			_hf_rec_hdr_t *p_ro = rec_ptr(p_cxt, p_cxt->htable[idx]); /* original record */
 
-			while (p_ro->next != HF_INVALID_OFFSET)
+			while (p_ro->next != HF_INVALID_OFFSET) {
+				if (memcmp(p_ro->hash, p_rh->hash, sizeof(p_rh->hash)) == 0)
+					return (void *)(p_ro + 1);
+
 				p_ro = rec_ptr(p_cxt, p_ro->next);
+			}
 
 			if (memcmp(p_ro->hash, p_rh->hash, sizeof(p_rh->hash)) != 0)
 				/* chaining */
