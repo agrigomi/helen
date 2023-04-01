@@ -24,8 +24,8 @@ static void usage(void) {
 	int n = 0;
 
 	printf("options:\n");
-	while(args[n].opt_name) {
-		if(args[n].opt_flags & OF_LONG)
+	while (args[n].opt_name) {
+		if (args[n].opt_flags & OF_LONG)
 			printf("--%s:      \t%s\n", args[n].opt_name, args[n].opt_help);
 		else
 			printf("-%s:      \t%s\n", args[n].opt_name, args[n].opt_help);
@@ -42,8 +42,8 @@ int main(int argc, char *argv[]) {
 		int stat;
 		pid_t	pid;
 
-		while(1) {
-			if((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) <= 0)
+		while (1) {
+			if ((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) <= 0)
 				break;
 			TRACE("hl[%d]: SIGCHLD: PID=%u, STATUS=%d\n", getpid(), pid, stat);
 		}
@@ -72,20 +72,20 @@ int main(int argc, char *argv[]) {
 		TRACE("hl[%d]: SIGPIPE\n", getpid());
 	});
 
-	if(argv_parse(argc, (_cstr_t *)argv, args)) {
-		if(argv_check(OPT_SHELP) || argv_check(OPT_HELP))
+	if (argv_parse(argc, (_cstr_t *)argv, args)) {
+		if (argv_check(OPT_SHELP) || argv_check(OPT_HELP))
 			usage();
-		if(argv_check(OPT_SVERSION))
+		if (argv_check(OPT_SVERSION))
 			printf("%s\n", VERSION);
 
 		_cstr_t cfg_file = argv_value(OPT_CFG);
 
-		if(cfg_file) {
+		if (cfg_file) {
 			ssl_init();
 			cfg_load(cfg_file);
 			cfg_start();
 
-			while(1)
+			while (1)
 				usleep(1000000);
 		} else
 			usage();

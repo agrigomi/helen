@@ -25,16 +25,16 @@ void ssl_io(_listen_t *pl, SSL *cl_cxt) {
 	io_cxt.out = (_u8 *)malloc(MAX_BUFFER_SIZE);
 	io_cxt.ssl = cl_cxt;
 
-	if(proc_exec_ve(&io_cxt.proc, pl->argv[0], pl->argv, pl->env) == 0) {
+	if (proc_exec_ve(&io_cxt.proc, pl->argv[0], pl->argv, pl->env) == 0) {
 		pthread_create(&pl->thread, NULL, [](void *udata)->void* {
 			_ssl_io_context_t *p_io_cxt = (_ssl_io_context_t *)udata;
 
 			p_io_cxt->flags = IO_RUNNING;
 
-			while((p_io_cxt->flags & IO_RUNNING) && proc_status(&p_io_cxt->proc) == -1) {
+			while ((p_io_cxt->flags & IO_RUNNING) && proc_status(&p_io_cxt->proc) == -1) {
 				int nout = 0;
 
-				if((nout = proc_read(&p_io_cxt->proc, p_io_cxt->out, MAX_BUFFER_SIZE)) > 0)
+				if ((nout = proc_read(&p_io_cxt->proc, p_io_cxt->out, MAX_BUFFER_SIZE)) > 0)
 					SSL_write(p_io_cxt->ssl, p_io_cxt->out, nout);
 				else
 					break;
@@ -45,20 +45,20 @@ void ssl_io(_listen_t *pl, SSL *cl_cxt) {
 		}, &io_cxt);
 
 		pthread_setname_np(pl->thread, "SSL tunnel");
-		while(!(io_cxt.flags & IO_RUNNING))
+		while (!(io_cxt.flags & IO_RUNNING))
 			usleep(10);
 
-		while((io_cxt.flags & IO_RUNNING) && proc_status(&io_cxt.proc) == -1) {
+		while ((io_cxt.flags & IO_RUNNING) && proc_status(&io_cxt.proc) == -1) {
 			int nin = 0;
 
-			if((nin = SSL_read(io_cxt.ssl, io_cxt.in, MAX_BUFFER_SIZE)) > 0)
+			if ((nin = SSL_read(io_cxt.ssl, io_cxt.in, MAX_BUFFER_SIZE)) > 0)
 				proc_write(&io_cxt.proc, io_cxt.in, nin);
 			else
 				break;
 		}
 
 		_ulong err = ERR_get_error();
-		if(err) {
+		if (err) {
 			_char_t error_string[2048] = "";
 
 			ERR_error_string_n(err, error_string, sizeof(error_string));
@@ -67,9 +67,9 @@ void ssl_io(_listen_t *pl, SSL *cl_cxt) {
 
 		proc_break(&io_cxt.proc);
 		usleep(100000);
-		if(proc_status(&io_cxt.proc) == (_s8)-1)
+		if (proc_status(&io_cxt.proc) == (_s8)-1)
 			proc_kill(&io_cxt.proc);
-		while(io_cxt.flags & IO_RUNNING)
+		while (io_cxt.flags & IO_RUNNING)
 			usleep(10000);
 	}
 
