@@ -14,10 +14,13 @@ static _argv_t args[] = {
 	{ OPT_HELP,		OF_LONG,				NULL,				"Print this help" },
 	{ OPT_SHELP,		0,					NULL,				"Print this help" },
 	{ OPT_VER,		0,					NULL,				"Print version" },
-	{ OPT_DIR,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)"./.config/helen",	"Settings directory" },
+	{ OPT_DIR,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)".",			"Settings directory" },
+	{ OPT_LISTEN,		0,					NULL,				"Listen mode" },
+	{ OPT_PORT,		OF_VALUE |OF_PRESENT,			(_str_t)"8080",			"Listen port (-" OPT_PORT "<port number>)" },
+	{ OPT_LPORT,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)"8080",			"Listen port (--" OPT_LPORT "=<port number>)" },
 	{ OPT_SSL_CERT,		OF_LONG | OF_VALUE,			NULL,				"SSL certificate file (PEM only)" },
 	{ OPT_SSL_KEY,		OF_LONG | OF_VALUE,			NULL,				"SSL private key file (PEM only)" },
-	{ OPT_SSL_METHOD,	OF_LONG | OF_VALUE | OF_PRESENT,	NULL,				"SSL server method (SSLv23, TLSv1_2, DTLS, TLS)" },
+	{ OPT_SSL_METHOD,	OF_LONG | OF_VALUE,			NULL,				"SSL server method (SSLv23, TLSv1_2, DTLS, TLS)" },
 	//...
 	{ NULL,			0,					NULL,				NULL }
 };
@@ -125,6 +128,8 @@ int main(int argc, char *argv[]) {
 		if (argv_check(OPT_VER))
 			printf("%s\n", VERSION);
 
+		r = cfg_init();
+/*
 		if (!(ssl_method = argv_value(OPT_SSL_METHOD)))
 			ssl_method = getenv(OPT_SSL_METHOD);
 		if (!(ssl_cert = argv_value(OPT_SSL_CERT)))
@@ -144,6 +149,7 @@ int main(int argc, char *argv[]) {
 			SSL_free(_g_ssl_in_);
 		if (_g_ssl_context_)
 			SSL_CTX_free(_g_ssl_context_);
+*/
 	} else {
 		usage();
 		r = -1;

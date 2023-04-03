@@ -1,0 +1,299 @@
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <malloc.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <string>
+#include <map>
+#include "http.h"
+#include "argv.h"
+#include "json.h"
+#include "hfile.h"
+#include "trace.h"
+
+#define VHOST_CAPACITY	128
+#define VHOST_DATA_SIZE	64 // in KBytes
+#define VHOST_SRC	"http.json"
+#define VHOST_DAT	"http.dat"
+#define VHOST_LOCK	"http.lock"
+#define MAPPING_SRC	"mapping.json"
+#define MAPPING_DAT	"mapping.dat"
+#define MAPPING_LOCK	"mapping.lock"
+
+#define DEFAULT_HOST	"default"
+
+static _hf_context_t _g_vhost_cxt_;
+
+typedef std::map<std::string, _hf_context_t> _vhost_mapping_t;
+
+_vhost_mapping_t _g_mapping_;
+
+static _u8 *map_file(_cstr_t fname, int *fd, _u64 *size) {
+	_u8 *r = NULL;
+	int _fd = open(fname, O_RDONLY);
+	size_t _size = 0;
+
+	if (_fd > 0) {
+		_size = lseek(_fd, 0, SEEK_END);
+		lseek(_fd, 0, SEEK_SET);
+		if ((r = (_u8 *)mmap(NULL, _size, PROT_READ, MAP_SHARED, _fd, 0))) {
+			*fd = _fd;
+			*size = _size;
+		} else
+			close(_fd);
+	}
+
+	return r;
+}
+
+static _err_t stat_compare(const char *src, const char *dat) {
+	_err_t r = E_FAIL;
+	static struct stat stat_dat;
+	static struct stat stat_src;
+
+	memset(&stat_src, 0, sizeof(struct stat));
+	memset(&stat_dat, 0, sizeof(struct stat));
+
+	stat(src, &stat_src);
+	stat(dat, &stat_dat);
+
+	if (stat_dat.st_mtime >= stat_src.st_mtime)
+		r = E_OK;
+
+	return r;
+}
+
+static std::string jv_string(_json_value_t *pjv) {
+	std::string r("");
+
+	if (pjv && (pjv->jvt == JSON_STRING || pjv->jvt == JSON_NUMBER))
+		r.assign(pjv->string.data, pjv->string.size);
+
+	return r;
+}
+
+static void jv_string(_json_value_t *pjv, _char_t *dst, unsigned int sz_dst) {
+	if (pjv && (pjv->jvt == JSON_STRING || pjv->jvt == JSON_NUMBER))
+		strncpy(dst, pjv->string.data, ((sz_dst-1) < pjv->string.size) ? (sz_dst-1) : pjv->string.size);
+}
+
+static void jv_string(_json_string_t *pjs, _char_t *dst, unsigned int sz_dst) {
+	if (pjs)
+		strncpy(dst, pjs->data, ((sz_dst-1) < pjs->size) ? (sz_dst-1) : pjs->size);
+}
+
+static void fill_vhost(_json_context_t *p_jcxt, _json_object_t *pjo, _vhost_t *pvh) {
+	_json_value_t *pjv_host = json_select(p_jcxt, "host", pjo);
+	_json_value_t *pjv_root = json_select(p_jcxt, "root", pjo);
+	_json_value_t *pjv_timeout = json_select(p_jcxt, "timeout", pjo);
+	_json_value_t *pjv_excl = json_select(p_jcxt, "exclude", pjo);
+
+	memset(pvh, 0, sizeof(_vhost_t));
+
+	jv_string(pjv_host, pvh->host, sizeof(pvh->host));
+	jv_string(pjv_root, pvh->root, sizeof(pvh->root));
+	pvh->timeout = atoi(jv_string(pjv_timeout).c_str());
+
+	if (pjv_excl && pjv_excl->jvt == JSON_ARRAY) {
+		unsigned int dst_idx = 0;
+		_json_value_t *pjvae = NULL;
+		unsigned int i = 0;
+
+		while ((pjvae = json_array_element(&(pjv_excl->array), i))) {
+			if (pjvae && pjvae->jvt == JSON_STRING) {
+				unsigned int size = pjvae->string.size;
+
+				//...
+
+				i++;
+			}
+		}
+	}
+}
+
+static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
+	_err_t r = E_FAIL;
+	int fd = -1;
+	_u64 size = 0;
+	_u8 *content = NULL;
+
+	if ((content = map_file(json_fname, &fd, &size))) {
+		_json_context_t *p_jcxt = json_create_context(
+						// memory allocation
+						[](_u32 size, __attribute__((unused)) void *udata) ->void* {
+							return malloc(size);
+						},
+						// memory free
+						[](void *ptr, __attribute__((unused)) _u32 size,
+								__attribute__((unused)) void *udata) {
+							free(ptr);
+						}, NULL);
+
+		if (json_parse(p_jcxt, content, size) == JSON_OK) {
+			_json_value_t *pjv_http = json_select(p_jcxt, "http", NULL);
+
+			if (pjv_http && pjv_http->jvt == JSON_OBJECT) {
+				if (hf_create(&_g_vhost_cxt_, dat_fname,
+						VHOST_CAPACITY, VHOST_DATA_SIZE) == 0) {
+					_vhost_t rec;
+
+					_json_value_t *pjv_default = json_select(p_jcxt, DEFAULT_HOST, &(pjv_http->object));
+
+					if (pjv_default && pjv_default->jvt == JSON_OBJECT) {
+						fill_vhost(p_jcxt, &(pjv_default->object), &rec);
+						strncpy(rec.host, DEFAULT_HOST, sizeof(rec.host));
+						// Add to hash table
+						hf_add(&_g_vhost_cxt_, (void *)DEFAULT_HOST, strlen(DEFAULT_HOST), &rec, sizeof(_vhost_t));
+					}
+
+					_json_value_t *pjv_vhost = json_select(p_jcxt, "vhost", &(pjv_http->object));
+
+					if (pjv_vhost && pjv_vhost->jvt == JSON_ARRAY) {
+						unsigned int i = 0;
+						_json_value_t *pjvae = NULL;
+
+						while ((pjvae = json_array_element(&(pjv_vhost->array), i))) {
+							if (pjvae && pjvae->jvt == JSON_OBJECT) {
+								fill_vhost(p_jcxt, &(pjvae->object), &rec);
+								hf_add(&_g_vhost_cxt_, rec.host, strlen(rec.host), &rec, sizeof(_vhost_t));
+							}
+
+							i++;
+						}
+					}
+
+					r = E_OK;
+				}
+			}
+		} else {
+			TRACE("http[%d] Failed to parse '%s'\n", getpid(), json_fname);
+		}
+
+		json_destroy_context(p_jcxt);
+		munmap(content, size);
+		close(fd);
+	}
+
+	return r;
+}
+
+static _err_t compile_mapping(const char *json_fname, const char *dat_fname) {
+	_err_t r = E_FAIL;
+
+	//...
+
+	return r;
+}
+
+static void touch(const char *path) {
+	close(open(path, O_CREAT | S_IRUSR | S_IWUSR));
+}
+
+static _err_t load_vhosts(void) {
+	_err_t r = E_FAIL;
+	char src_path[MAX_PATH] = "", dat_path[MAX_PATH] = "";
+	const char *dir = argv_value(OPT_DIR);
+
+	memset(&_g_vhost_cxt_, 0, sizeof(_hf_context_t));
+	snprintf(src_path, sizeof(src_path), "%s/%s", dir, VHOST_SRC);
+	snprintf(dat_path, sizeof(dat_path), "%s/%s", dir, VHOST_DAT);
+
+_vhost_stat_cmp_:
+	if (stat_compare(src_path, dat_path) != E_OK) {
+		char lock_path[MAX_PATH] = "";
+
+		snprintf(lock_path, sizeof(lock_path), "%s/%s", dir, VHOST_LOCK);
+
+		if (access(lock_path, F_OK) == F_OK) {
+			while (access(lock_path, F_OK) == F_OK)
+				usleep(10000);
+
+			goto _vhost_stat_cmp_;
+		}
+
+		touch(lock_path);
+		r = compile_vhosts(src_path, dat_path);
+		unlink(lock_path);
+	} else
+		r = hf_open(&_g_vhost_cxt_, dat_path, O_RDONLY);
+
+	return r;
+}
+
+/**
+Load vhost mapping by _vhost_t pointer */
+_err_t cfg_load_mapping(_vhost_t *pvhost) {
+	_err_t r = E_FAIL;
+	char src_path[MAX_PATH] = "", dat_path[MAX_PATH] = "";
+	_hf_context_t hf_cxt;
+	char *root = pvhost->root;
+	_vhost_mapping_t::iterator it = _g_mapping_.find(pvhost->host);
+
+	if (it == _g_mapping_.end()) {
+		memset(&hf_cxt, 0, sizeof(_hf_context_t));
+		snprintf(src_path, sizeof(src_path), "%s/%s", root, MAPPING_SRC);
+		snprintf(dat_path, sizeof(dat_path), "%s/%s", root, MAPPING_DAT);
+
+_mapping_stat_cmp_:
+		if (stat_compare(src_path, dat_path) != E_OK) {
+			char lock_path[MAX_PATH] = "";
+
+			snprintf(lock_path, sizeof(lock_path), "%s/%s", root, MAPPING_LOCK);
+
+			if (access(lock_path, F_OK) == F_OK) {
+				while (access(lock_path, F_OK) == F_OK)
+					usleep(10000);
+
+				goto _mapping_stat_cmp_;
+			}
+
+			touch(lock_path);
+			r = compile_mapping(src_path, dat_path);
+			unlink(lock_path);
+			//...
+		} else
+			r = hf_open(&hf_cxt, dat_path, O_RDONLY);
+
+		if (r == E_OK)
+			_g_mapping_.insert({pvhost->host, hf_cxt});
+
+	} else
+		r = E_OK;
+
+	return r;
+}
+
+/**
+Load mapping by name of virtual host */
+_err_t cfg_load_mapping(_cstr_t vhost) {
+	_err_t r = E_FAIL;
+	_vhost_t *pvhost = cfg_get_vhost(vhost);
+
+	if (pvhost)
+		r = cfg_load_mapping(pvhost);
+
+	return r;
+}
+
+_err_t cfg_init(void) {
+	_err_t r = E_FAIL;
+
+	r = load_vhosts();
+	//...
+
+	return r;
+}
+
+/**
+Returns pointer to _vhost_t ot NULL */
+_vhost_t *cfg_get_vhost(_cstr_t host) {
+	_vhost_t *r = NULL;
+
+	if (!(r = (_vhost_t *)hf_get(&_g_vhost_cxt_, (void *)host, strlen(host))))
+		r = (_vhost_t *)hf_get(&_g_vhost_cxt_, (void *)DEFAULT_HOST, strlen(DEFAULT_HOST));
+
+	return r;
+}
+

@@ -5,5 +5,7 @@ LIBS += ../lib/libtools.a
 LDFLAGS = -lpthread -lssl -lcrypto -Wl,--copy-dt-needed-entries
 
 nobase_include_HEADERS = src/http.h
-http_SOURCES = src/main.cpp
+http_SOURCES = src/main.cpp \
+		src/cfg.cpp \
+		src/io.cpp
 
