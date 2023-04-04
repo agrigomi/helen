@@ -4603,6 +4603,8 @@ printf "%s\n" "#define OPENSSL_API_COMPAT 0x10000000L" >>confdefs.h
 
 ac_config_headers="$ac_config_headers config.h"
 
+CXXFLAGS="-O0 -g"
+CFLAGS="-O0 -g"
 
 
 
