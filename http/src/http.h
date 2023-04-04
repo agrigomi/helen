@@ -45,6 +45,7 @@ typedef struct {
 	char url[256];		// URL handler
 	bool header;		// respond header by parent process
 	bool exec;		// exec. flag
+	bool no_stderr;		// dup2 for stderr
 	char proc[MAX_PATH];	// processing buffer
 } _mapping_url_t;
 
@@ -54,6 +55,7 @@ typedef struct {
 	short code;		// HTTP response code
 	bool header;		// respond header by parent process
 	bool exec;		// exec. flag
+	bool no_stderr;		// dup2 for stderr
 	char proc[MAX_PATH];	// processing buffer
 } _mapping_err_t;
 

@@ -13,8 +13,11 @@
 #include "hfile.h"
 #include "trace.h"
 
-#define VHOST_CAPACITY	128
-#define VHOST_DATA_SIZE	64 // in KBytes
+#define VHOST_CAPACITY		128
+#define VHOST_DATA_SIZE		64 // in KBytes
+#define MAPPING_CAPACITY	256
+#define MAPPING_DATA_SIZE	64
+
 #define VHOST_SRC	"http.json"
 #define VHOST_DAT	"http.dat"
 #define VHOST_LOCK	"http.lock"
@@ -79,11 +82,6 @@ static void jv_string(_json_value_t *pjv, _char_t *dst, unsigned int sz_dst) {
 		strncpy(dst, pjv->string.data, ((sz_dst-1) < pjv->string.size) ? (sz_dst-1) : pjv->string.size);
 }
 
-static void jv_string(_json_string_t *pjs, _char_t *dst, unsigned int sz_dst) {
-	if (pjs)
-		strncpy(dst, pjs->data, ((sz_dst-1) < pjs->size) ? (sz_dst-1) : pjs->size);
-}
-
 static void fill_vhost(_json_context_t *p_jcxt, _json_object_t *pjo, _vhost_t *pvh) {
 	_json_value_t *pjv_host = json_select(p_jcxt, "host", pjo);
 	_json_value_t *pjv_root = json_select(p_jcxt, "root", pjo);
@@ -122,11 +120,11 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 	if ((content = map_file(json_fname, &fd, &size))) {
 		_json_context_t *p_jcxt = json_create_context(
 						// memory allocation
-						[](_u32 size, __attribute__((unused)) void *udata) ->void* {
+						[] (_u32 size, __attribute__((unused)) void *udata) ->void* {
 							return malloc(size);
 						},
 						// memory free
-						[](void *ptr, __attribute__((unused)) _u32 size,
+						[] (void *ptr, __attribute__((unused)) _u32 size,
 								__attribute__((unused)) void *udata) {
 							free(ptr);
 						}, NULL);
@@ -179,10 +177,124 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 	return r;
 }
 
-static _err_t compile_mapping(const char *json_fname, const char *dat_fname) {
-	_err_t r = E_FAIL;
+static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
+	_json_value_t *method = json_select(p_jcxt, "method", pjo);
+	_json_value_t *url = json_select(p_jcxt, "url", pjo);
+	_json_value_t *header = json_select(p_jcxt, "header", pjo);
+	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
+	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
+	_json_value_t *response = json_select(p_jcxt, "response", pjo);
 
-	//...
+	p->type = MAPPING_TYPE_URL;
+	jv_string(method, p->url.method, sizeof(p->url.method));
+	jv_string(url, p->url.url, sizeof(p->url.url));
+	if (header)
+		p->url.header = (header->jvt == JSON_TRUE);
+	if (no_stderr)
+		p->url.no_stderr = (no_stderr->jvt == JSON_TRUE);
+	if (exec && exec->jvt == JSON_STRING) {
+		p->url.exec = true;
+		jv_string(exec, p->url.proc, sizeof(p->url.proc));
+	} else if (response && response->jvt == JSON_STRING)
+		jv_string(response, p->url.proc, sizeof(p->url.proc));
+}
+
+static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
+	_json_value_t *code = json_select(p_jcxt, "code", pjo);
+	_json_value_t *header = json_select(p_jcxt, "header", pjo);
+	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
+	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
+	_json_value_t *response = json_select(p_jcxt, "response", pjo);
+	char str_code[32] = "";
+
+	p->type = MAPPING_TYPE_ERR;
+	jv_string(code, str_code, sizeof(str_code));
+	p->err.code = atoi(str_code);
+	if (header)
+		p->err.header = (header->jvt == JSON_TRUE);
+	if (no_stderr)
+		p->err.no_stderr = (no_stderr->jvt == JSON_TRUE);
+	if (exec && exec->jvt == JSON_STRING) {
+		p->err.exec = true;
+		jv_string(exec, p->err.proc, sizeof(p->err.proc));
+	} else if (response && response->jvt == JSON_STRING)
+		jv_string(response, p->err.proc, sizeof(p->err.proc));
+}
+
+static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf_context_t *p_hfcxt) {
+	_err_t r = E_FAIL;
+	int fd = -1;
+	_u64 size = 0;
+	_u8 *content = map_file(json_fname, &fd, &size);
+
+	if (content) {
+		_json_context_t *p_jcxt = json_create_context(
+						// memory allocation
+						[] (_u32 size, __attribute__((unused)) void *udata) ->void* {
+							return malloc(size);
+						},
+						// memory free
+						[] (void *ptr, __attribute__((unused)) _u32 size,
+								__attribute__((unused)) void *udata) {
+							free(ptr);
+						}, NULL);
+
+		if (json_parse(p_jcxt, content, size) == JSON_OK) {
+			_json_value_t *pjv_mapping = json_select(p_jcxt, "mapping", NULL);
+
+			if (pjv_mapping && pjv_mapping->jvt == JSON_OBJECT) {
+				if (hf_create(p_hfcxt, dat_fname,
+						MAPPING_CAPACITY, MAPPING_DATA_SIZE) == 0) {
+					_mapping_t rec;
+					unsigned int i = 0;
+
+					_json_value_t *pjv_url = json_select(p_jcxt, "url", &(pjv_mapping->object));
+
+					if (pjv_url && pjv_url->jvt == JSON_ARRAY) {
+						_json_value_t *pjv = NULL;
+
+						i = 0;
+						while ((pjv = json_array_element(&(pjv_url->array), i))) {
+							if (pjv->jvt == JSON_OBJECT) {
+								memset(&rec, 0, sizeof(_mapping_t));
+								fill_url_rec(p_jcxt, &(pjv->object), &rec);
+								hf_add(p_hfcxt, rec.url.url, strlen(rec.url.url), &rec, sizeof(_mapping_t));
+							}
+
+							i++;
+						}
+					}
+
+					_json_value_t *pjv_err = json_select(p_jcxt, "err", &(pjv_mapping->object));
+
+					if (pjv_err && pjv_err->jvt == JSON_ARRAY) {
+						_json_value_t *pjv = NULL;
+
+						i = 0;
+						while ((pjv = json_array_element(&(pjv_err->array), i))) {
+							if (pjv->jvt == JSON_OBJECT) {
+								char key[32] = "";
+								unsigned int l = 0;
+
+								memset(&rec, 0, sizeof(_mapping_t));
+								fill_err_rec(p_jcxt, &(pjv->object), &rec);
+								l = snprintf(key, sizeof(key), "RC_%d", rec.err.code);
+								hf_add(p_hfcxt, key, l, &rec, sizeof(_mapping_t));
+							}
+
+							i++;
+						}
+					}
+
+					r = E_OK;
+				}
+			}
+		}
+
+		json_destroy_context(p_jcxt);
+		munmap(content, size);
+		close(fd);
+	}
 
 	return r;
 }
@@ -226,12 +338,13 @@ _vhost_stat_cmp_:
 Load vhost mapping by _vhost_t pointer */
 _err_t cfg_load_mapping(_vhost_t *pvhost) {
 	_err_t r = E_FAIL;
-	char src_path[MAX_PATH] = "", dat_path[MAX_PATH] = "";
-	_hf_context_t hf_cxt;
-	char *root = pvhost->root;
 	_vhost_mapping_t::iterator it = _g_mapping_.find(pvhost->host);
 
 	if (it == _g_mapping_.end()) {
+		_hf_context_t hf_cxt;
+		char src_path[MAX_PATH] = "", dat_path[MAX_PATH] = "";
+		char *root = pvhost->root;
+
 		memset(&hf_cxt, 0, sizeof(_hf_context_t));
 		snprintf(src_path, sizeof(src_path), "%s/%s", root, MAPPING_SRC);
 		snprintf(dat_path, sizeof(dat_path), "%s/%s", root, MAPPING_DAT);
@@ -250,15 +363,12 @@ _mapping_stat_cmp_:
 			}
 
 			touch(lock_path);
-			r = compile_mapping(src_path, dat_path);
+			r = compile_mapping(src_path, dat_path, &hf_cxt);
 			unlink(lock_path);
-			//...
 		} else
 			r = hf_open(&hf_cxt, dat_path, O_RDONLY);
 
-		if (r == E_OK)
-			_g_mapping_.insert({pvhost->host, hf_cxt});
-
+		_g_mapping_.insert({pvhost->host, hf_cxt});
 	} else
 		r = E_OK;
 
@@ -281,7 +391,17 @@ _err_t cfg_init(void) {
 	_err_t r = E_FAIL;
 
 	r = load_vhosts();
-	//...
+
+	if (argv_check(OPT_LISTEN)) {
+		hf_enum(&_g_vhost_cxt_, [] (void *p,
+				__attribute__((unused)) unsigned int size,
+				__attribute__((unused)) void *udata)->int {
+			_vhost_t *pvhost = (_vhost_t *)p;
+
+			cfg_load_mapping(pvhost);
+			return 0;
+		}, NULL);
+	}
 
 	return r;
 }
