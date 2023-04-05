@@ -33,8 +33,6 @@ typedef struct {
 	char	host[MAX_HOST_NAME];
 	char	root[MAX_PATH];
 	int	timeout;
-	int	num_excl;
-	char	excl[MAX_PATH];
 } _vhost_t;
 
 #define MAPPING_TYPE_URL	1

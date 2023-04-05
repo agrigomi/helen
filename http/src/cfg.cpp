@@ -86,29 +86,12 @@ static void fill_vhost(_json_context_t *p_jcxt, _json_object_t *pjo, _vhost_t *p
 	_json_value_t *pjv_host = json_select(p_jcxt, "host", pjo);
 	_json_value_t *pjv_root = json_select(p_jcxt, "root", pjo);
 	_json_value_t *pjv_timeout = json_select(p_jcxt, "timeout", pjo);
-	_json_value_t *pjv_excl = json_select(p_jcxt, "exclude", pjo);
 
 	memset(pvh, 0, sizeof(_vhost_t));
 
 	jv_string(pjv_host, pvh->host, sizeof(pvh->host));
 	jv_string(pjv_root, pvh->root, sizeof(pvh->root));
 	pvh->timeout = atoi(jv_string(pjv_timeout).c_str());
-
-	if (pjv_excl && pjv_excl->jvt == JSON_ARRAY) {
-		unsigned int dst_idx = 0;
-		_json_value_t *pjvae = NULL;
-		unsigned int i = 0;
-
-		while ((pjvae = json_array_element(&(pjv_excl->array), i))) {
-			if (pjvae && pjvae->jvt == JSON_STRING) {
-				unsigned int size = pjvae->string.size;
-
-				//...
-
-				i++;
-			}
-		}
-	}
 }
 
 static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
