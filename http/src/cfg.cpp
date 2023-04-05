@@ -62,7 +62,7 @@ static _err_t stat_compare(const char *src, const char *dat) {
 	stat(src, &stat_src);
 	stat(dat, &stat_dat);
 
-	if (stat_dat.st_mtime >= stat_src.st_mtime)
+	if (stat_dat.st_mtim.tv_sec >= stat_src.st_mtim.tv_sec)
 		r = E_OK;
 
 	return r;
@@ -126,7 +126,7 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 						fill_vhost(p_jcxt, &(pjv_default->object), &rec);
 						strncpy(rec.host, DEFAULT_HOST, sizeof(rec.host));
 						// Add to hash table
-						hf_add(&_g_vhost_cxt_, (void *)DEFAULT_HOST, strlen(DEFAULT_HOST), &rec, sizeof(_vhost_t));
+						hf_add(&_g_vhost_cxt_, (void *)DEFAULT_HOST, strlen(DEFAULT_HOST), &rec, rec._size());
 					}
 
 					_json_value_t *pjv_vhost = json_select(p_jcxt, "vhost", &(pjv_http->object));
@@ -138,7 +138,7 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 						while ((pjvae = json_array_element(&(pjv_vhost->array), i))) {
 							if (pjvae && pjvae->jvt == JSON_OBJECT) {
 								fill_vhost(p_jcxt, &(pjvae->object), &rec);
-								hf_add(&_g_vhost_cxt_, rec.host, strlen(rec.host), &rec, sizeof(_vhost_t));
+								hf_add(&_g_vhost_cxt_, rec.host, strlen(rec.host), &rec, rec._size());
 							}
 
 							i++;
@@ -241,7 +241,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 							if (pjv->jvt == JSON_OBJECT) {
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_url_rec(p_jcxt, &(pjv->object), &rec);
-								hf_add(p_hfcxt, rec.url.url, strlen(rec.url.url), &rec, sizeof(_mapping_t));
+								hf_add(p_hfcxt, rec.url.url, strlen(rec.url.url), &rec, rec._size());
 							}
 
 							i++;
@@ -262,7 +262,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_err_rec(p_jcxt, &(pjv->object), &rec);
 								l = snprintf(key, sizeof(key), "RC_%d", rec.err.code);
-								hf_add(p_hfcxt, key, l, &rec, sizeof(_mapping_t));
+								hf_add(p_hfcxt, key, l, &rec, rec._size());
 							}
 
 							i++;

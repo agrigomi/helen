@@ -1,6 +1,7 @@
 #ifndef __HTTP_H__
 #define __HTTP_H__
 
+#include <string.h>
 #include "api_ssl.h"
 #include "err.h"
 
@@ -29,33 +30,50 @@ extern SSL_CTX	*_g_ssl_context_;
 extern SSL	*_g_ssl_in_;
 extern SSL	*_g_ssl_out_;
 
-typedef struct {
+struct vhost {
+	int	timeout;
 	char	host[MAX_HOST_NAME];
 	char	root[MAX_PATH];
-	int	timeout;
-} _vhost_t;
+
+	unsigned int _size(void) {
+		return sizeof(struct vhost) - sizeof(root) + strlen(root);
+	}
+};
+
+typedef struct vhost _vhost_t;
 
 #define MAPPING_TYPE_URL	1
 #define MAPPING_TYPE_ERR	2
 
-typedef struct {
+struct mapping_url {
 	bool header;		// respond header by parent process
 	bool exec;		// exec. flag
 	bool no_stderr;		// dup2 for stderr
 	char method[16];	// HTTP method
 	char url[256];		// URL handler
-	char proc[MAX_PATH];	// processing buffer
-} _mapping_url_t;
+	char proc[MAX_PATH];	// processing buffera
+
+	unsigned int _size(void) {
+		return sizeof(struct mapping_url) - sizeof(proc) + strlen(proc);
+	}
+};
 
 #define PREFIX_RESP_CODE	"RC_"
 
-typedef struct {
+struct mapping_err {
 	short code;		// HTTP response code
 	bool header;		// respond header by parent process
 	bool exec;		// exec. flag
 	bool no_stderr;		// dup2 for stderr
 	char proc[MAX_PATH];	// processing buffer
-} _mapping_err_t;
+
+	unsigned int _size(void) {
+		return sizeof(struct mapping_err) - sizeof(proc) + strlen(proc);
+	}
+};
+
+typedef struct mapping_url _mapping_url_t;
+typedef struct mapping_err _mapping_err_t;
 
 typedef struct {
 	unsigned char type;
@@ -63,6 +81,21 @@ typedef struct {
 		_mapping_url_t	url;
 		_mapping_err_t	err;
 	};
+
+	unsigned int _size(void) {
+		unsigned int r = sizeof(type);
+
+		switch(type) {
+			case MAPPING_TYPE_URL:
+				r += url._size();
+				break;
+			case MAPPING_TYPE_ERR:
+				r += err._size();
+				break;
+		}
+
+		return r;
+	}
 } _mapping_t;
 
 // CFG
