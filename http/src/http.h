@@ -39,11 +39,11 @@ typedef struct {
 #define MAPPING_TYPE_ERR	2
 
 typedef struct {
-	char method[16];	// HTTP method
-	char url[256];		// URL handler
 	bool header;		// respond header by parent process
 	bool exec;		// exec. flag
 	bool no_stderr;		// dup2 for stderr
+	char method[16];	// HTTP method
+	char url[256];		// URL handler
 	char proc[MAX_PATH];	// processing buffer
 } _mapping_url_t;
 
@@ -78,6 +78,19 @@ _err_t cfg_load_mapping(_vhost_t *);
 /**
 Load mapping by name of virtual host */
 _err_t cfg_load_mapping(_cstr_t);
+
+/**
+Get mapping record by vhost record and URL */
+_mapping_t *cfg_get_url_mapping(_vhost_t *, _cstr_t url);
+/**
+Get mapping record by vhost name and URL */
+_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t url);
+/**
+Get mapping record by vhost record and response code */
+_mapping_t *cfg_get_err_mapping(_vhost_t *, short rc);
+/**
+Get mapping record by vhost name and response code */
+_mapping_t *cfg_get_err_mapping(_cstr_t host, short rc);
 
 // IO
 
