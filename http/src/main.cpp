@@ -129,6 +129,10 @@ int main(int argc, char *argv[]) {
 			printf("%s\n", VERSION);
 
 		r = cfg_init();
+
+		//...
+
+		r = E_OK;
 /*
 		if (!(ssl_method = argv_value(OPT_SSL_METHOD)))
 			ssl_method = getenv(OPT_SSL_METHOD);

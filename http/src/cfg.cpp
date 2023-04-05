@@ -240,9 +240,13 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 						i = 0;
 						while ((pjv = json_array_element(&(pjv_url->array), i))) {
 							if (pjv->jvt == JSON_OBJECT) {
+								char key[256] = "";
+								unsigned int l = 0;
+
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_url_rec(p_jcxt, &(pjv->object), &rec);
-								hf_add(p_hfcxt, rec.url.url, strlen(rec.url.url), &rec, rec._size());
+								l = snprintf(key, sizeof(key), "%s_%s", rec.url.method, rec.url.url);
+								hf_add(p_hfcxt, key, l, &rec, rec._size());
 							}
 
 							i++;
@@ -403,26 +407,30 @@ _vhost_t *cfg_get_vhost(_cstr_t host) {
 
 /**
 Get mapping record by vhost record and URL */
-_mapping_t *cfg_get_url_mapping(_vhost_t *pvhost, _cstr_t url) {
+_mapping_t *cfg_get_url_mapping(_vhost_t *pvhost, _cstr_t method, _cstr_t url) {
 	_mapping_t *r = NULL;
 
 	if (pvhost)
-		r = cfg_get_url_mapping(pvhost->host, url);
+		r = cfg_get_url_mapping(pvhost->host, method, url);
 
 	return r;
 }
 
 /**
 Get mapping record by vhost name and URL */
-_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t url) {
+_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url) {
 	_mapping_t *r = NULL;
 	_vhost_mapping_t::iterator it = _g_mapping_.find(host);
 
 	if (it != _g_mapping_.end()) {
 		_hf_context_t *phf_cxt = &(*it).second;
 
-		if (phf_cxt)
-			r = (_mapping_t *)hf_get(phf_cxt, (void *)url, strlen(url));
+		if (phf_cxt) {
+			char key[256] = "";
+			unsigned int l = snprintf(key, sizeof(key), "%s_%s", method, url);
+
+			r = (_mapping_t *)hf_get(phf_cxt, key, l);
+		}
 	}
 
 	return r;

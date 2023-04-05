@@ -30,13 +30,13 @@ extern SSL_CTX	*_g_ssl_context_;
 extern SSL	*_g_ssl_in_;
 extern SSL	*_g_ssl_out_;
 
-struct vhost {
+struct __attribute__((packed)) vhost {
 	int	timeout;
 	char	host[MAX_HOST_NAME];
 	char	root[MAX_PATH];
 
 	unsigned int _size(void) {
-		return sizeof(struct vhost) - sizeof(root) + strlen(root);
+		return sizeof(struct vhost) - sizeof(root) + strlen(root) + 1;
 	}
 };
 
@@ -45,7 +45,7 @@ typedef struct vhost _vhost_t;
 #define MAPPING_TYPE_URL	1
 #define MAPPING_TYPE_ERR	2
 
-struct mapping_url {
+struct __attribute__((packed)) mapping_url {
 	bool header;		// respond header by parent process
 	bool exec;		// exec. flag
 	bool no_stderr;		// dup2 for stderr
@@ -54,13 +54,13 @@ struct mapping_url {
 	char proc[MAX_PATH];	// processing buffera
 
 	unsigned int _size(void) {
-		return sizeof(struct mapping_url) - sizeof(proc) + strlen(proc);
+		return sizeof(struct mapping_url) - sizeof(proc) + strlen(proc) + 1;
 	}
 };
 
 #define PREFIX_RESP_CODE	"RC_"
 
-struct mapping_err {
+struct __attribute__((packed)) mapping_err {
 	short code;		// HTTP response code
 	bool header;		// respond header by parent process
 	bool exec;		// exec. flag
@@ -68,14 +68,14 @@ struct mapping_err {
 	char proc[MAX_PATH];	// processing buffer
 
 	unsigned int _size(void) {
-		return sizeof(struct mapping_err) - sizeof(proc) + strlen(proc);
+		return sizeof(struct mapping_err) - sizeof(proc) + strlen(proc) + 1;
 	}
 };
 
 typedef struct mapping_url _mapping_url_t;
 typedef struct mapping_err _mapping_err_t;
 
-typedef struct {
+typedef struct __attribute__((packed)) {
 	unsigned char type;
 	union {
 		_mapping_url_t	url;
@@ -114,10 +114,10 @@ _err_t cfg_load_mapping(_cstr_t);
 
 /**
 Get mapping record by vhost record and URL */
-_mapping_t *cfg_get_url_mapping(_vhost_t *, _cstr_t url);
+_mapping_t *cfg_get_url_mapping(_vhost_t *, _cstr_t method, _cstr_t url);
 /**
 Get mapping record by vhost name and URL */
-_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t url);
+_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url);
 /**
 Get mapping record by vhost record and response code */
 _mapping_t *cfg_get_err_mapping(_vhost_t *, short rc);
