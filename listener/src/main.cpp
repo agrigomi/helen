@@ -13,7 +13,7 @@ static _argv_t args[] = {
 	{ OPT_SHELP,	0,				NULL,		"Print this help" },
 	{ OPT_HELP,	OF_LONG,			NULL,		"Print this help" },
 	{ OPT_SVERSION,	0,				NULL,		"Print version" },
-	{ OPT_CFG,	OF_LONG|OF_VALUE,		NULL,		"Run with configuration in JSON format (--" OPT_CFG "=<filename.json>)" },
+	{ OPT_CFG,	OF_LONG|OF_VALUE,		NULL,		"Run with configuration in JSON format (--" OPT_CFG "=<filename>.json)" },
 	//...
 	{ NULL,		0,				NULL,		NULL }
 };
@@ -32,7 +32,7 @@ static void usage(void) {
 
 		n++;
 	}
-	printf("Usage: hl [options]\n");
+	printf("\nUsage: hl [options]\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -73,10 +73,10 @@ int main(int argc, char *argv[]) {
 	});
 
 	if (argv_parse(argc, (_cstr_t *)argv, args)) {
-		if (argv_check(OPT_SHELP) || argv_check(OPT_HELP))
-			usage();
 		if (argv_check(OPT_SVERSION))
 			printf("%s\n", VERSION);
+		if (argv_check(OPT_SHELP) || argv_check(OPT_HELP))
+			usage();
 
 		_cstr_t cfg_file = argv_value(OPT_CFG);
 
@@ -87,8 +87,7 @@ int main(int argc, char *argv[]) {
 
 			while (1)
 				usleep(1000000);
-		} else
-			usage();
+		}
 	} else
 		usage();
 
