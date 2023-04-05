@@ -26,6 +26,7 @@
 #define MAPPING_LOCK	"mapping.lock"
 
 #define DEFAULT_HOST	"default"
+#define RC_PREFIX	"RC_" // response code prefix
 
 static _hf_context_t _g_vhost_cxt_;
 
@@ -261,7 +262,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_err_rec(p_jcxt, &(pjv->object), &rec);
-								l = snprintf(key, sizeof(key), "RC_%d", rec.err.code);
+								l = snprintf(key, sizeof(key), RC_PREFIX "%d", rec.err.code);
 								hf_add(p_hfcxt, key, l, &rec, rec._size());
 							}
 
@@ -449,7 +450,7 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc) {
 
 		if (phf_cxt) {
 			char key[32] = "";
-			unsigned int l = snprintf(key, sizeof(key), "RC_%d", rc);
+			unsigned int l = snprintf(key, sizeof(key), RC_PREFIX "%d", rc);
 
 			r = (_mapping_t *)hf_get(phf_cxt, key, l);
 		}
