@@ -400,3 +400,60 @@ _vhost_t *cfg_get_vhost(_cstr_t host) {
 	return r;
 }
 
+/**
+Get mapping record by vhost record and URL */
+_mapping_t *cfg_get_url_mapping(_vhost_t *pvhost, _cstr_t url) {
+	_mapping_t *r = NULL;
+
+	if (pvhost)
+		r = cfg_get_url_mapping(pvhost->host, url);
+
+	return r;
+}
+
+/**
+Get mapping record by vhost name and URL */
+_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t url) {
+	_mapping_t *r = NULL;
+	_vhost_mapping_t::iterator it = _g_mapping_.find(host);
+
+	if (it != _g_mapping_.end()) {
+		_hf_context_t *phf_cxt = &(*it).second;
+
+		if (phf_cxt)
+			r = (_mapping_t *)hf_get(phf_cxt, (void *)url, strlen(url));
+	}
+
+	return r;
+}
+
+/**
+Get mapping record by vhost record and response code */
+_mapping_t *cfg_get_err_mapping(_vhost_t *pvhost, short rc) {
+	_mapping_t *r = NULL;
+
+	if (pvhost)
+		r = cfg_get_err_mapping(pvhost->host, rc);
+
+	return r;
+}
+
+/**
+Get mapping record by vhost name and response code */
+_mapping_t *cfg_get_err_mapping(_cstr_t host, short rc) {
+	_mapping_t *r = NULL;
+	_vhost_mapping_t::iterator it = _g_mapping_.find(host);
+
+	if (it != _g_mapping_.end()) {
+		_hf_context_t *phf_cxt = &(*it).second;
+
+		if (phf_cxt) {
+			char key[32] = "";
+			unsigned int l = snprintf(key, sizeof(key), "RC_%d", rc);
+
+			r = (_mapping_t *)hf_get(phf_cxt, key, l);
+		}
+	}
+
+	return r;
+}
