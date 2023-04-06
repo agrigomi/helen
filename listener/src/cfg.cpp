@@ -108,7 +108,7 @@ static void server_accept(_listen_t *pl) {
 
 				if (pl->timeout > 0) {
 					struct timeval timeout;
-					timeout.tv_sec = 240;
+					timeout.tv_sec = pl->timeout;
 					timeout.tv_usec = 0;
 
 					setsockopt(sl, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
