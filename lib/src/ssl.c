@@ -77,3 +77,31 @@ _cstr_t ssl_error_string(void) {
 
 	return _g_error_string_;
 }
+
+int ssl_read(SSL *pssl, void *buffer, unsigned int size) {
+	return SSL_read(pssl, buffer, size);
+}
+
+int ssl_write(SSL *pssl, void *buffer, unsigned int size) {
+	return SSL_write(pssl, buffer, size);
+}
+
+int ssl_read_line(SSL *pssl, char *buffer, int size) {
+	int r = 0;
+	int i = 0;
+
+	for (; i < size; i++) {
+		if (SSL_read(pssl, (buffer + r), 1) == 1) {
+			if (*(buffer + r) == '\n') {
+				*(buffer + r) = 0;
+				break;
+			} else if (*(buffer + r) == '\r')
+				;
+			else
+				r++;
+		} else
+			r = -1;
+	}
+
+	return r;
+}
