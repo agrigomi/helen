@@ -128,8 +128,9 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc);
 // IO
 
 /* returns E_OK for success */
-_err_t io_init(void);
+_err_t io_start(void);
 
+int io_read_line(char *buffer, unsigned int size);
 
 #endif
 

@@ -122,7 +122,7 @@ static void server_accept(int server_fd) {
 
 			if (tmout > 0) {
 				struct timeval timeout;
-				timeout.tv_sec = 240;
+				timeout.tv_sec = tmout;
 				timeout.tv_usec = 0;
 
 				setsockopt(sl, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
@@ -145,18 +145,57 @@ static void server_accept(int server_fd) {
 			}
 
 			close(sl);
-		} else
+		} else {
+			TRACE("http[%d] Stop listening\n", getpid());
 			break;
+		}
 	}
 
 	_g_listening_ = false;
 }
 
-static void io_loop(void) {
-	//...
+int io_read_line(char *buffer, unsigned int size) {
+	int r = -1;
+
+	if (_g_ssl_in_)
+		r = ssl_read_line(_g_ssl_in_, buffer, size);
+	else {
+		if (fgets(buffer, size, stdin)) {
+			int l = strlen(buffer);
+
+			for (r = 0; r < l; r++) {
+				if (*(buffer + r) == '\n' || *(buffer + r) == '\r') {
+					*(buffer + r) = 0;
+					break;
+				}
+			}
+		}
+	}
+
+	return r;
 }
 
-_err_t io_init(void) {
+static _err_t io_loop(void) {
+	_err_t r = E_OK;
+	char buffer[4096] = "";
+	int n;
+
+	while ((n = io_read_line(buffer, sizeof(buffer))) > 0) {
+		int i = 0;
+
+		TRACE("%d: ", n);
+		while (i < n+1) {
+			TRACE("%x ", buffer[i]);
+			i++;
+		}
+		TRACE("\n");
+	}
+	//...
+
+	return r;
+}
+
+_err_t io_start(void) {
 	_err_t r = E_OK;
 	const char *ssl_method = NULL;
 	const char *ssl_cert = NULL;
@@ -170,18 +209,16 @@ _err_t io_init(void) {
 		ssl_key = getenv(OPT_SSL_KEY);
 
 	if (ssl_method && ssl_cert && ssl_key) {
-		static char b_method[MAX_PATH] = "";
 		static char b_cert[MAX_PATH] = "";
 		static char b_key[MAX_PATH] = "";
 		const char *dir = argv_value(OPT_DIR);
 
-		snprintf(b_method, sizeof(b_method), "%s/%s", dir, ssl_method);
 		snprintf(b_cert, sizeof(b_cert), "%s/%s", dir, ssl_cert);
 		snprintf(b_key, sizeof(b_key), "%s/%s", dir, ssl_key);
 
 		// setup SSL context
 		TRACE("http[%d] Setup SSL method='%s'; cert='%s'; key='%s'\n", getpid(), ssl_method, ssl_cert, ssl_key);
-		setup_ssl_context(b_method, b_cert, b_key);
+		setup_ssl_context(ssl_method, b_cert, b_key);
 	}
 
 	if (argv_check(OPT_LISTEN)) {
@@ -204,7 +241,7 @@ _err_t io_init(void) {
 	}
 
 	if (_g_fork_)
-		io_loop();
+		r = io_loop();
 
 	if (_g_ssl_in_)
 		SSL_free(_g_ssl_in_);

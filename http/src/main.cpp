@@ -78,11 +78,12 @@ int main(int argc, char *argv[]) {
 	if (argv_parse(argc, (_cstr_t *)argv, args)) {
 		if (argv_check(OPT_SHELP) || argv_check(OPT_HELP))
 			usage();
-		if (argv_check(OPT_VER))
+		else if (argv_check(OPT_VER))
 			printf("%s\n", VERSION);
-
-		if ((r = cfg_init() == E_OK))
-			r = io_init();
+		else {
+			if ((r = cfg_init() == E_OK))
+				r = io_start();
+		}
 	} else {
 		usage();
 		r = -1;
