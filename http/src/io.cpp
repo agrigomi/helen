@@ -154,20 +154,34 @@ static void server_accept(int server_fd) {
 	_g_listening_ = false;
 }
 
-int io_read_line(char *buffer, unsigned int size) {
+static int wait_input(int fd, int tmout) {
+	fd_set selectset;
+	struct timeval timeout = {tmout, 0}; //timeout in sec.
+
+	FD_ZERO(&selectset);
+	FD_SET(0, &selectset);
+
+	return select(fd + 1, &selectset, NULL, NULL, &timeout);
+}
+
+int io_read_line(char *buffer, unsigned int size, int timeout) {
 	int r = -1;
 
 	if (_g_ssl_in_) {
-		if ((r = ssl_read_line(_g_ssl_in_, buffer, size)) < 0)
-			TRACE("http[%d] %s\n", getpid(), ssl_error_string());
+		if (wait_input(SSL_get_fd(_g_ssl_in_), timeout) > 0) {
+			if ((r = ssl_read_line(_g_ssl_in_, buffer, size)) < 0)
+				TRACE("http[%d] %s\n", getpid(), ssl_error_string());
+		}
 	} else {
-		if (fgets(buffer, size, stdin)) {
-			int l = strlen(buffer);
+		if (wait_input(STDIN_FILENO, timeout) > 0) {
+			if (fgets(buffer, size, stdin)) {
+				int l = strlen(buffer);
 
-			for (r = 0; r < l; r++) {
-				if (*(buffer + r) == '\n' || *(buffer + r) == '\r') {
-					*(buffer + r) = 0;
-					break;
+				for (r = 0; r < l; r++) {
+					if (*(buffer + r) == '\n' || *(buffer + r) == '\r') {
+						*(buffer + r) = 0;
+						break;
+					}
 				}
 			}
 		}
@@ -176,12 +190,12 @@ int io_read_line(char *buffer, unsigned int size) {
 	return r;
 }
 
-static _err_t io_loop(void) {
+static _err_t io_loop(int timeout) {
 	_err_t r = E_OK;
 	char buffer[4096] = "";
 	int n;
 
-	while ((n = io_read_line(buffer, sizeof(buffer))) >= 0) {
+	while ((n = io_read_line(buffer, sizeof(buffer), timeout)) >= 0) {
 		int i = 0;
 
 		TRACE("%d: ", n);
@@ -247,7 +261,7 @@ _err_t io_start(void) {
 	}
 
 	if (_g_fork_)
-		r = io_loop();
+		r = io_loop(atoi(argv_value(OPT_TIMEOUT)));
 
 	if (_g_ssl_in_)
 		SSL_free(_g_ssl_in_);

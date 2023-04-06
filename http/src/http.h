@@ -131,7 +131,7 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc);
 _err_t io_start(void);
 /**
 Read line from input stream */
-int io_read_line(char *buffer, unsigned int size);
+int io_read_line(char *buffer, unsigned int size, int timeout);
 
 #endif
 
