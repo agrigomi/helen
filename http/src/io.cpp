@@ -157,9 +157,10 @@ static void server_accept(int server_fd) {
 int io_read_line(char *buffer, unsigned int size) {
 	int r = -1;
 
-	if (_g_ssl_in_)
-		r = ssl_read_line(_g_ssl_in_, buffer, size);
-	else {
+	if (_g_ssl_in_) {
+		if ((r = ssl_read_line(_g_ssl_in_, buffer, size)) < 0)
+			TRACE("http[%d] %s\n", getpid(), ssl_error_string());
+	} else {
 		if (fgets(buffer, size, stdin)) {
 			int l = strlen(buffer);
 
@@ -180,15 +181,20 @@ static _err_t io_loop(void) {
 	char buffer[4096] = "";
 	int n;
 
-	while ((n = io_read_line(buffer, sizeof(buffer))) > 0) {
+	while ((n = io_read_line(buffer, sizeof(buffer))) >= 0) {
 		int i = 0;
 
 		TRACE("%d: ", n);
 		while (i < n+1) {
-			TRACE("%x ", buffer[i]);
+			TRACE("%02x ", buffer[i]);
 			i++;
 		}
 		TRACE("\n");
+
+		if (_g_ssl_out_)
+			SSL_write(_g_ssl_out_, "OK\n", 3);
+		else
+			write(STDOUT_FILENO, "OK\n", 3);
 	}
 	//...
 
