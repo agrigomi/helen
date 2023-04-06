@@ -5,7 +5,7 @@
 #include "sha1.h"
 
 #define HF_INVALID_OFFSET	0xffffffff
-#define HF_MAX_PATH		512
+#define HF_MAX_PATH		1024
 #define HF_MAX_RECORD_SIZE	(64 * 1024)
 
 /* File header */
@@ -65,14 +65,15 @@ sz_key	- size of record identifier
 data	- pointer to record content
 sz_data	- size of record content
 returns pointer to record content in case of success, or NULL */
-void *hf_add(_hf_context_t *, void *key, int sz_key, void *data, int sz_data);
+void *hf_add(_hf_context_t *, void *key, int sz_key, void *data, unsigned int sz_data);
 
 /**
 Search for record in hash file
 key	- record identifier
 sz_key	- size of record identifier
+sz_data	- [out] size of record content
 returns pointer to record or NULL  */
-void *hf_get(_hf_context_t *, void *key, int sz_key);
+void *hf_get(_hf_context_t *, void *key, int sz_key, unsigned int *sz_data);
 
 /**
 Append empty block to hash file

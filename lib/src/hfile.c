@@ -239,7 +239,7 @@ sz_key	- size of record identifier
 data	- pointer to record content
 sz_data	- size of record content
 returns pointer to record content in case of success, or NULL */
-void *hf_add(_hf_context_t *p_cxt, void *key, int sz_key, void *data, int sz_data) {
+void *hf_add(_hf_context_t *p_cxt, void *key, int sz_key, void *data, unsigned int sz_data) {
 	void *r = NULL;
 	_hf_rec_hdr_t rh;
 
@@ -289,7 +289,7 @@ Search for record in hash file
 key	- record identifier
 sz_key	- size of record identifier
 returns pointer to record or NULL  */
-void *hf_get(_hf_context_t *p_cxt, void *key, int sz_key) {
+void *hf_get(_hf_context_t *p_cxt, void *key, int sz_key, unsigned int *sz_data) {
 	void *r = NULL;
 
 	if (p_cxt->fd > 0 && p_cxt->hdr) {
@@ -301,6 +301,7 @@ void *hf_get(_hf_context_t *p_cxt, void *key, int sz_key) {
 			_hf_rec_hdr_t *p_rec = rec_ptr(p_cxt, off);
 
 			if (memcmp(p_rec->hash, hash_buffer, SHA1HashSize) == 0) {
+				*sz_data = p_rec->size;
 				r = (void *)(p_rec + 1);
 				break;
 			}
