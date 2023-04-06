@@ -283,8 +283,10 @@ static void parse_env_array(_json_array_t *pja_env, _str_t dst_arr[], _u32 arr_s
 
 	while ((p_jv = json_array_element(pja_env, i))) {
 		if (p_jv->jvt == JSON_STRING) {
-			if ((dst_arr[i] = (_str_t)malloc(p_jv->string.size + 1)))
+			if ((dst_arr[i] = (_str_t)malloc(p_jv->string.size + 1))) {
+				memset(dst_arr[i], 0, p_jv->string.size + 1);
 				strncpy(dst_arr[i], p_jv->string.data, p_jv->string.size);
+			}
 		}
 
 		i++;
