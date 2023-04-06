@@ -293,7 +293,7 @@ static void touch(const char *path) {
 
 static _err_t load_vhosts(void) {
 	_err_t r = E_FAIL;
-	char src_path[MAX_PATH] = "", dat_path[MAX_PATH] = "";
+	char src_path[MAX_PATH+256] = "", dat_path[MAX_PATH+256] = "";
 	const char *dir = argv_value(OPT_DIR);
 
 	memset(&_g_vhost_cxt_, 0, sizeof(_hf_context_t));
@@ -302,7 +302,7 @@ static _err_t load_vhosts(void) {
 
 _vhost_stat_cmp_:
 	if (stat_compare(src_path, dat_path) != E_OK) {
-		char lock_path[MAX_PATH] = "";
+		char lock_path[MAX_PATH+256] = "";
 
 		snprintf(lock_path, sizeof(lock_path), "%s/%s", dir, VHOST_LOCK);
 
@@ -330,7 +330,7 @@ _err_t cfg_load_mapping(_vhost_t *pvhost) {
 
 	if (it == _g_mapping_.end()) {
 		_hf_context_t hf_cxt;
-		char src_path[MAX_PATH] = "", dat_path[MAX_PATH] = "";
+		char src_path[MAX_PATH+256] = "", dat_path[MAX_PATH+256] = "";
 		char *root = pvhost->root;
 
 		memset(&hf_cxt, 0, sizeof(_hf_context_t));
@@ -339,7 +339,7 @@ _err_t cfg_load_mapping(_vhost_t *pvhost) {
 
 _mapping_stat_cmp_:
 		if (stat_compare(src_path, dat_path) != E_OK) {
-			char lock_path[MAX_PATH] = "";
+			char lock_path[MAX_PATH+256] = "";
 
 			snprintf(lock_path, sizeof(lock_path), "%s/%s", root, MAPPING_LOCK);
 
@@ -378,17 +378,19 @@ _err_t cfg_load_mapping(_cstr_t vhost) {
 _err_t cfg_init(void) {
 	_err_t r = E_FAIL;
 
-	r = load_vhosts();
+	if ((r = load_vhosts())) {
+		if (argv_check(OPT_LISTEN)) {
+			/* initialy load mappings for all virtual hosts,
+			   in listen mode only */
+			hf_enum(&_g_vhost_cxt_, [] (void *p,
+					__attribute__((unused)) unsigned int size,
+					__attribute__((unused)) void *udata)->int {
+				_vhost_t *pvhost = (_vhost_t *)p;
 
-	if (argv_check(OPT_LISTEN)) {
-		hf_enum(&_g_vhost_cxt_, [] (void *p,
-				__attribute__((unused)) unsigned int size,
-				__attribute__((unused)) void *udata)->int {
-			_vhost_t *pvhost = (_vhost_t *)p;
-
-			cfg_load_mapping(pvhost);
-			return 0;
-		}, NULL);
+				cfg_load_mapping(pvhost);
+				return 0;
+			}, NULL);
+		}
 	}
 
 	return r;
@@ -398,9 +400,10 @@ _err_t cfg_init(void) {
 Returns pointer to _vhost_t ot NULL */
 _vhost_t *cfg_get_vhost(_cstr_t host) {
 	_vhost_t *r = NULL;
+	unsigned int sz;
 
-	if (!(r = (_vhost_t *)hf_get(&_g_vhost_cxt_, (void *)host, strlen(host))))
-		r = (_vhost_t *)hf_get(&_g_vhost_cxt_, (void *)DEFAULT_HOST, strlen(DEFAULT_HOST));
+	if (!(r = (_vhost_t *)hf_get(&_g_vhost_cxt_, (void *)host, strlen(host), &sz)))
+		r = (_vhost_t *)hf_get(&_g_vhost_cxt_, (void *)DEFAULT_HOST, strlen(DEFAULT_HOST), &sz);
 
 	return r;
 }
@@ -428,8 +431,9 @@ _mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url) {
 		if (phf_cxt) {
 			char key[256] = "";
 			unsigned int l = snprintf(key, sizeof(key), "%s_%s", method, url);
+			unsigned int sz;
 
-			r = (_mapping_t *)hf_get(phf_cxt, key, l);
+			r = (_mapping_t *)hf_get(phf_cxt, key, l, &sz);
 		}
 	}
 
@@ -459,8 +463,9 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc) {
 		if (phf_cxt) {
 			char key[32] = "";
 			unsigned int l = snprintf(key, sizeof(key), RC_PREFIX "%d", rc);
+			unsigned int sz;
 
-			r = (_mapping_t *)hf_get(phf_cxt, key, l);
+			r = (_mapping_t *)hf_get(phf_cxt, key, l, &sz);
 		}
 	}
 
