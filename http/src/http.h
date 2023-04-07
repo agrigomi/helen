@@ -130,8 +130,15 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc);
 /* returns E_OK for success */
 _err_t io_start(void);
 /**
-Read line from input stream */
-int io_read_line(char *buffer, unsigned int size, int timeout);
+Read line from input stream
+return line size (without \r\n) */
+int io_read_line(char *buffer, int size, int timeout);
+/**
+return >0 for number of received bytes <=0 means fail */
+int io_read(char *buffer, int size, int timeout);
+/**
+return >0 for number of sent bytes <=0 means fail */
+int io_write(char *buffer, int size, int timeout);
 
 #endif
 

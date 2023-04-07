@@ -315,9 +315,12 @@ _vhost_stat_cmp_:
 
 		touch(lock_path);
 		r = compile_vhosts(src_path, dat_path);
+		TRACE("http[%d] Compile mapping '%s' #%d\n", getpid(), src_path, r);
 		unlink(lock_path);
-	} else
+	} else {
 		r = hf_open(&_g_vhost_cxt_, dat_path, O_RDONLY);
+		TRACE("http[%d] Load mapping '%s' #%d\n", getpid(), dat_path, r);
+	}
 
 	return r;
 }
@@ -352,9 +355,12 @@ _mapping_stat_cmp_:
 
 			touch(lock_path);
 			r = compile_mapping(src_path, dat_path, &hf_cxt);
+			TRACE("http[%d] Compile mapping %s: '%s' #%d\n", getpid(), pvhost->host, src_path, r);
 			unlink(lock_path);
-		} else
+		} else {
 			r = hf_open(&hf_cxt, dat_path, O_RDONLY);
+			TRACE("http[%d] Load mapping %s: '%s' #%d\n", getpid(), pvhost->host, dat_path, r);
+		}
 
 		_g_mapping_.insert({pvhost->host, hf_cxt});
 	} else
@@ -378,7 +384,7 @@ _err_t cfg_load_mapping(_cstr_t vhost) {
 _err_t cfg_init(void) {
 	_err_t r = E_FAIL;
 
-	if ((r = load_vhosts())) {
+	if ((r = load_vhosts()) == E_OK) {
 		if (argv_check(OPT_LISTEN)) {
 			/* initialy load mappings for all virtual hosts,
 			   in listen mode only */

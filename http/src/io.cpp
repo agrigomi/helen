@@ -127,6 +127,8 @@ static void server_accept(int server_fd, int tmout) {
 				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			}
 
+			TRACE("http[%d]: Incoming connection from %s\n", getpid(), strip);
+
 			if ((cpid = fork()) == 0) { // child
 				_g_fork_ = true;
 				if (_g_ssl_context_) { // SSL case
@@ -139,6 +141,7 @@ static void server_accept(int server_fd, int tmout) {
 					dup2(sl, STDOUT_FILENO);
 				}
 
+				close(_g_server_fd_);
 				break;
 			}
 
@@ -157,18 +160,22 @@ static int wait_input(int fd, int tmout) {
 	struct timeval timeout = {tmout, 0}; //timeout in sec.
 
 	FD_ZERO(&selectset);
-	FD_SET(0, &selectset);
+	FD_SET(fd, &selectset);
 
 	return select(fd + 1, &selectset, NULL, NULL, &timeout);
 }
 
-int io_read_line(char *buffer, unsigned int size, int timeout) {
+/**
+Read line from input stream
+return line size (without \r\n) */
+int io_read_line(char *buffer, int size, int timeout) {
 	int r = -1;
 
 	if (_g_ssl_in_) {
 		if (wait_input(SSL_get_fd(_g_ssl_in_), timeout) > 0) {
-			if ((r = ssl_read_line(_g_ssl_in_, buffer, size)) < 0)
+			if ((r = ssl_read_line(_g_ssl_in_, buffer, size)) < 0) {
 				TRACE("http[%d] %s\n", getpid(), ssl_error_string());
+			}
 		}
 	} else {
 		if (wait_input(STDIN_FILENO, timeout) > 0) {
