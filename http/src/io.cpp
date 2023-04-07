@@ -7,12 +7,12 @@
 #include "argv.h"
 #include "trace.h"
 
-SSL_CTX *_g_ssl_context_ = NULL;
-SSL	*_g_ssl_in_ = NULL;
-SSL	*_g_ssl_out_ = NULL;
-bool	_g_fork_ = false;
-bool	_g_listening_ = false;
-int	_g_server_fd_ = -1;
+static SSL_CTX *_g_ssl_context_ = NULL;
+static SSL	*_g_ssl_in_ = NULL;
+static SSL	*_g_ssl_out_ = NULL;
+static bool	_g_fork_ = false;
+static bool	_g_listening_ = false;
+static int	_g_server_fd_ = -1;
 
 static _err_t setup_ssl_context(const char *method, const char *cert, const char *key) {
 	_err_t r = E_FAIL;
@@ -163,6 +163,35 @@ static int wait_input(int fd, int tmout) {
 	FD_SET(fd, &selectset);
 
 	return select(fd + 1, &selectset, NULL, NULL, &timeout);
+}
+
+/**
+return >0 for number of received bytes <=0 means fail */
+int io_read(char *buffer, int size, int timeout) {
+	int r = -1;
+
+	if (_g_ssl_in_) {
+		if (wait_input(SSL_get_fd(_g_ssl_in_), timeout) > 0)
+			r = ssl_read(_g_ssl_in_, buffer, size);
+	} else {
+		if (wait_input(STDIN_FILENO, timeout) > 0)
+			r = read(STDIN_FILENO, buffer, size);
+	}
+
+	return r;
+}
+
+/**
+return >0 for number of sent bytes <=0 means fail */
+int io_write(char *buffer, int size) {
+	int r = -1;
+
+	if (_g_ssl_out_)
+		r = ssl_write(_g_ssl_out_, buffer, size);
+	else
+		r = write(STDOUT_FILENO, buffer, size);
+
+	return r;
 }
 
 /**

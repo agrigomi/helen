@@ -26,10 +26,6 @@
 #define MAX_PATH	1024
 #define MAX_HOST_NAME	256
 
-extern SSL_CTX	*_g_ssl_context_;
-extern SSL	*_g_ssl_in_;
-extern SSL	*_g_ssl_out_;
-
 struct __attribute__((packed)) vhost {
 	int	timeout;
 	char	host[MAX_HOST_NAME];
@@ -138,7 +134,7 @@ return >0 for number of received bytes <=0 means fail */
 int io_read(char *buffer, int size, int timeout);
 /**
 return >0 for number of sent bytes <=0 means fail */
-int io_write(char *buffer, int size, int timeout);
+int io_write(char *buffer, int size);
 
 #endif
 
