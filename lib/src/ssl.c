@@ -78,11 +78,11 @@ _cstr_t ssl_error_string(void) {
 	return _g_error_string_;
 }
 
-int ssl_read(SSL *pssl, void *buffer, unsigned int size) {
+int ssl_read(SSL *pssl, void *buffer, int size) {
 	return SSL_read(pssl, buffer, size);
 }
 
-int ssl_write(SSL *pssl, void *buffer, unsigned int size) {
+int ssl_write(SSL *pssl, void *buffer, int size) {
 	return SSL_write(pssl, buffer, size);
 }
 
