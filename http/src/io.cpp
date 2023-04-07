@@ -89,9 +89,7 @@ static _err_t setup_server_socket(int *p_fd) {
 	return r;
 }
 
-static void server_accept(int server_fd) {
-	int tmout = atoi(argv_value(OPT_TIMEOUT));
-
+static void server_accept(int server_fd, int tmout) {
 	_g_listening_ = true;
 
 	while (_g_listening_) {
@@ -175,14 +173,19 @@ int io_read_line(char *buffer, unsigned int size, int timeout) {
 	} else {
 		if (wait_input(STDIN_FILENO, timeout) > 0) {
 			if (fgets(buffer, size, stdin)) {
-				int l = strlen(buffer);
+				r = strlen(buffer);
+				char *p = buffer + r;
 
-				for (r = 0; r < l; r++) {
-					if (*(buffer + r) == '\n' || *(buffer + r) == '\r') {
-						*(buffer + r) = 0;
-						break;
-					}
+				while (r >= 0 &&
+						(*p == 0 ||
+						*p == '\n' ||
+						*p == '\r')) {
+					*p = 0;
+					r--;
+					p--;
 				}
+
+				r++;
 			}
 		}
 	}
@@ -220,6 +223,7 @@ _err_t io_start(void) {
 	const char *ssl_method = NULL;
 	const char *ssl_cert = NULL;
 	const char *ssl_key = NULL;
+	int timeout = atoi(argv_value(OPT_TIMEOUT));
 
 	if (!(ssl_method = argv_value(OPT_SSL_METHOD)))
 		ssl_method = getenv(OPT_SSL_METHOD);
@@ -245,7 +249,7 @@ _err_t io_start(void) {
 		// setup server
 		if ((r = setup_server_socket(&_g_server_fd_)) == E_OK) {
 			// start listening
-			server_accept(_g_server_fd_);
+			server_accept(_g_server_fd_, timeout);
 		}
 	} else {
 		if (_g_ssl_context_) {
@@ -261,7 +265,7 @@ _err_t io_start(void) {
 	}
 
 	if (_g_fork_)
-		r = io_loop(atoi(argv_value(OPT_TIMEOUT)));
+		r = io_loop(timeout);
 
 	if (_g_ssl_in_)
 		SSL_free(_g_ssl_in_);
