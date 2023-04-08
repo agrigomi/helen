@@ -119,16 +119,16 @@ static void server_accept(_listen_t *pl) {
 
 				if ((cpid = fork()) == 0) { // child
 					_g_fork_ = true;
+					cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *arg) {
+						p->flags &= ~LISTEN_RUNNING;
+						close(p->server_fd);
+						p->server_fd = -1;
+					}, pl);
+
 					if (pl->ssl_enable && pl->ssl_context) { // SSL case
 						SSL *cl_cxt = SSL_new(pl->ssl_context);
 
 						if (cl_cxt) { // stop listen threads
-							cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *arg) {
-								p->flags &= ~LISTEN_RUNNING;
-								close(p->server_fd);
-								p->server_fd = -1;
-							}, pl);
-
 							SSL_set_fd(cl_cxt, sl);
 							SSL_set_accept_state(cl_cxt);
 							ssl_io(pl, cl_cxt); // start I/O thread
