@@ -83,6 +83,15 @@ _json_value_t *json_select(_json_context_t *p_jcxt,
 _json_value_t *json_array_element(_json_array_t *p_jarray, unsigned int index);
 _json_pair_t *json_object_pair(_json_object_t *p_jobj, unsigned int index);
 _json_value_t *json_object_value(_json_object_t *p_jobj, unsigned int index);
+
+/**
+will return 0 for continue or -1 for break */
+typedef int _cb_enum_pairs_t(_json_pair_t *, void *);
+typedef int _cb_enum_values_t(_json_value_t *, void *);
+
+void json_enum_pairs(_json_object_t *, _cb_enum_pairs_t *, void *);
+void json_enum_values(_json_value_t *, _cb_enum_values_t *, void *);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

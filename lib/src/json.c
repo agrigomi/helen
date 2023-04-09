@@ -763,3 +763,36 @@ _json_value_t *json_object_value(_json_object_t *p_jobj, unsigned int index) {
 
 	return r;
 }
+
+void json_enum_pairs(_json_object_t *p_jnode, _cb_enum_pairs_t *pcb, void *udata) {
+	int n = 0;
+	_json_pair_t *pjp = NULL;
+
+	while ((pjp = json_object_pair(p_jnode, n))) {
+		if (pcb(pjp, udata) < 0)
+			break;
+
+		n++;
+	}
+}
+
+void json_enum_values(_json_value_t *p_jnode, _cb_enum_values_t *pcb, void *udata) {
+	int n = 0;
+	_json_value_t *pjv = NULL;
+
+	if (p_jnode->jvt == JSON_ARRAY) {
+		while ((pjv = json_array_element(&(p_jnode->array), n))) {
+			if (pcb(pjv, udata) < 0)
+				break;
+
+			n++;
+		}
+	} else if (p_jnode->jvt == JSON_OBJECT) {
+		while ((pjv = json_object_value(&(p_jnode->object), n))) {
+			if (pcb(pjv, udata) < 0)
+				break;
+
+			n++;
+		}
+	}
+}
