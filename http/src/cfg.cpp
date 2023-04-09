@@ -86,13 +86,11 @@ static void jv_string(_json_value_t *pjv, _char_t *dst, unsigned int sz_dst) {
 static void fill_vhost(_json_context_t *p_jcxt, _json_object_t *pjo, _vhost_t *pvh) {
 	_json_value_t *pjv_host = json_select(p_jcxt, "host", pjo);
 	_json_value_t *pjv_root = json_select(p_jcxt, "root", pjo);
-	_json_value_t *pjv_timeout = json_select(p_jcxt, "timeout", pjo);
 
 	memset(pvh, 0, sizeof(_vhost_t));
 
 	jv_string(pjv_host, pvh->host, sizeof(pvh->host));
 	jv_string(pjv_root, pvh->root, sizeof(pvh->root));
-	pvh->timeout = atoi(jv_string(pjv_timeout).c_str());
 }
 
 static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {

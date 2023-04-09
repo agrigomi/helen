@@ -27,7 +27,6 @@
 #define MAX_HOST_NAME	256
 
 struct __attribute__((packed)) vhost {
-	int	timeout;
 	char	host[MAX_HOST_NAME];
 	char	root[MAX_PATH];
 
