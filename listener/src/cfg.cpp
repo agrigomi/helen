@@ -270,10 +270,11 @@ static void parse_env_object(_json_object_t *pjo_env, _str_t dst_arr[], _u32 arr
 		l = strlen(lb_name) + strlen(lb_value) + 2;
 		if ((dst_arr[i] = (_str_t)malloc(l))) {
 			snprintf(dst_arr[i], l, "%s=%s", lb_name, lb_value);
-			i++;
 			if (i >= arr_size)
 				break;
 		}
+
+		i++;
 	}
 }
 
@@ -410,13 +411,12 @@ _err_t cfg_load(_cstr_t fname) {
 			_json_value_t *p_jv = json_select(p_jcxt, "listen", NULL);
 
 			if (p_jv && p_jv->jvt == JSON_OBJECT) {
-				_json_pair_t *p_jp = NULL;
-				_u32 idx = 0;
+				json_enum_pairs(&p_jv->object, [] (_json_pair_t *pjp, void *udata)->int {
+					_json_context_t *p_jcxt = (_json_context_t *)udata;
 
-				while ((p_jp = json_object_pair(&p_jv->object, idx))) {
-					add_listener(p_jcxt, p_jp);
-					idx++;
-				}
+					add_listener(p_jcxt, pjp);
+					return 0;
+				}, p_jcxt);
 			}
 
 			r = E_OK;
