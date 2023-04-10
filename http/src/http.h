@@ -2,6 +2,7 @@
 #define __HTTP_H__
 
 #include <string.h>
+#include "config.h"
 #include "api_ssl.h"
 #include "err.h"
 
