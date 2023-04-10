@@ -131,17 +131,17 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 					_json_value_t *pjv_vhost = json_select(p_jcxt, "vhost", &(pjv_http->object));
 
 					if (pjv_vhost && pjv_vhost->jvt == JSON_ARRAY) {
-						unsigned int i = 0;
-						_json_value_t *pjvae = NULL;
+						json_enum_values(pjv_vhost, [] (_json_value_t *pjv, void *udata)->int {
+							_json_context_t *p_jcxt = (_json_context_t *)udata;
+							_vhost_t rec;
 
-						while ((pjvae = json_array_element(&(pjv_vhost->array), i))) {
-							if (pjvae && pjvae->jvt == JSON_OBJECT) {
-								fill_vhost(p_jcxt, &(pjvae->object), &rec);
+							if (pjv->jvt == JSON_OBJECT) {
+								fill_vhost(p_jcxt, &(pjv->object), &rec);
 								hf_add(&_g_vhost_cxt_, rec.host, strlen(rec.host), &rec, rec._size());
 							}
 
-							i++;
-						}
+							return 0;
+						}, p_jcxt);
 					}
 
 					r = E_OK;
