@@ -233,6 +233,11 @@ int io_read_line(char *buffer, int size, int timeout) {
 
 static _err_t io_loop(int timeout) {
 	_err_t r = E_OK;
+
+	while ((r = req_receive(timeout)) == E_OK) {
+		//;;;
+	}
+/*
 	char buffer[4096] = "";
 	int n;
 
@@ -252,7 +257,7 @@ static _err_t io_loop(int timeout) {
 			write(STDOUT_FILENO, "OK\n", 3);
 	}
 	//...
-
+*/
 	return r;
 }
 

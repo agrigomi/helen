@@ -103,7 +103,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(includedir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_http_OBJECTS = src/main.$(OBJEXT) src/cfg.$(OBJEXT) \
-	src/io.$(OBJEXT)
+	src/io.$(OBJEXT) src/request.$(OBJEXT)
 http_OBJECTS = $(am_http_OBJECTS)
 http_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -122,7 +122,7 @@ DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = src/$(DEPDIR)/cfg.Po src/$(DEPDIR)/io.Po \
-	src/$(DEPDIR)/main.Po
+	src/$(DEPDIR)/main.Po src/$(DEPDIR)/request.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -288,7 +288,8 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 nobase_include_HEADERS = src/http.h
 http_SOURCES = src/main.cpp \
 		src/cfg.cpp \
-		src/io.cpp
+		src/io.cpp \
+		src/request.cpp
 
 all: all-am
 
@@ -374,6 +375,8 @@ src/$(DEPDIR)/$(am__dirstamp):
 src/main.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/cfg.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/io.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/request.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 
 http$(EXEEXT): $(http_OBJECTS) $(http_DEPENDENCIES) $(EXTRA_http_DEPENDENCIES) 
 	@rm -f http$(EXEEXT)
@@ -389,6 +392,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/cfg.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/io.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/request.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -567,6 +571,7 @@ distclean: distclean-am
 		-rm -f src/$(DEPDIR)/cfg.Po
 	-rm -f src/$(DEPDIR)/io.Po
 	-rm -f src/$(DEPDIR)/main.Po
+	-rm -f src/$(DEPDIR)/request.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -615,6 +620,7 @@ maintainer-clean: maintainer-clean-am
 		-rm -f src/$(DEPDIR)/cfg.Po
 	-rm -f src/$(DEPDIR)/io.Po
 	-rm -f src/$(DEPDIR)/main.Po
+	-rm -f src/$(DEPDIR)/request.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

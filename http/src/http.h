@@ -20,9 +20,9 @@
 
 
 // HTTP request variables
-#define REQ_METHOD	"METHOD"
-#define REQ_URL		"URL"
-#define REQ_PROTOCOL	"PROTOCOL"
+#define REQ_METHOD	"REQ_METHOD"
+#define REQ_URL		"REQ_URL"
+#define REQ_PROTOCOL	"REQ_PROTOCOL"
 
 #define MAX_PATH	1024
 #define MAX_HOST_NAME	256
@@ -135,6 +135,10 @@ int io_read(char *buffer, int size, int timeout);
 /**
 return >0 for number of sent bytes <=0 means fail */
 int io_write(char *buffer, int size);
+
+// Request
+
+_err_t req_receive(int timeout);
 
 #endif
 
