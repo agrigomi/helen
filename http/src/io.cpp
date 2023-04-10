@@ -3,6 +3,8 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "http.h"
 #include "argv.h"
 #include "trace.h"
