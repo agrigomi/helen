@@ -111,7 +111,7 @@ am__dirstamp = $(am__leading_dot)dirstamp
 am_libtools_a_OBJECTS = src/context.$(OBJEXT) src/json.$(OBJEXT) \
 	src/argv.$(OBJEXT) src/sig.$(OBJEXT) src/respawn.$(OBJEXT) \
 	src/trace.$(OBJEXT) src/sha1.$(OBJEXT) src/hfile.$(OBJEXT) \
-	src/ssl.$(OBJEXT)
+	src/ssl.$(OBJEXT) src/str.$(OBJEXT)
 libtools_a_OBJECTS = $(am_libtools_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -131,7 +131,7 @@ am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = src/$(DEPDIR)/argv.Po src/$(DEPDIR)/context.Po \
 	src/$(DEPDIR)/hfile.Po src/$(DEPDIR)/json.Po \
 	src/$(DEPDIR)/respawn.Po src/$(DEPDIR)/sha1.Po \
-	src/$(DEPDIR)/sig.Po src/$(DEPDIR)/ssl.Po \
+	src/$(DEPDIR)/sig.Po src/$(DEPDIR)/ssl.Po src/$(DEPDIR)/str.Po \
 	src/$(DEPDIR)/trace.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -308,7 +308,8 @@ nobase_include_HEADERS = include/context.h \
 			include/err.h \
 			include/sha1.h \
 			include/hfile.h \
-			include/api_ssl.h
+			include/api_ssl.h \
+			include/str.h
 
 libtools_a_SOURCES = src/context.c \
 			src/json.c \
@@ -318,7 +319,8 @@ libtools_a_SOURCES = src/context.c \
 			src/trace.c \
 			src/sha1.c \
 			src/hfile.c \
-			src/ssl.c
+			src/ssl.c \
+			src/str.c
 
 all: all-am
 
@@ -373,6 +375,7 @@ src/trace.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/sha1.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/hfile.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/ssl.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/str.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 
 libtools.a: $(libtools_a_OBJECTS) $(libtools_a_DEPENDENCIES) $(EXTRA_libtools_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libtools.a
@@ -394,6 +397,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/sha1.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/sig.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/ssl.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/str.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/trace.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -578,6 +582,7 @@ distclean: distclean-am
 	-rm -f src/$(DEPDIR)/sha1.Po
 	-rm -f src/$(DEPDIR)/sig.Po
 	-rm -f src/$(DEPDIR)/ssl.Po
+	-rm -f src/$(DEPDIR)/str.Po
 	-rm -f src/$(DEPDIR)/trace.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -632,6 +637,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f src/$(DEPDIR)/sha1.Po
 	-rm -f src/$(DEPDIR)/sig.Po
 	-rm -f src/$(DEPDIR)/ssl.Po
+	-rm -f src/$(DEPDIR)/str.Po
 	-rm -f src/$(DEPDIR)/trace.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

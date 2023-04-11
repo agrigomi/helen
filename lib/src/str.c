@@ -41,3 +41,49 @@ int str_resolve(const char *src, char *dst, int sz_dst) {
 	return idst;
 }
 
+void str_trim_left(char *str) {
+	unsigned i,l;
+
+	l = strlen(str);
+
+	for (i = 0; i < l; i++) {
+		if (str[i] != ' ' && str[i] != '\t')
+			break;
+	}
+
+	if (i == 0)
+		return;
+
+	memmove(str, (str + i), (strlen(str + i) + 1));
+}
+
+void str_trim_right(char *str) {
+	unsigned int i,l;
+
+	l = strlen(str);
+	if (l) {
+		i=l-1;
+
+		while (str[i] == ' ' || str[i] == '\t') {
+			str[i]= 0;
+			i--;
+		}
+	}
+}
+
+void str_trim(char *str) {
+	str_trim_right(str);
+	str_trim_left(str);
+}
+
+char *str_toupper(char *s) {
+	unsigned int i = 0;
+
+	while (s[i]) {
+		s[i] = (s[i] - 32 * (s[i] >= 'a' && s[i] <= 'z'));
+		i++;
+	}
+
+	return s;
+}
+
