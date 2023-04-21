@@ -18,11 +18,28 @@
 #define OPT_SSL_KEY	"ssl-key"
 #define OPT_SSL_METHOD	"ssl-method"
 
+#define SERVER_NAME	"Helen"
 
-// HTTP request variables
-#define REQ_METHOD	"REQ_METHOD"
-#define REQ_URL		"REQ_URL"
-#define REQ_PROTOCOL	"REQ_PROTOCOL"
+// Common environment variables
+#define DOC_ROOT		"DOC_ROOT"
+
+// HTTP request environment variables
+#define REQ_METHOD		"REQ_METHOD"
+#define REQ_URL			"REQ_URL"
+#define REQ_PROTOCOL		"REQ_PROTOCOL"
+#define REQ_CONNECTION		"REQ_CONNECTION"
+#define REQ_ACCEPT		"REQ_ACCEPT"
+#define REQ_ACCEPT_ENCODING	"REQ_ACCEPT_ENCODING"
+#define REQ_HOST		"REQ_HOST"
+#define REQ_USER_AGENT		"REQ_USER_AGENT"
+#define REQ_ACCEPT_LANGUAGE	"REQ_ACCEPT_LANGUAGE"
+#define REQ_REFERER		"REQ_REFERER"
+#define REQ_PRAGMA		"REQ_PRAGMA"
+#define REQ_CACHE_CONTROL	"REQ_CACHE_CONTROL"
+
+// HTTP response environment variables
+#define RES_SERVER		"RES_SERVER"
+
 
 #define MAX_PATH	1024
 #define MAX_HOST_NAME	256
@@ -81,7 +98,7 @@ typedef struct __attribute__((packed)) {
 	unsigned int _size(void) {
 		unsigned int r = sizeof(type);
 
-		switch(type) {
+		switch (type) {
 			case MAPPING_TYPE_URL:
 				r += url._size();
 				break;
@@ -139,6 +156,9 @@ int io_write(char *buffer, int size);
 // Request
 
 _err_t req_receive(int timeout);
+
+// Response
+
 
 #endif
 

@@ -57,7 +57,8 @@ static _err_t setup_ssl_io(int fd, SSL **pp_ssl) {
 			if (SSL_accept(pssl)) {
 				*pp_ssl = pssl;
 				r = E_OK;
-			}
+			} else
+				SSL_free(pssl);
 		}
 	}
 
@@ -122,6 +123,7 @@ static void server_accept(int server_fd, int tmout) {
 
 			if (tmout > 0) {
 				struct timeval timeout;
+
 				timeout.tv_sec = tmout;
 				timeout.tv_usec = 0;
 
@@ -202,13 +204,13 @@ return line size (without \r\n) */
 int io_read_line(char *buffer, int size, int timeout) {
 	int r = -1;
 
-	if (_g_ssl_in_) {
+	if (_g_ssl_in_) { // SSL input
 		if (wait_input(SSL_get_fd(_g_ssl_in_), timeout) > 0) {
 			if ((r = ssl_read_line(_g_ssl_in_, buffer, size)) < 0) {
 				TRACE("http[%d] %s\n", getpid(), ssl_error_string());
 			}
 		}
-	} else {
+	} else { // STDIO input
 		if (wait_input(STDIN_FILENO, timeout) > 0) {
 			if (fgets(buffer, size, stdin)) {
 				r = strlen(buffer);
@@ -290,10 +292,9 @@ _err_t io_start(void) {
 
 	if (argv_check(OPT_LISTEN)) {
 		// setup server
-		if ((r = setup_server_socket(&_g_server_fd_)) == E_OK) {
+		if ((r = setup_server_socket(&_g_server_fd_)) == E_OK)
 			// start listening
 			server_accept(_g_server_fd_, timeout);
-		}
 	} else {
 		if (_g_ssl_context_) {
 			// SSL through STDIO

@@ -28,11 +28,10 @@
 #define DEFAULT_HOST	"default"
 #define RC_PREFIX	"RC_" // response code prefix
 
-static _hf_context_t _g_vhost_cxt_;
-
 typedef std::map<std::string, _hf_context_t> _vhost_mapping_t;
 
-_vhost_mapping_t _g_mapping_;
+static _hf_context_t _g_vhost_cxt_;
+static _vhost_mapping_t _g_mapping_;
 
 static _u8 *map_file(_cstr_t fname, int *fd, _u64 *size) {
 	_u8 *r = NULL;
