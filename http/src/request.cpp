@@ -4,6 +4,7 @@
 #include "http.h"
 #include "trace.h"
 #include "str.h"
+#include "url-codec.h"
 
 static void set_env_var(char *vstr, const char *div) {
 	char *rest = NULL;
@@ -32,8 +33,12 @@ static void set_env_var(char *vstr, const char *div) {
 static void decode_url(char *url) {
 	char *rest = NULL;
 	char *token = NULL;
+	char decoded_url[2048];
 
-	if ((token = strtok_r(url, "?", &rest))) {
+	memset(decoded_url, 0, sizeof(decoded_url));
+	UrlDecode(url, strlen(url), decoded_url, sizeof(decoded_url) - 1);
+
+	if ((token = strtok_r(decoded_url, "?", &rest))) {
 		setenv(REQ_URL, token, 1);
 
 		while ((token = strtok_r(NULL, "&", &rest)))
