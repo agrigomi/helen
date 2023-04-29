@@ -82,7 +82,7 @@ int ssl_read(SSL *pssl, void *buffer, int size) {
 	return SSL_read(pssl, buffer, size);
 }
 
-int ssl_write(SSL *pssl, void *buffer, int size) {
+int ssl_write(SSL *pssl, const void *buffer, int size) {
 	return SSL_write(pssl, buffer, size);
 }
 

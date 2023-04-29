@@ -19,7 +19,7 @@ _bool ssl_load_key(SSL_CTX *ssl_cxt, _cstr_t key);
 SSL_CTX *ssl_create_context(const SSL_METHOD *method);
 _cstr_t ssl_error_string(void);
 int ssl_read(SSL *pssl, void *buffer, int size);
-int ssl_write(SSL *pssl, void *buffer, int size);
+int ssl_write(SSL *pssl, const void *buffer, int size);
 int ssl_read_line(SSL *pssl, char *buffer, int size);
 
 #ifdef __cplusplus
