@@ -170,24 +170,35 @@ static int wait_input(int fd, int tmout) {
 }
 
 /**
+Wait for input with timeout in seconds
+return number of bytes  */
+int io_wait_input(int timeout) {
+	int r = 0;
+
+	if (_g_ssl_in_)
+		r = wait_input(SSL_get_fd(_g_ssl_in_), timeout);
+	else
+		r = wait_input(STDIN_FILENO, timeout);
+
+	return r;
+}
+
+/**
 return >0 for number of received bytes <=0 means fail */
-int io_read(char *buffer, int size, int timeout) {
+int io_read(char *buffer, int size) {
 	int r = -1;
 
-	if (_g_ssl_in_) {
-		if (wait_input(SSL_get_fd(_g_ssl_in_), timeout) > 0)
-			r = ssl_read(_g_ssl_in_, buffer, size);
-	} else {
-		if (wait_input(STDIN_FILENO, timeout) > 0)
-			r = read(STDIN_FILENO, buffer, size);
-	}
+	if (_g_ssl_in_)
+		r = ssl_read(_g_ssl_in_, buffer, size);
+	else
+		r = read(STDIN_FILENO, buffer, size);
 
 	return r;
 }
 
 /**
 return >0 for number of sent bytes <=0 means fail */
-int io_write(char *buffer, int size) {
+int io_write(const char *buffer, int size) {
 	int r = -1;
 
 	if (_g_ssl_out_)
@@ -199,34 +210,52 @@ int io_write(char *buffer, int size) {
 }
 
 /**
+formatted output
+return >0 for number of sent bytes <=0 means fail */
+int io_fwrite(const char *fmt, ...) {
+	int r = -1;
+	va_list va;
+
+	va_start(va, fmt);
+
+	if (_g_ssl_out_) {
+		char lb[2046];
+
+		r = vsnprintf(lb, sizeof(lb), fmt, va);
+		r = ssl_write(_g_ssl_out_, lb, r);
+	} else
+		r = vdprintf(STDOUT_FILENO, fmt, va);
+
+	va_end(va);
+
+	return r;
+}
+
+/**
 Read line from input stream
 return line size (without \r\n) */
-int io_read_line(char *buffer, int size, int timeout) {
+int io_read_line(char *buffer, int size) {
 	int r = -1;
 
 	if (_g_ssl_in_) { // SSL input
-		if (wait_input(SSL_get_fd(_g_ssl_in_), timeout) > 0) {
-			if ((r = ssl_read_line(_g_ssl_in_, buffer, size)) < 0) {
-				TRACE("http[%d] %s\n", getpid(), ssl_error_string());
-			}
+		if ((r = ssl_read_line(_g_ssl_in_, buffer, size)) < 0) {
+			TRACE("http[%d] %s\n", getpid(), ssl_error_string());
 		}
 	} else { // STDIO input
-		if (wait_input(STDIN_FILENO, timeout) > 0) {
-			if (fgets(buffer, size, stdin)) {
-				r = strlen(buffer);
-				char *p = buffer + r;
+		if (fgets(buffer, size, stdin)) {
+			r = strlen(buffer);
+			char *p = buffer + r;
 
-				while (r >= 0 &&
-						(*p == 0 ||
-						*p == '\n' ||
-						*p == '\r')) {
-					*p = 0;
-					r--;
-					p--;
-				}
-
-				r++;
+			while (r >= 0 &&
+					(*p == 0 ||
+					*p == '\n' ||
+					*p == '\r')) {
+				*p = 0;
+				r--;
+				p--;
 			}
+
+			r++;
 		}
 	}
 
@@ -237,29 +266,17 @@ static _err_t io_loop(int timeout) {
 	_err_t r = E_OK;
 
 	while ((r = req_receive(timeout)) == E_OK) {
-		//;;;
+		_cstr_t connection = getenv(REQ_CONNECTION);
+
+		if ((r = res_processing()) == E_OK) {
+			if (connection && strcasecmp(connection, "keep-alive") == 0)
+				;
+			else
+				break;
+		} else
+			break;
 	}
-/*
-	char buffer[4096] = "";
-	int n;
 
-	while ((n = io_read_line(buffer, sizeof(buffer), timeout)) >= 0) {
-		int i = 0;
-
-		TRACE("%d: ", n);
-		while (i < n+1) {
-			TRACE("%02x ", buffer[i]);
-			i++;
-		}
-		TRACE("\n");
-
-		if (_g_ssl_out_)
-			SSL_write(_g_ssl_out_, "OK\n", 3);
-		else
-			write(STDOUT_FILENO, "OK\n", 3);
-	}
-	//...
-*/
 	return r;
 }
 

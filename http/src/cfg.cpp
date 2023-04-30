@@ -165,6 +165,7 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
 	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
+	_json_value_t *content_type = json_select(p_jcxt, "content-type", pjo);
 
 	p->type = MAPPING_TYPE_URL;
 	jv_string(method, p->url.method, sizeof(p->url.method));
@@ -178,6 +179,7 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 		jv_string(exec, p->url.proc, sizeof(p->url.proc));
 	} else if (response && response->jvt == JSON_STRING)
 		jv_string(response, p->url.proc, sizeof(p->url.proc));
+	jv_string(content_type, p->url.content_type, sizeof(p->url.content_type));
 }
 
 static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
@@ -186,6 +188,7 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
 	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
+	_json_value_t *content_type = json_select(p_jcxt, "content-type", pjo);
 	char str_code[32] = "";
 
 	p->type = MAPPING_TYPE_ERR;
@@ -200,6 +203,7 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 		jv_string(exec, p->err.proc, sizeof(p->err.proc));
 	} else if (response && response->jvt == JSON_STRING)
 		jv_string(response, p->err.proc, sizeof(p->err.proc));
+	jv_string(content_type, p->url.content_type, sizeof(p->url.content_type));
 }
 
 static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf_context_t *p_hfcxt) {
@@ -403,9 +407,10 @@ _err_t cfg_init(void) {
 Returns pointer to _vhost_t ot NULL */
 _vhost_t *cfg_get_vhost(_cstr_t host) {
 	_vhost_t *r = NULL;
+	_cstr_t _host = (host) ? host : DEFAULT_HOST;
 	unsigned int sz;
 
-	if (!(r = (_vhost_t *)hf_get(&_g_vhost_cxt_, (void *)host, strlen(host), &sz)))
+	if (!(r = (_vhost_t *)hf_get(&_g_vhost_cxt_, (void *)_host, strlen(_host), &sz)))
 		r = (_vhost_t *)hf_get(&_g_vhost_cxt_, (void *)DEFAULT_HOST, strlen(DEFAULT_HOST), &sz);
 
 	return r;

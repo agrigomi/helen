@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <unistd.h>
 #include "http.h"
 #include "trace.h"
 #include "str.h"
@@ -72,16 +73,24 @@ _err_t req_receive(int timeout) {
 	_err_t r = E_FAIL;
 	char line[2048];
 
-	// read request line
-	if (io_read_line(line, sizeof(line), timeout) > 0) {
-		// parse request
-		if (decode_request(line) == E_OK) {
-			// read header lines
-			while ((r = io_read_line(line, sizeof(line), timeout)) > 0)
-				set_env_var(line, ":");
+	if (io_wait_input(timeout) > 0) {
+		// read request line
+		if (io_read_line(line, sizeof(line)) > 0) {
+			// parse request
+			if (decode_request(line) == E_OK) {
+				// read header lines
+				while ((r = io_read_line(line, sizeof(line))) > 0)
+					set_env_var(line, ":");
 
-			setenv(RES_SERVER, SERVER_NAME, 1);
+				setenv(RES_SERVER, SERVER_NAME, 1);
+			} else {
+				TRACE("http[%d] Invalid request\n", getpid());
+				r = send_error_response(NULL, HTTPRC_BAD_REQUEST);
+			}
 		}
+	} else {
+		send_error_response(NULL, HTTPRC_REQUEST_TIMEOUT);
+		TRACE("http[%d] Request timed out\n", getpid());
 	}
 
 	return r;
