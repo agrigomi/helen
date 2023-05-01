@@ -111,7 +111,7 @@ am__dirstamp = $(am__leading_dot)dirstamp
 am_libtools_a_OBJECTS = src/context.$(OBJEXT) src/json.$(OBJEXT) \
 	src/argv.$(OBJEXT) src/sig.$(OBJEXT) src/respawn.$(OBJEXT) \
 	src/trace.$(OBJEXT) src/sha1.$(OBJEXT) src/hfile.$(OBJEXT) \
-	src/ssl.$(OBJEXT) src/str.$(OBJEXT)
+	src/ssl.$(OBJEXT) src/str.$(OBJEXT) src/fcfg.$(OBJEXT)
 libtools_a_OBJECTS = $(am_libtools_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -129,9 +129,10 @@ DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = src/$(DEPDIR)/argv.Po src/$(DEPDIR)/context.Po \
-	src/$(DEPDIR)/hfile.Po src/$(DEPDIR)/json.Po \
-	src/$(DEPDIR)/respawn.Po src/$(DEPDIR)/sha1.Po \
-	src/$(DEPDIR)/sig.Po src/$(DEPDIR)/ssl.Po src/$(DEPDIR)/str.Po \
+	src/$(DEPDIR)/fcfg.Po src/$(DEPDIR)/hfile.Po \
+	src/$(DEPDIR)/json.Po src/$(DEPDIR)/respawn.Po \
+	src/$(DEPDIR)/sha1.Po src/$(DEPDIR)/sig.Po \
+	src/$(DEPDIR)/ssl.Po src/$(DEPDIR)/str.Po \
 	src/$(DEPDIR)/trace.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -146,6 +147,19 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
+CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
+AM_V_CXX = $(am__v_CXX_@AM_V@)
+am__v_CXX_ = $(am__v_CXX_@AM_DEFAULT_V@)
+am__v_CXX_0 = @echo "  CXX     " $@;
+am__v_CXX_1 = 
+CXXLD = $(CXX)
+CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
+	-o $@
+AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
+am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
+am__v_CXXLD_0 = @echo "  CXXLD   " $@;
+am__v_CXXLD_1 = 
 SOURCES = $(libtools_a_SOURCES)
 DIST_SOURCES = $(libtools_a_SOURCES)
 am__can_run_installinfo = \
@@ -216,7 +230,7 @@ CSCOPE = @CSCOPE@
 CTAGS = @CTAGS@
 CXX = @CXX@
 CXXDEPMODE = @CXXDEPMODE@
-CXXFLAGS = @CXXFLAGS@
+CXXFLAGS = @CXXFLAGS@ -Wall -Wextra -Iinclude
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -309,7 +323,8 @@ nobase_include_HEADERS = include/context.h \
 			include/sha1.h \
 			include/hfile.h \
 			include/api_ssl.h \
-			include/str.h
+			include/str.h \
+			include/fcfg.h
 
 libtools_a_SOURCES = src/context.c \
 			src/json.c \
@@ -320,12 +335,13 @@ libtools_a_SOURCES = src/context.c \
 			src/sha1.c \
 			src/hfile.c \
 			src/ssl.c \
-			src/str.c
+			src/str.c \
+			src/fcfg.cpp
 
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .o .obj
+.SUFFIXES: .c .cpp .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -376,6 +392,7 @@ src/sha1.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/hfile.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/ssl.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/str.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/fcfg.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 
 libtools.a: $(libtools_a_OBJECTS) $(libtools_a_DEPENDENCIES) $(EXTRA_libtools_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libtools.a
@@ -391,6 +408,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/argv.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/context.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/fcfg.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/hfile.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/json.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/respawn.Po@am__quote@ # am--include-marker
@@ -421,6 +439,22 @@ am--depfiles: $(am__depfiles_remade)
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+.cpp.o:
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ $<
+
+.cpp.obj:
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 install-nobase_includeHEADERS: $(nobase_include_HEADERS)
 	@$(NORMAL_INSTALL)
 	@list='$(nobase_include_HEADERS)'; test -n "$(includedir)" || list=; \
@@ -576,6 +610,7 @@ clean-am: clean-generic clean-noinstLIBRARIES mostlyclean-am
 distclean: distclean-am
 		-rm -f src/$(DEPDIR)/argv.Po
 	-rm -f src/$(DEPDIR)/context.Po
+	-rm -f src/$(DEPDIR)/fcfg.Po
 	-rm -f src/$(DEPDIR)/hfile.Po
 	-rm -f src/$(DEPDIR)/json.Po
 	-rm -f src/$(DEPDIR)/respawn.Po
@@ -631,6 +666,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 		-rm -f src/$(DEPDIR)/argv.Po
 	-rm -f src/$(DEPDIR)/context.Po
+	-rm -f src/$(DEPDIR)/fcfg.Po
 	-rm -f src/$(DEPDIR)/hfile.Po
 	-rm -f src/$(DEPDIR)/json.Po
 	-rm -f src/$(DEPDIR)/respawn.Po
