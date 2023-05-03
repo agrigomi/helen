@@ -77,9 +77,16 @@ static std::string jv_string(_json_value_t *pjv) {
 	return r;
 }
 
-static void jv_string(_json_value_t *pjv, _char_t *dst, unsigned int sz_dst) {
-	if (pjv && (pjv->jvt == JSON_STRING || pjv->jvt == JSON_NUMBER))
-		strncpy(dst, pjv->string.data, ((sz_dst-1) < pjv->string.size) ? (sz_dst-1) : pjv->string.size);
+static unsigned int jv_string(_json_value_t *pjv, _char_t *dst, unsigned int sz_dst) {
+	unsigned int r = 0;
+
+	if (pjv && (pjv->jvt == JSON_STRING || pjv->jvt == JSON_NUMBER)) {
+		r = pjv->string.size;
+		r = ((sz_dst-1) < r) ? (sz_dst-1) : r;
+		strncpy(dst, pjv->string.data, r);
+	}
+
+	return r;
 }
 
 static void fill_vhost(_json_context_t *p_jcxt, _json_object_t *pjo, _vhost_t *pvh) {
@@ -165,25 +172,64 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
 	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
-	_json_value_t *content_type = json_select(p_jcxt, "content-type", pjo);
-	_json_value_t *content_encoding = json_select(p_jcxt, "content-encoding", pjo);
 	_json_value_t *response_code = json_select(p_jcxt, "response-code", pjo);
+	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
 
 	p->type = MAPPING_TYPE_URL;
 	jv_string(method, p->url.method, sizeof(p->url.method));
-	jv_string(url, p->url.url, sizeof(p->url.url));
 	if (header)
 		p->url.header = (header->jvt == JSON_TRUE);
 	if (no_stderr)
 		p->url.no_stderr = (no_stderr->jvt == JSON_TRUE);
-	if (exec && exec->jvt == JSON_STRING) {
-		p->url.exec = true;
-		jv_string(exec, p->url.proc, sizeof(p->url.proc));
-	} else if (response && response->jvt == JSON_STRING)
-		jv_string(response, p->url.proc, sizeof(p->url.proc));
-	jv_string(content_type, p->url.content_type, sizeof(p->url.content_type));
-	jv_string(content_encoding, p->url.content_encoding, sizeof(p->url.content_encoding));
+
 	p->url.resp_code = atoi(jv_string(response_code).c_str());
+
+	p->url.buffer_len = 0;
+	memset(p->url.buffer, 0, sizeof(p->url.buffer));
+
+	// add URL to buffer
+	p->url.off_url = p->url.buffer_len;
+	p->url.buffer_len += jv_string(url, p->url.buffer + p->url.buffer_len,
+			sizeof(p->url.buffer) - p->url.buffer_len) + 1;
+
+	// Add header-append
+	p->url.off_header_append = p->url.buffer_len;
+	if (header_append && header_append->jvt == JSON_ARRAY) {
+		json_enum_values(header_append, [] (_json_value_t *pjv, void *udata) {
+			int r = 0;
+			_mapping_t *p = (_mapping_t *)udata;
+
+			if (pjv->jvt == JSON_STRING &&
+					(sizeof(p->url.buffer) - p->url.buffer_len) > (size_t)(pjv->string.size + 3)) {
+				memcpy(p->url.buffer + p->url.buffer_len, pjv->string.data, pjv->string.size);
+				p->url.buffer_len += pjv->string.size;
+				p->url.buffer[p->url.buffer_len] = '\r';
+				p->url.buffer_len++;
+				p->url.buffer[p->url.buffer_len] = '\n';
+				p->url.buffer_len++;
+			} else
+				r = -1;
+
+			return r;
+		}, p);
+
+	}
+	p->url.buffer_len++;
+
+	// Add proc or exec
+	p->url.off_proc = p->url.buffer_len;
+	_json_value_t *pjv = exec;
+
+	if (pjv)
+		p->url.exec = true;
+	else
+		pjv = response;
+
+	if (pjv && pjv->jvt == JSON_STRING &&
+			(sizeof(p->url.buffer) - p->url.buffer_len) > (size_t)(pjv->string.size)) {
+		p->url.buffer_len += jv_string(pjv, p->url.buffer + p->url.buffer_len,
+				sizeof(p->url.buffer) - p->url.buffer_len) + 1;
+	}
 }
 
 static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
@@ -192,8 +238,7 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
 	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
-	_json_value_t *content_type = json_select(p_jcxt, "content-type", pjo);
-	_json_value_t *content_encoding = json_select(p_jcxt, "content-encoding", pjo);
+	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
 	char str_code[32] = "";
 
 	p->type = MAPPING_TYPE_ERR;
@@ -203,13 +248,45 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 		p->err.header = (header->jvt == JSON_TRUE);
 	if (no_stderr)
 		p->err.no_stderr = (no_stderr->jvt == JSON_TRUE);
-	if (exec && exec->jvt == JSON_STRING) {
+
+	// Add header-append
+	p->err.off_header_append = p->err.buffer_len;
+	if (header_append && header_append->jvt == JSON_ARRAY) {
+		json_enum_values(header_append, [] (_json_value_t *pjv, void *udata) {
+			int r = 0;
+			_mapping_t *p = (_mapping_t *)udata;
+
+			if (pjv->jvt == JSON_STRING &&
+					(sizeof(p->err.buffer) - p->err.buffer_len) > (size_t)(pjv->string.size + 3)) {
+				memcpy(p->err.buffer + p->err.buffer_len, pjv->string.data, pjv->string.size);
+				p->err.buffer_len += pjv->string.size;
+				p->err.buffer[p->err.buffer_len] = '\r';
+				p->err.buffer_len++;
+				p->err.buffer[p->err.buffer_len] = '\n';
+				p->err.buffer_len++;
+			} else
+				r = -1;
+
+			return r;
+		}, p);
+
+	}
+	p->err.buffer_len++;
+
+	// Add proc or exec
+	p->err.off_proc = p->err.buffer_len;
+	_json_value_t *pjv = exec;
+
+	if (pjv)
 		p->err.exec = true;
-		jv_string(exec, p->err.proc, sizeof(p->err.proc));
-	} else if (response && response->jvt == JSON_STRING)
-		jv_string(response, p->err.proc, sizeof(p->err.proc));
-	jv_string(content_type, p->url.content_type, sizeof(p->url.content_type));
-	jv_string(content_encoding, p->url.content_encoding, sizeof(p->url.content_encoding));
+	else
+		pjv = response;
+
+	if (pjv && pjv->jvt == JSON_STRING &&
+			(sizeof(p->err.buffer) - p->err.buffer_len) > (size_t)(pjv->string.size)) {
+		p->err.buffer_len += jv_string(pjv, p->err.buffer + p->err.buffer_len,
+				sizeof(p->err.buffer) - p->err.buffer_len) + 1;
+	}
 }
 
 static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf_context_t *p_hfcxt) {
@@ -252,7 +329,9 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_url_rec(p_jcxt, &(pjv->object), &rec);
-								l = snprintf(key, sizeof(key), "%s_%s", rec.url.method, rec.url.url);
+								l = snprintf(key, sizeof(key), "%s_%s",
+										rec.url.method,
+										rec.url._url());
 								hf_add(p_hfcxt, key, l, &rec, rec._size());
 							}
 

@@ -111,13 +111,26 @@ struct __attribute__((packed)) mapping_url {
 	bool no_stderr;			// dup2 for stderr
 	short resp_code;		// HTTP response code
 	char method[8];			// HTTP method
-	char content_type[64];		// type of content (for resp. header)
-	char content_encoding[32]; 	// content encoding
-	char url[64];			// URL handler
-	char proc[MAX_PATH];		// processing buffer
+	short off_url;			// offset to URL
+	short off_header_append;	// offset to rest of header
+	short off_proc;			// offset to response command or file
+	short buffer_len;		// size of data in buffer
+	char buffer[2048];
 
 	unsigned int _size(void) {
-		return sizeof(struct mapping_url) - sizeof(proc) + strlen(proc) + 1;
+		return sizeof(struct mapping_url) - sizeof(buffer) + buffer_len;
+	}
+
+	char *_url(void) {
+		return buffer + off_url;
+	}
+
+	char *_header_append(void) {
+		return buffer + off_header_append;
+	}
+
+	char *_proc(void) {
+		return buffer + off_proc;
 	}
 };
 
@@ -128,12 +141,21 @@ struct __attribute__((packed)) mapping_err {
 	bool header;			// respond header by parent process
 	bool exec;			// exec. flag
 	bool no_stderr;			// dup2 for stderr
-	char content_type[64];		// type of content (for resp. header)
-	char content_encoding[32]; 	// content encoding
-	char proc[MAX_PATH];		// processing buffer
+	short off_header_append;	// offset to rest of header
+	short off_proc;			// offset to response command or file
+	short buffer_len;		// size of data in buffer
+	char buffer[2048];
 
 	unsigned int _size(void) {
-		return sizeof(struct mapping_err) - sizeof(proc) + strlen(proc) + 1;
+		return sizeof(struct mapping_err) - sizeof(buffer) + buffer_len;
+	}
+
+	char *_header_append(void) {
+		return buffer + off_header_append;
+	}
+
+	char *_proc(void) {
+		return buffer + off_proc;
 	}
 };
 
