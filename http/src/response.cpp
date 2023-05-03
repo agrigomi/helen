@@ -4,9 +4,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <time.h>
 #include <map>
 #include "http.h"
 #include "trace.h"
+#include "fcfg.h"
 
 static std::map<int, _cstr_t> _g_resp_text_ = {
 	{ HTTPRC_CONTINUE,		"Continue" },
@@ -53,12 +55,14 @@ static std::map<int, _cstr_t> _g_resp_text_ = {
 static std::map<int, _cstr_t> _g_resp_content_ = {
 	{ HTTPRC_NOT_FOUND,		"<!DOCTYPE html><html><head></head><body><h1>Not found #404</h1></body></html>" },
 	{ HTTPRC_INTERNAL_SERVER_ERROR,	"<!DOCTYPE html><html><head></head><body><h1>Internal server error #500</h1></body></html>" },
-	{ HTTPRC_FORBIDDEN,		"<!DOCTYPE html><html><head></head><body><h1>Forbidden path #403</h1></body></html>" }
+	{ HTTPRC_FORBIDDEN,		"<!DOCTYPE html><html><head></head><body><h1>Forbidden path #403</h1></body></html>" },
+	{ HTTPRC_NOT_IMPLEMENTED,	"<!DOCTYPE html><html><head></head><body><h1>Not implemented #501</h1></body></html>" }
 };
 
 static const char *methods[] = { "GET", "HEAD", "POST",
 				"PUT", "DELETE", "CONNECT",
-				"OPTIONS", "TRACE", NULL };
+				"OPTIONS", "TRACE", "PATCH",
+				NULL };
 #define METHOD_GET	0
 #define METHOD_HEAD	1
 #define METHOD_POST	2
@@ -67,8 +71,9 @@ static const char *methods[] = { "GET", "HEAD", "POST",
 #define METHOD_CONNECT	5
 #define METHOD_OPTIONS	6
 #define METHOD_TRACE	7
+#define METHOD_PATCH	8
 
-static char _g_resp_buffer_[256 * 1024];
+static char _g_resp_buffer_[156 * 1024];
 
 static int resolve_method(_cstr_t method) {
 	int n = 0;
@@ -88,9 +93,10 @@ static void send_env_var(_cstr_t var, _cstr_t http_var) {
 		io_fwrite("%s: %s\r\n", http_var, val);
 }
 
-static void send_header(int rc, _cstr_t doc = NULL, size_t size = 0) {
+static void send_header(int rc, _cstr_t doc = NULL, size_t size = 0, struct stat *p_stat = NULL) {
 	_cstr_t protocol = getenv(REQ_PROTOCOL);
 	_cstr_t text = _g_resp_text_[rc];
+	char value[128];
 
 	if (!protocol)
 		protocol = "HTTP/1.1";
@@ -100,11 +106,20 @@ static void send_header(int rc, _cstr_t doc = NULL, size_t size = 0) {
 
 	io_fwrite("%s %d %s\r\n", protocol, rc, text);
 
+	if (p_stat) {
+		tm *_tm = gmtime(&(p_stat->st_mtime));
+
+		strftime(value, sizeof(value), "%a, %d %b %Y %H:%M:%S GMT", _tm);
+		io_fwrite("%s: %s\r\n", RES_LAST_MODIFIED, value);
+	}
 	//...
 
 	send_env_var(RES_SERVER, "Server");
+
 	if (size)
-		io_fwrite("%s: %d\r\n", "Content-Length", size);
+		io_fwrite("%s: %d\r\n", RES_CONTENT_LENGTH, size);
+	else if (p_stat)
+		io_fwrite("%s: %d\r\n", RES_CONTENT_LENGTH, p_stat->st_size);
 }
 
 static void send_eoh(void) {
@@ -118,7 +133,7 @@ static _err_t send_file(_cstr_t doc, struct stat *pst) {
 
 	if (fd > 0) {
 		// ??? ...
-		send_header(HTTPRC_OK, doc, pst->st_size);
+		send_header(HTTPRC_OK, doc, pst->st_size, pst);
 		send_eoh();
 
 		while ((nb = read(fd, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
@@ -134,7 +149,7 @@ static _err_t send_file(_cstr_t doc, struct stat *pst) {
 }
 
 _err_t send_error_response(_vhost_t *p_vhost, int rc) {
-	_err_t r = E_OK;
+	_err_t r = E_FAIL;
 	_mapping_t *p_err_map = (p_vhost) ? cfg_get_err_mapping(p_vhost->host, rc) : NULL;
 
 	if (p_err_map) {
@@ -146,25 +161,25 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 		send_header(rc, NULL, len);
 		send_eoh();
 
-		if (content)
+		if (content) {
 			io_write(content, len);
-		else
-			r = E_FAIL;
+			r = E_OK;
+		}
 	}
 
 	return r;
 }
 
 static _err_t send_mapped_response(_vhost_t *p_vhost, _mapping_t *p_url_map) {
-	_err_t r = E_OK;
+	_err_t r = E_FAIL;
 
 	//...
 
 	return r;
 }
 
-static _err_t send_directory_response(_vhost_t *p_vhost, _cstr_t doc) {
-	_err_t r = E_OK;
+static _err_t send_directory_response(_vhost_t *p_vhost, _cstr_t doc, struct stat *p_stat) {
+	_err_t r = E_FAIL;
 
 	//...
 
@@ -177,7 +192,7 @@ static _err_t send_document_response(_vhost_t *p_vhost, _cstr_t doc, struct stat
 
 	switch (p_st->st_mode & S_IFMT) {
 		case S_IFDIR:
-			r = send_directory_response(p_vhost, doc);
+			r = send_directory_response(p_vhost, doc, p_st);
 			break;
 		case S_IFLNK:
 		case S_IFREG:
@@ -191,39 +206,38 @@ static _err_t send_document_response(_vhost_t *p_vhost, _cstr_t doc, struct stat
 	return r;
 }
 
-static _err_t send_response(_vhost_t *p_vhost, _cstr_t doc, _cstr_t url) {
+static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _cstr_t doc, _cstr_t url) {
 	_err_t r = E_FAIL;
-	_cstr_t method = getenv(REQ_METHOD);
+	_mapping_t *p_url_map = cfg_get_url_mapping(p_vhost->host, str_method, url);
 
-	if (method) {
-		_mapping_t *p_url_map = cfg_get_url_mapping(p_vhost->host, method, url);
+	if (p_url_map)
+		r = send_mapped_response(p_vhost, p_url_map);
+	else {
+		struct stat st;
 
-		if (p_url_map)
-			r = send_mapped_response(p_vhost, p_url_map);
-		else {
-			struct stat st;
-
-			if (stat(doc, &st) == 0) {
-				switch (resolve_method(method)) {
-					case METHOD_GET:
-					case METHOD_POST:
-						r = send_document_response(p_vhost, doc, &st);
-						break;
-					case METHOD_HEAD:
-						send_header(HTTPRC_OK, doc, st.st_size);
-						send_eoh();
-						r = E_OK;
-						break;
-					default:
-						r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
-				}
-			} else
-				r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
-		}
-	} else
-		r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
+		if (stat(doc, &st) == 0) {
+			switch (method) {
+				case METHOD_GET:
+				case METHOD_POST:
+					r = send_document_response(p_vhost, doc, &st);
+					break;
+				case METHOD_HEAD:
+					send_header(HTTPRC_OK, doc, st.st_size, &st);
+					send_eoh();
+					r = E_OK;
+					break;
+				default:
+					r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
+			}
+		} else
+			r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
+	}
 
 	return r;
+}
+
+static _err_t connect_to_url(_vhost_t *p_vhost, _cstr_t str_method, _cstr_t url) {
+	return send_error_response(p_vhost, HTTPRC_NOT_IMPLEMENTED);
 }
 
 _err_t res_processing(void) {
@@ -233,30 +247,45 @@ _err_t res_processing(void) {
 
 	if (p_vhost) {
 		_cstr_t url = getenv(REQ_URL);
+		_cstr_t method = getenv(REQ_METHOD);
 
-		if (url) {
-			char doc_path[MAX_PATH+1];
-			char resolved_path[PATH_MAX];
+		if (url && method) {
+			int m = resolve_method(method);
 
-			snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, url);
+			switch (m) {
+				case METHOD_GET:
+				case METHOD_POST:
+				case METHOD_HEAD: {
+					char doc_path[MAX_PATH+1];
+					char resolved_path[PATH_MAX];
 
-			char *_url = realpath(doc_path, resolved_path);
+					snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, url);
 
-			if (_url) {
-				if (memcmp(p_vhost->root, _url, strlen(p_vhost->root)) == 0) {
-					setenv(DOC_ROOT, p_vhost->root, 1);
-					cfg_load_mapping(p_vhost);
+					char *_url = realpath(doc_path, resolved_path);
 
-					r = send_response(p_vhost, _url, url);
-				} else {
-					TRACE("http[%d] Trying to access outside of root path '%s'\n", getpid(), _url);
-					send_error_response(p_vhost, HTTPRC_FORBIDDEN);
-				}
-			} else {
-				r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
-				TRACE("http[%d]: Not found '%s'\n", getpid(), doc_path);
+					if (_url) {
+						if (memcmp(p_vhost->root, _url, strlen(p_vhost->root)) == 0) {
+							setenv(DOC_ROOT, p_vhost->root, 1);
+							cfg_load_mapping(p_vhost);
+
+							r = send_response(p_vhost, m, method, _url, url);
+						} else {
+							TRACE("http[%d] Trying to access outside of root path '%s'\n", getpid(), _url);
+							send_error_response(p_vhost, HTTPRC_FORBIDDEN);
+						}
+					} else {
+						r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
+						TRACE("http[%d]: Not found '%s'\n", getpid(), doc_path);
+					}
+				} break;
+				case METHOD_CONNECT:
+					r = connect_to_url(p_vhost, method, url);
+					break;
+				default:
+					r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 			}
-		}
+		} else
+			r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
 	} else
 		send_error_response(p_vhost, HTTPRC_INTERNAL_SERVER_ERROR);
 

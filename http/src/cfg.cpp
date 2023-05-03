@@ -166,6 +166,8 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
 	_json_value_t *content_type = json_select(p_jcxt, "content-type", pjo);
+	_json_value_t *content_encoding = json_select(p_jcxt, "content-encoding", pjo);
+	_json_value_t *response_code = json_select(p_jcxt, "response-code", pjo);
 
 	p->type = MAPPING_TYPE_URL;
 	jv_string(method, p->url.method, sizeof(p->url.method));
@@ -180,6 +182,8 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	} else if (response && response->jvt == JSON_STRING)
 		jv_string(response, p->url.proc, sizeof(p->url.proc));
 	jv_string(content_type, p->url.content_type, sizeof(p->url.content_type));
+	jv_string(content_encoding, p->url.content_encoding, sizeof(p->url.content_encoding));
+	p->url.resp_code = atoi(jv_string(response_code).c_str());
 }
 
 static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
@@ -189,6 +193,7 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
 	_json_value_t *content_type = json_select(p_jcxt, "content-type", pjo);
+	_json_value_t *content_encoding = json_select(p_jcxt, "content-encoding", pjo);
 	char str_code[32] = "";
 
 	p->type = MAPPING_TYPE_ERR;
@@ -204,6 +209,7 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	} else if (response && response->jvt == JSON_STRING)
 		jv_string(response, p->err.proc, sizeof(p->err.proc));
 	jv_string(content_type, p->url.content_type, sizeof(p->url.content_type));
+	jv_string(content_encoding, p->url.content_encoding, sizeof(p->url.content_encoding));
 }
 
 static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf_context_t *p_hfcxt) {
@@ -316,11 +322,9 @@ _vhost_stat_cmp_:
 
 		touch(lock_path);
 		r = compile_vhosts(src_path, dat_path);
-		TRACE("http[%d] Compile mapping '%s' #%d\n", getpid(), src_path, r);
 		unlink(lock_path);
 	} else {
 		r = hf_open(&_g_vhost_cxt_, dat_path, O_RDONLY);
-		TRACE("http[%d] Load mapping '%s' #%d\n", getpid(), dat_path, r);
 	}
 
 	return r;
@@ -356,12 +360,9 @@ _mapping_stat_cmp_:
 
 			touch(lock_path);
 			r = compile_mapping(src_path, dat_path, &hf_cxt);
-			TRACE("http[%d] Compile mapping %s: '%s' #%d\n", getpid(), pvhost->host, src_path, r);
 			unlink(lock_path);
-		} else {
+		} else
 			r = hf_open(&hf_cxt, dat_path, O_RDONLY);
-			TRACE("http[%d] Load mapping %s: '%s' #%d\n", getpid(), pvhost->host, dat_path, r);
-		}
 
 		_g_mapping_.insert({pvhost->host, hf_cxt});
 	} else

@@ -303,7 +303,6 @@ _err_t io_start(void) {
 		snprintf(b_key, sizeof(b_key), "%s/%s", dir, ssl_key);
 
 		// setup SSL context
-		TRACE("http[%d] Setup SSL method='%s'; cert='%s'; key='%s'\n", getpid(), ssl_method, ssl_cert, ssl_key);
 		setup_ssl_context(ssl_method, b_cert, b_key);
 	}
 

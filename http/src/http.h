@@ -41,6 +41,11 @@
 // HTTP response environment variables
 #define RES_SERVER		"RES_SERVER"
 
+// HTTP response native variables
+#define RES_CONTENT_LENGTH	"Content-Length"
+#define RES_CONTENT_TYPE	"Content-Type"
+#define RES_LAST_MODIFIED	"Last-Modified"
+
 // HTTP response code
 #define HTTPRC_CONTINUE			100 // Continue
 #define HTTPRC_SWITCHING_PROTOCOL	101 // Switching Protocols
@@ -101,13 +106,15 @@ typedef struct vhost _vhost_t;
 #define MAPPING_TYPE_ERR	2
 
 struct __attribute__((packed)) mapping_url {
-	bool header;		// respond header by parent process
-	bool exec;		// exec. flag
-	bool no_stderr;		// dup2 for stderr
-	char method[16];	// HTTP method
-	char content_type[64];	// type of content (for resp. header)
-	char url[256];		// URL handler
-	char proc[MAX_PATH];	// processing buffera
+	bool header;			// respond header by parent process
+	bool exec;			// exec. flag
+	bool no_stderr;			// dup2 for stderr
+	short resp_code;		// HTTP response code
+	char method[8];			// HTTP method
+	char content_type[64];		// type of content (for resp. header)
+	char content_encoding[32]; 	// content encoding
+	char url[64];			// URL handler
+	char proc[MAX_PATH];		// processing buffer
 
 	unsigned int _size(void) {
 		return sizeof(struct mapping_url) - sizeof(proc) + strlen(proc) + 1;
@@ -117,12 +124,13 @@ struct __attribute__((packed)) mapping_url {
 #define PREFIX_RESP_CODE	"RC_"
 
 struct __attribute__((packed)) mapping_err {
-	short code;		// HTTP response code
-	bool header;		// respond header by parent process
-	bool exec;		// exec. flag
-	bool no_stderr;		// dup2 for stderr
-	char content_type[64];	// type of content (for resp. header)
-	char proc[MAX_PATH];	// processing buffer
+	short code;			// HTTP response code
+	bool header;			// respond header by parent process
+	bool exec;			// exec. flag
+	bool no_stderr;			// dup2 for stderr
+	char content_type[64];		// type of content (for resp. header)
+	char content_encoding[32]; 	// content encoding
+	char proc[MAX_PATH];		// processing buffer
 
 	unsigned int _size(void) {
 		return sizeof(struct mapping_err) - sizeof(proc) + strlen(proc) + 1;

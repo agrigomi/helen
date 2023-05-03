@@ -76,6 +76,7 @@ _err_t req_receive(int timeout) {
 	if (io_wait_input(timeout) > 0) {
 		// read request line
 		if (io_read_line(line, sizeof(line)) > 0) {
+			TRACE("http[%d] %s\n", getpid(), line);
 			// parse request
 			if (decode_request(line) == E_OK) {
 				// read header lines
