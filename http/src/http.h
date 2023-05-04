@@ -183,6 +183,36 @@ typedef struct __attribute__((packed)) {
 
 		return r;
 	}
+
+	char *_header_append(void) {
+		char *r = NULL;
+
+		switch (type) {
+			case MAPPING_TYPE_URL:
+				r = url._header_append();
+				break;
+			case MAPPING_TYPE_ERR:
+				r = err._header_append();
+				break;
+		}
+
+		return r;
+	}
+
+	char *_proc(void) {
+		char *r = NULL;
+
+		switch (type) {
+			case MAPPING_TYPE_URL:
+				r = url._proc();
+				break;
+			case MAPPING_TYPE_ERR:
+				r = err._proc();
+				break;
+		}
+
+		return r;
+	}
 } _mapping_t;
 
 // CFG
