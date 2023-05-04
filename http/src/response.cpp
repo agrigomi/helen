@@ -3,12 +3,15 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <time.h>
 #include <map>
 #include "http.h"
 #include "trace.h"
 #include "fcfg.h"
+#include "str.h"
+#include "respawn.h"
 
 static std::map<int, _cstr_t> _g_resp_text_ = {
 	{ HTTPRC_CONTINUE,		"Continue" },
@@ -73,7 +76,7 @@ static const char *methods[] = { "GET", "HEAD", "POST",
 #define METHOD_TRACE	7
 #define METHOD_PATCH	8
 
-static char _g_resp_buffer_[156 * 1024];
+static char _g_resp_buffer_[256 * 1024];
 
 static int resolve_method(_cstr_t method) {
 	int n = 0;
@@ -112,6 +115,10 @@ static void send_header(int rc, _cstr_t doc = NULL, size_t size = 0, struct stat
 		strftime(value, sizeof(value), "%a, %d %b %Y %H:%M:%S GMT", _tm);
 		io_fwrite("%s: %s\r\n", RES_LAST_MODIFIED, value);
 	}
+
+	if (doc) {
+		//...
+	}
 	//...
 
 	send_env_var(RES_SERVER, "Server");
@@ -126,23 +133,135 @@ static void send_eoh(void) {
 	io_write("\r\n", 2);
 }
 
-static _err_t send_file(_cstr_t doc, struct stat *pst) {
+static _err_t send_file_content(_cstr_t doc) {
 	_err_t r = E_FAIL;
 	int fd = open(doc, O_RDONLY);
 	int nb = 0;
 
 	if (fd > 0) {
-		// ??? ...
-		send_header(HTTPRC_OK, doc, pst->st_size, pst);
-		send_eoh();
-
 		while ((nb = read(fd, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
 			io_write(_g_resp_buffer_, nb);
 
-		// ... ????
-
 		close(fd);
 		r = E_OK;
+	}
+
+	return r;
+}
+
+static _err_t send_file(_cstr_t doc, struct stat *pst) {
+	// ??? ...
+	send_header(HTTPRC_OK, doc, pst->st_size, pst);
+	send_eoh();
+	return send_file_content(doc);
+	// ... ????
+}
+
+static void split_by_space(_cstr_t str, _u32 str_size, _str_t dst_arr[], _u32 arr_size) {
+	_str_t p_str = (_str_t)malloc(str_size + 1);
+
+	if (p_str) {
+		_str_t rest = NULL;
+		_str_t token;
+		_u32 i = 0, l = 0;
+
+		memset(p_str, 0, str_size + 1);
+		strncpy(p_str, str, str_size);
+
+		for (token = strtok_r(p_str, " ", &rest); token != NULL; token = strtok_r(NULL, " ", &rest)) {
+			l = strlen(token) + 1;
+			if ((dst_arr[i] = (_str_t)malloc(l))) {
+				strcpy(dst_arr[i], token);
+				i++;
+				if (i >= arr_size)
+					break;
+			} else {
+				TRACEfl("Unable to allocate memory !\n");
+			}
+		}
+
+		free(p_str);
+	}
+}
+
+static _err_t send_exec(_str_t cmd) {
+	_err_t r = E_FAIL;
+	_str_t argv[256];
+	_proc_t proc;
+	int i = 0;
+
+	memset(argv, 0, sizeof(argv));
+	split_by_space(cmd, strlen(cmd), argv, 256);
+
+	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
+
+	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
+	if (proc_exec_v(&proc, argv[0], argv) == 0) {
+		int nb = 0;
+
+		do {
+			if ((nb = io_verify_input()) > 0) {
+				nb = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_));
+				proc_write(&proc, _g_resp_buffer_, nb);
+			}
+
+			ioctl(proc.PREAD_FD, FIONREAD, &nb);
+			if (nb > 0) {
+				nb = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_));
+				io_write(_g_resp_buffer_, nb);
+			}
+		} while (proc_status(&proc) == -1);
+
+		r = E_DONE;
+	}
+
+	while (argv[i]) {
+		free(argv[i]);
+		i++;
+	}
+
+	return r;
+}
+
+_err_t send_mapped_err(_mapping_err_t *p_err_map) {
+	_err_t r = E_FAIL;
+	char *header_append = p_err_map->_header_append();
+	char *proc = p_err_map->_proc();
+	int append_len = 0;
+
+	if (p_err_map->header) {
+		if (header_append[0])
+			append_len = str_resolve(header_append, _g_resp_buffer_, sizeof(_g_resp_buffer_));
+
+		send_header(p_err_map->code);
+		if (append_len)
+			io_write(_g_resp_buffer_, append_len);
+	}
+
+	if (proc[0]) {
+		str_resolve(proc, _g_resp_buffer_, sizeof(_g_resp_buffer_));
+
+		if (p_err_map->exec) {
+			if (p_err_map->header)
+				send_eoh();
+			r = send_exec(_g_resp_buffer_);
+		} else {
+			struct stat st;
+
+			if (stat(_g_resp_buffer_, &st) == 0) {
+				if (p_err_map->header) {
+					char value[128];
+					tm *_tm = gmtime(&(st.st_mtime));
+
+					io_fwrite("%s: %d\r\n", RES_CONTENT_LENGTH, st.st_size);
+					strftime(value, sizeof(value), "%a, %d %b %Y %H:%M:%S GMT", _tm);
+					io_fwrite("%s: %s\r\n", RES_LAST_MODIFIED, value);
+					send_eoh();
+				}
+
+				r = send_file_content(_g_resp_buffer_);
+			}
+		}
 	}
 
 	return r;
@@ -152,9 +271,9 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 	_err_t r = E_FAIL;
 	_mapping_t *p_err_map = (p_vhost) ? cfg_get_err_mapping(p_vhost->host, rc) : NULL;
 
-	if (p_err_map) {
-		//...
-	} else {
+	if (p_err_map)
+		r = send_mapped_err(&(p_err_map->err));
+	else {
 		_cstr_t content = _g_resp_content_[rc];
 		int len = (content) ? strlen(content) : 0;
 
@@ -170,10 +289,46 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 	return r;
 }
 
-static _err_t send_mapped_response(_vhost_t *p_vhost, _mapping_t *p_url_map) {
+static _err_t send_mapped_response(_mapping_url_t *p_url_map) {
 	_err_t r = E_FAIL;
+	char *header_append = p_url_map->_header_append();
+	char *proc = p_url_map->_proc();
+	int append_len = 0;
 
-	//...
+	if (p_url_map->header) {
+		if (header_append[0])
+			append_len = str_resolve(header_append, _g_resp_buffer_, sizeof(_g_resp_buffer_));
+
+		send_header((p_url_map->resp_code) ? p_url_map->resp_code : 200);
+		if (append_len)
+			io_write(_g_resp_buffer_, append_len);
+	}
+
+	if (proc[0]) {
+		str_resolve(proc, _g_resp_buffer_, sizeof(_g_resp_buffer_));
+
+		if (p_url_map->exec) {
+			if (p_url_map->header)
+				send_eoh();
+			r = send_exec(_g_resp_buffer_);
+		} else {
+			struct stat st;
+
+			if (stat(_g_resp_buffer_, &st) == 0) {
+				if (p_url_map->header) {
+					char value[128];
+					tm *_tm = gmtime(&(st.st_mtime));
+
+					io_fwrite("%s: %d\r\n", RES_CONTENT_LENGTH, st.st_size);
+					strftime(value, sizeof(value), "%a, %d %b %Y %H:%M:%S GMT", _tm);
+					io_fwrite("%s: %s\r\n", RES_LAST_MODIFIED, value);
+					send_eoh();
+				}
+
+				r = send_file_content(_g_resp_buffer_);
+			}
+		}
+	}
 
 	return r;
 }
@@ -196,8 +351,7 @@ static _err_t send_document_response(_vhost_t *p_vhost, _cstr_t doc, struct stat
 			break;
 		case S_IFLNK:
 		case S_IFREG:
-			if ((r = send_file(doc, p_st)) != E_OK)
-				r = send_error_response(p_vhost, HTTPRC_INTERNAL_SERVER_ERROR);
+			r = send_file(doc, p_st);
 			break;
 		default:
 			r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
@@ -211,7 +365,7 @@ static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _
 	_mapping_t *p_url_map = cfg_get_url_mapping(p_vhost->host, str_method, url);
 
 	if (p_url_map)
-		r = send_mapped_response(p_vhost, p_url_map);
+		r = send_mapped_response(&(p_url_map->url));
 	else {
 		struct stat st;
 
@@ -229,8 +383,10 @@ static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _
 				default:
 					r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 			}
-		} else
+		} else {
 			r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
+			TRACE("http[%d]: Not found '%s'\n", getpid(), doc);
+		}
 	}
 
 	return r;
@@ -261,21 +417,16 @@ _err_t res_processing(void) {
 
 					snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, url);
 
-					char *_url = realpath(doc_path, resolved_path);
+					realpath(doc_path, resolved_path);
 
-					if (_url) {
-						if (memcmp(p_vhost->root, _url, strlen(p_vhost->root)) == 0) {
-							setenv(DOC_ROOT, p_vhost->root, 1);
-							cfg_load_mapping(p_vhost);
+					if (memcmp(p_vhost->root, resolved_path, strlen(p_vhost->root)) == 0) {
+						setenv(DOC_ROOT, p_vhost->root, 1);
+						cfg_load_mapping(p_vhost);
 
-							r = send_response(p_vhost, m, method, _url, url);
-						} else {
-							TRACE("http[%d] Trying to access outside of root path '%s'\n", getpid(), _url);
-							send_error_response(p_vhost, HTTPRC_FORBIDDEN);
-						}
+						r = send_response(p_vhost, m, method, resolved_path, url);
 					} else {
-						r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
-						TRACE("http[%d]: Not found '%s'\n", getpid(), doc_path);
+						TRACE("http[%d] Trying to access outside of root path '%s'\n", getpid(), resolved_path);
+						send_error_response(p_vhost, HTTPRC_FORBIDDEN);
 					}
 				} break;
 				case METHOD_CONNECT:

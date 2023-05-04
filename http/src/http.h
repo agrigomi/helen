@@ -90,6 +90,7 @@
 
 #define MAX_PATH	1024
 #define MAX_HOST_NAME	256
+#define MAX_BUFFER_LEN	2048
 
 struct __attribute__((packed)) vhost {
 	char	host[MAX_HOST_NAME];
@@ -115,7 +116,7 @@ struct __attribute__((packed)) mapping_url {
 	short off_header_append;	// offset to rest of header
 	short off_proc;			// offset to response command or file
 	short buffer_len;		// size of data in buffer
-	char buffer[2048];
+	char buffer[MAX_BUFFER_LEN];
 
 	unsigned int _size(void) {
 		return sizeof(struct mapping_url) - sizeof(buffer) + buffer_len;
@@ -144,7 +145,7 @@ struct __attribute__((packed)) mapping_err {
 	short off_header_append;	// offset to rest of header
 	short off_proc;			// offset to response command or file
 	short buffer_len;		// size of data in buffer
-	char buffer[2048];
+	char buffer[MAX_BUFFER_LEN];
 
 	unsigned int _size(void) {
 		return sizeof(struct mapping_err) - sizeof(buffer) + buffer_len;
@@ -250,6 +251,7 @@ _err_t io_start(void);
 Wait for input with timeout in seconds
 return number of bytes  */
 int io_wait_input(int timeout);
+int io_verify_input(void);
 /**
 Read line from input stream
 return line size (without \r\n) */

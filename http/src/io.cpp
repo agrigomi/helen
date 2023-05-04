@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 #include "http.h"
 #include "argv.h"
@@ -179,6 +180,17 @@ int io_wait_input(int timeout) {
 		r = wait_input(SSL_get_fd(_g_ssl_in_), timeout);
 	else
 		r = wait_input(STDIN_FILENO, timeout);
+
+	return r;
+}
+
+int io_verify_input(void) {
+	int r = 0;
+
+	if (_g_ssl_in_)
+		ioctl(SSL_get_fd(_g_ssl_in_), FIONREAD, &r);
+	else
+		ioctl(STDIN_FILENO, FIONREAD, &r);
 
 	return r;
 }
