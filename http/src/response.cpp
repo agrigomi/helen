@@ -116,9 +116,9 @@ static void send_header(int rc, _cstr_t doc = NULL, size_t size = 0, struct stat
 		io_fwrite("%s: %s\r\n", RES_LAST_MODIFIED, value);
 	}
 
-	if (doc) {
+	//if (doc) {
 		//...
-	}
+	//}
 	//...
 
 	send_env_var(RES_SERVER, "Server");
@@ -223,7 +223,7 @@ static _err_t send_exec(_str_t cmd) {
 	return r;
 }
 
-_err_t send_mapped_err(_mapping_err_t *p_err_map) {
+static _err_t send_mapped_err(_mapping_err_t *p_err_map) {
 	_err_t r = E_FAIL;
 	char *header_append = p_err_map->_header_append();
 	char *proc = p_err_map->_proc();
@@ -360,33 +360,27 @@ static _err_t send_document_response(_vhost_t *p_vhost, _cstr_t doc, struct stat
 	return r;
 }
 
-static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _cstr_t doc, _cstr_t url) {
+static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _cstr_t doc) {
 	_err_t r = E_FAIL;
-	_mapping_t *p_url_map = cfg_get_url_mapping(p_vhost->host, str_method, url);
+	struct stat st;
 
-	if (p_url_map)
-		r = send_mapped_response(&(p_url_map->url));
-	else {
-		struct stat st;
-
-		if (stat(doc, &st) == 0) {
-			switch (method) {
-				case METHOD_GET:
-				case METHOD_POST:
-					r = send_document_response(p_vhost, doc, &st);
-					break;
-				case METHOD_HEAD:
-					send_header(HTTPRC_OK, doc, st.st_size, &st);
-					send_eoh();
-					r = E_OK;
-					break;
-				default:
-					r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
-			}
-		} else {
-			r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
-			TRACE("http[%d]: Not found '%s'\n", getpid(), doc);
+	if (stat(doc, &st) == 0) {
+		switch (method) {
+			case METHOD_GET:
+			case METHOD_POST:
+				r = send_document_response(p_vhost, doc, &st);
+				break;
+			case METHOD_HEAD:
+				send_header(HTTPRC_OK, doc, st.st_size, &st);
+				send_eoh();
+				r = E_OK;
+				break;
+			default:
+				r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 		}
+	} else {
+		r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
+		TRACE("http[%d]: Not found '%s'\n", getpid(), doc);
 	}
 
 	return r;
@@ -405,6 +399,9 @@ _err_t res_processing(void) {
 		_cstr_t url = getenv(REQ_URL);
 		_cstr_t method = getenv(REQ_METHOD);
 
+		cfg_load_mapping(p_vhost);
+		setenv(DOC_ROOT, p_vhost->root, 1);
+
 		if (url && method) {
 			int m = resolve_method(method);
 
@@ -412,21 +409,29 @@ _err_t res_processing(void) {
 				case METHOD_GET:
 				case METHOD_POST:
 				case METHOD_HEAD: {
-					char doc_path[MAX_PATH+1];
-					char resolved_path[PATH_MAX];
+					_mapping_t *p_url_map = cfg_get_url_mapping(p_vhost->host, method, url);
 
-					snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, url);
+					if (p_url_map)
+						r = send_mapped_response(&(p_url_map->url));
+					else {
+						char doc_path[MAX_PATH+1];
+						char resolved_path[PATH_MAX];
 
-					realpath(doc_path, resolved_path);
+						snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, url);
 
-					if (memcmp(p_vhost->root, resolved_path, strlen(p_vhost->root)) == 0) {
-						setenv(DOC_ROOT, p_vhost->root, 1);
-						cfg_load_mapping(p_vhost);
+						char *_url = realpath(doc_path, resolved_path);
 
-						r = send_response(p_vhost, m, method, resolved_path, url);
-					} else {
-						TRACE("http[%d] Trying to access outside of root path '%s'\n", getpid(), resolved_path);
-						send_error_response(p_vhost, HTTPRC_FORBIDDEN);
+						if(_url) {
+							if (memcmp(p_vhost->root, _url, strlen(p_vhost->root)) == 0)
+								r = send_response(p_vhost, m, method, _url);
+							else {
+								TRACE("http[%d] Trying to access outside of root path '%s'\n", getpid(), _url);
+								send_error_response(p_vhost, HTTPRC_FORBIDDEN);
+							}
+						} else {
+							r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
+							TRACE("http[%d]: Not found '%s'\n", getpid(), resolved_path);
+						}
 					}
 				} break;
 				case METHOD_CONNECT:
