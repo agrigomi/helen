@@ -165,6 +165,35 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 	return r;
 }
 
+static int fill_header_append(_json_value_t *jvha, char *buffer, unsigned int sz_buffer) {
+	typedef struct {
+		unsigned int len;
+		char *buffer;
+		unsigned int size;
+	} _param_t;
+	_param_t lambda_param = { 0, buffer, sz_buffer };
+
+	json_enum_values(jvha, [] (_json_value_t *pjv, void *udata)->int {
+		_param_t *p = (_param_t *)udata;
+		int r = 0;
+
+		if (pjv->jvt == JSON_STRING &&
+				(p->size - p->len) > (pjv->string.size + 3)) {
+			memcpy(p->buffer + p->len, pjv->string.data, pjv->string.size);
+			p->len += pjv->string.size;
+			p->buffer[p->len] = '\r';
+			p->len++;
+			p->buffer[p->len] = '\n';
+			p->len++;
+		} else
+			r = -1;
+
+		return r;
+	}, &lambda_param);
+
+	return lambda_param.len;
+}
+
 static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
 	_json_value_t *method = json_select(p_jcxt, "method", pjo);
 	_json_value_t *url = json_select(p_jcxt, "url", pjo);
@@ -195,24 +224,8 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	// Add header-append
 	p->url.off_header_append = p->url.buffer_len;
 	if (header_append && header_append->jvt == JSON_ARRAY) {
-		json_enum_values(header_append, [] (_json_value_t *pjv, void *udata) {
-			int r = 0;
-			_mapping_t *p = (_mapping_t *)udata;
-
-			if (pjv->jvt == JSON_STRING &&
-					(sizeof(p->url.buffer) - p->url.buffer_len) > (size_t)(pjv->string.size + 3)) {
-				memcpy(p->url.buffer + p->url.buffer_len, pjv->string.data, pjv->string.size);
-				p->url.buffer_len += pjv->string.size;
-				p->url.buffer[p->url.buffer_len] = '\r';
-				p->url.buffer_len++;
-				p->url.buffer[p->url.buffer_len] = '\n';
-				p->url.buffer_len++;
-			} else
-				r = -1;
-
-			return r;
-		}, p);
-
+		p->url.buffer_len += fill_header_append(header_append, p->url.buffer + p->url.buffer_len,
+					sizeof(p->url.buffer) - p->url.buffer_len);
 	}
 	p->url.buffer_len++;
 
@@ -252,24 +265,8 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	// Add header-append
 	p->err.off_header_append = p->err.buffer_len;
 	if (header_append && header_append->jvt == JSON_ARRAY) {
-		json_enum_values(header_append, [] (_json_value_t *pjv, void *udata) {
-			int r = 0;
-			_mapping_t *p = (_mapping_t *)udata;
-
-			if (pjv->jvt == JSON_STRING &&
-					(sizeof(p->err.buffer) - p->err.buffer_len) > (size_t)(pjv->string.size + 3)) {
-				memcpy(p->err.buffer + p->err.buffer_len, pjv->string.data, pjv->string.size);
-				p->err.buffer_len += pjv->string.size;
-				p->err.buffer[p->err.buffer_len] = '\r';
-				p->err.buffer_len++;
-				p->err.buffer[p->err.buffer_len] = '\n';
-				p->err.buffer_len++;
-			} else
-				r = -1;
-
-			return r;
-		}, p);
-
+		p->err.buffer_len += fill_header_append(header_append, p->err.buffer + p->err.buffer_len,
+					sizeof(p->err.buffer) - p->err.buffer_len);
 	}
 	p->err.buffer_len++;
 
