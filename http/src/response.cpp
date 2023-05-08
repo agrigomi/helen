@@ -234,7 +234,6 @@ static _err_t send_mapped_err(_mapping_err_t *p_err_map) {
 			append_len = str_resolve(header_append, _g_resp_buffer_, sizeof(_g_resp_buffer_));
 
 		send_header(p_err_map->code);
-		TRACE("header_append [%d] %s", append_len, _g_resp_buffer_);
 		if (append_len)
 			io_write(_g_resp_buffer_, append_len);
 	}
@@ -381,7 +380,7 @@ static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _
 		}
 	} else {
 		r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
-		TRACEfl("http[%d]: Not found '%s'\n", getpid(), doc);
+		TRACE("http[%d]: Not found '%s'\n", getpid(), doc);
 	}
 
 	return r;
@@ -431,7 +430,7 @@ _err_t res_processing(void) {
 							}
 						} else {
 							r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
-							TRACEfl("http[%d]: Not found '%s'\n", getpid(), resolved_path);
+							TRACE("http[%d]: Not found '%s'\n", getpid(), resolved_path);
 						}
 					}
 				} break;

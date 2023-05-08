@@ -223,10 +223,10 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 
 	// Add header-append
 	p->url.off_header_append = p->url.buffer_len;
-	if (header_append && header_append->jvt == JSON_ARRAY) {
+	if (header_append && header_append->jvt == JSON_ARRAY)
 		p->url.buffer_len += fill_header_append(header_append, p->url.buffer + p->url.buffer_len,
 					sizeof(p->url.buffer) - p->url.buffer_len);
-	}
+
 	p->url.buffer_len++;
 
 	// Add proc or exec
@@ -264,10 +264,10 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 
 	// Add header-append
 	p->err.off_header_append = p->err.buffer_len;
-	if (header_append && header_append->jvt == JSON_ARRAY) {
+	if (header_append && header_append->jvt == JSON_ARRAY)
 		p->err.buffer_len += fill_header_append(header_append, p->err.buffer + p->err.buffer_len,
 					sizeof(p->err.buffer) - p->err.buffer_len);
-	}
+
 	p->err.buffer_len++;
 
 	// Add proc or exec
