@@ -37,6 +37,9 @@
 #define REQ_PRAGMA		"REQ_PRAGMA"
 #define REQ_CACHE_CONTROL	"REQ_CACHE_CONTROL"
 #define REQ_RANGE		"REQ_RANGE"
+#define REQ_DIR			"REQ_DIR"
+#define REQ_FILE		"REQ_FILE"
+#define REQ_MISSING		"REQ_MISSING"
 
 // HTTP response environment variables
 #define RES_SERVER		"RES_SERVER"

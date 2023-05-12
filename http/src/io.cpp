@@ -231,7 +231,7 @@ int io_fwrite(const char *fmt, ...) {
 	va_start(va, fmt);
 
 	if (_g_ssl_out_) {
-		char lb[2046];
+		char lb[2048];
 
 		r = vsnprintf(lb, sizeof(lb), fmt, va);
 		r = ssl_write(_g_ssl_out_, lb, r);

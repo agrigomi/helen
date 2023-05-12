@@ -333,21 +333,39 @@ static _err_t send_mapped_response(_mapping_url_t *p_url_map) {
 	return r;
 }
 
-static _err_t send_directory_response(_vhost_t *p_vhost, _cstr_t doc, struct stat *p_stat) {
+static _err_t send_directory_response(_vhost_t *p_vhost, _cstr_t method, _cstr_t url, _cstr_t doc, struct stat *p_stat) {
 	_err_t r = E_FAIL;
 
-	//...
+	cfg_load_mapping(p_vhost);
+
+	// ???
+	_mapping_t *p_url_map = cfg_get_url_mapping(p_vhost->host, method, url);
+	if (p_url_map)
+		r = send_mapped_response(&(p_url_map->url));
+	// ???
 
 	return r;
 }
 
+static _err_t resolve_path(_vhost_t *p_vhost, _cstr_t method, _cstr_t utl, _cstr_t req_doc, _cstr_t err_path) {
+	_err_t r = E_FAIL;
 
-static _err_t send_document_response(_vhost_t *p_vhost, _cstr_t doc, struct stat *p_st) {
+	// ???
+	cfg_load_mapping(p_vhost);
+	r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
+	TRACE("http[%d]: Not found '%s'\n", getpid(), err_path);
+	//???
+
+
+	return r;
+}
+
+static _err_t send_document_response(_vhost_t *p_vhost, _cstr_t method, _cstr_t url, _cstr_t doc, struct stat *p_st) {
 	_err_t r = E_FAIL;
 
 	switch (p_st->st_mode & S_IFMT) {
 		case S_IFDIR:
-			r = send_directory_response(p_vhost, doc, p_st);
+			r = send_directory_response(p_vhost, method, url, doc, p_st);
 			break;
 		case S_IFLNK:
 		case S_IFREG:
@@ -360,7 +378,7 @@ static _err_t send_document_response(_vhost_t *p_vhost, _cstr_t doc, struct stat
 	return r;
 }
 
-static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _cstr_t doc) {
+static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _cstr_t url, _cstr_t doc) {
 	_err_t r = E_FAIL;
 	struct stat st;
 
@@ -368,7 +386,7 @@ static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _
 		switch (method) {
 			case METHOD_GET:
 			case METHOD_POST:
-				r = send_document_response(p_vhost, doc, &st);
+				r = send_document_response(p_vhost, str_method, url, doc, &st);
 				break;
 			case METHOD_HEAD:
 				send_header(HTTPRC_OK, doc, st.st_size, &st);
@@ -399,7 +417,6 @@ _err_t res_processing(void) {
 		_cstr_t url = getenv(REQ_URL);
 		_cstr_t method = getenv(REQ_METHOD);
 
-		cfg_load_mapping(p_vhost);
 		setenv(DOC_ROOT, p_vhost->root, 1);
 
 		if (url && method) {
@@ -409,30 +426,22 @@ _err_t res_processing(void) {
 				case METHOD_GET:
 				case METHOD_POST:
 				case METHOD_HEAD: {
-					_mapping_t *p_url_map = cfg_get_url_mapping(p_vhost->host, method, url);
+					char doc_path[MAX_PATH+1];
+					char resolved_path[PATH_MAX];
 
-					if (p_url_map)
-						r = send_mapped_response(&(p_url_map->url));
-					else {
-						char doc_path[MAX_PATH+1];
-						char resolved_path[PATH_MAX];
+					snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, url);
 
-						snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, url);
+					char *_url = realpath(doc_path, resolved_path);
 
-						char *_url = realpath(doc_path, resolved_path);
-
-						if(_url) {
-							if (memcmp(p_vhost->root, _url, strlen(p_vhost->root)) == 0)
-								r = send_response(p_vhost, m, method, _url);
-							else {
-								TRACE("http[%d] Trying to access outside of root path '%s'\n", getpid(), _url);
-								send_error_response(p_vhost, HTTPRC_FORBIDDEN);
-							}
-						} else {
-							r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
-							TRACE("http[%d]: Not found '%s'\n", getpid(), resolved_path);
+					if (_url) {
+						if (memcmp(p_vhost->root, _url, strlen(p_vhost->root)) == 0)
+							r = send_response(p_vhost, m, method, url, _url);
+						else {
+							TRACE("http[%d] Trying to access outside of root path '%s'\n", getpid(), _url);
+							send_error_response(p_vhost, HTTPRC_FORBIDDEN);
 						}
-					}
+					} else
+						r = resolve_path(p_vhost, method, url, doc_path, resolved_path);
 				} break;
 				case METHOD_CONNECT:
 					r = connect_to_url(p_vhost, method, url);
