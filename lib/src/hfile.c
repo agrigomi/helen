@@ -320,8 +320,8 @@ pcb	- pointer to callback (will be called for every record)
 udata	- pointer to user defined data
 returns 0 for success, otherwise -1 */
 int hf_enum(_hf_context_t *p_cxt,
-			int (*pcb)(void *rec_ptr, unsigned int size,void *udata),
-			void *udata) {
+		int (*pcb)(void *rec_ptr, unsigned int size, void *udata),
+		void *udata) {
 	int r = -1;
 
 	if (p_cxt->fd > 0 && p_cxt->hdr) {
