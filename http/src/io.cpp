@@ -249,11 +249,10 @@ return line size (without \r\n) */
 int io_read_line(char *buffer, int size) {
 	int r = -1;
 
-	if (_g_ssl_in_) { // SSL input
-		if ((r = ssl_read_line(_g_ssl_in_, buffer, size)) < 0) {
-			TRACE("http[%d] %s\n", getpid(), ssl_error_string());
-		}
-	} else { // STDIO input
+	if (_g_ssl_in_)
+		// SSL input
+		r = ssl_read_line(_g_ssl_in_, buffer, size);
+	else { // STDIO input
 		if (fgets(buffer, size, stdin)) {
 			r = strlen(buffer);
 			char *p = buffer + r;
