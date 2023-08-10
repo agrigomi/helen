@@ -149,8 +149,11 @@ static _err_t send_file_content(_cstr_t doc) {
 	return r;
 }
 
-static _err_t send_file(_cstr_t doc, struct stat *pst) {
-	// ??? ...
+static _err_t send_directory_response(_vhost_t *p_vhost, _cstr_t method, _cstr_t url, _cstr_t dir, struct stat *p_stat);
+
+static _err_t send_file(_cstr_t url, _cstr_t doc, struct stat *pst) {
+	/* extract directory from URL and verify for mapping
+	??? ... */
 	send_header(HTTPRC_OK, doc, pst->st_size, pst);
 	send_eoh();
 	return send_file_content(doc);
@@ -296,7 +299,7 @@ static _err_t send_mapped_response(_mapping_url_t *p_url_map) {
 	int append_len = 0;
 
 	if (p_url_map->header) {
-		if (header_append[0])
+		if (header_append && header_append[0])
 			append_len = str_resolve(header_append, _g_resp_buffer_, sizeof(_g_resp_buffer_));
 
 		send_header((p_url_map->resp_code) ? p_url_map->resp_code : 200);
@@ -371,7 +374,7 @@ static _err_t send_document_response(_vhost_t *p_vhost, _cstr_t method, _cstr_t 
 			break;
 		case S_IFLNK:
 		case S_IFREG:
-			r = send_file(doc, p_st);
+			r = send_file(url, doc, p_st);
 			break;
 		default:
 			r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
@@ -399,6 +402,9 @@ static _err_t send_response(_vhost_t *p_vhost, int method, _cstr_t str_method, _
 				r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 		}
 	} else {
+		/* extract directory from URL and verify for directory mapping */
+		/* ... */
+
 		r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
 		TRACE("http[%d]: Not found '%s'\n", getpid(), doc);
 	}
