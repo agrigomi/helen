@@ -87,3 +87,14 @@ char *str_toupper(char *s) {
 	return s;
 }
 
+void str_split(char *str, const char *div, int (*pcb)(int idx, char *str, void *udata), void *udata) {
+	char *rest = NULL;
+	char *token;
+	int i = 0;
+
+	for (token = strtok_r(str, div, &rest); token != NULL; token = strtok_r(NULL, div, &rest), i++) {
+		if (token && pcb(i, token, udata) != 0)
+			break;
+	}
+}
+
