@@ -277,5 +277,9 @@ _err_t req_receive(int timeout);
 _err_t res_processing(void);
 _err_t send_error_response(_vhost_t *p_vhost, int rc);
 
+// Mime Types
+_err_t mime_open(void);
+void mime_close(void);
+
 #endif
 

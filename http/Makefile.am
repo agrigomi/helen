@@ -11,5 +11,6 @@ http_SOURCES = src/main.cpp \
 		src/io.cpp \
 		src/request.cpp \
 		src/response.cpp \
-		src/url-codec.cpp
+		src/url-codec.cpp \
+		src/mime.cpp
 
