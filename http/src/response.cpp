@@ -359,7 +359,7 @@ static _err_t send_unresolved_path(_vhost_t *p_vhost, _cstr_t method, _cstr_t ur
 		r = send_mapped_response(&(p_url_map->url));
 	else {
 		r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
-		TRACE("http[%d]: Not found '%s'\n", getpid(), err_path);
+		TRACE("http[%d]: Not found (error path) '%s'\n", getpid(), err_path);
 	}
 
 	return r;

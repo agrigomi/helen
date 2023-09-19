@@ -474,6 +474,8 @@ _err_t cfg_init(void) {
 				cfg_load_mapping(pvhost);
 				return 0;
 			}, NULL);
+
+			mime_open();
 		}
 	}
 

@@ -277,9 +277,9 @@ static _err_t io_loop(int timeout) {
 	_err_t r = E_OK;
 
 	while ((r = req_receive(timeout)) == E_OK) {
-		_cstr_t connection = getenv(REQ_CONNECTION);
-
 		if ((r = res_processing()) == E_OK) {
+			_cstr_t connection = getenv(REQ_CONNECTION);
+
 			if (connection && strcasecmp(connection, "keep-alive") == 0)
 				;
 			else
