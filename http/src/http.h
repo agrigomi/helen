@@ -280,6 +280,7 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc);
 // Mime Types
 _err_t mime_open(void);
 void mime_close(void);
+_cstr_t mime_resolve(_cstr_t path);
 
 #endif
 

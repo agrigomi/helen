@@ -13,7 +13,7 @@
 #define MIME_TYPES_DST	"mime.types.dat"
 #define MIME_TYPES_LOCK	"mime.types.lock"
 
-#define	MT_CAPACITY	2048
+#define	MT_CAPACITY	4096
 #define	MT_DATA		64
 
 static _hf_context_t	_g_hf_cxt_;
@@ -63,7 +63,8 @@ static _err_t compile_mime_types(void) {
 								char fext[32];
 								int sz = snprintf(fext, sizeof(fext), ".%s", str);
 
-								hf_add(&_g_hf_cxt_, fext, sz, ctype, strlen(ctype));
+								TRACE("%s:	%s\n", fext, ctype);
+								hf_add(&_g_hf_cxt_, fext, sz, ctype, strlen(ctype) + 1);
 
 								return 0;
 							}, ctype);
@@ -134,4 +135,20 @@ void mime_close(void) {
 		hf_close(&_g_hf_cxt_);
 		_g_hf_open_ = false;
 	}
+}
+
+_cstr_t mime_resolve(_cstr_t path) {
+	_cstr_t r = NULL;
+
+	if (_g_hf_open_) {
+		size_t l = strlen(path);
+		unsigned int sz;
+
+		while (l && path[l] != '.')
+			l--;
+
+r = (_cstr_t)hf_get(&_g_hf_cxt_, (void *)&path[l], strlen(&path[l]), &sz);
+	}
+
+	return r;
 }

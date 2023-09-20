@@ -116,9 +116,14 @@ static void send_header(int rc, _cstr_t doc = NULL, size_t size = 0, struct stat
 		io_fwrite("%s: %s\r\n", RES_LAST_MODIFIED, value);
 	}
 
-	//if (doc) {
-		//...
-	//}
+	if (doc) {
+		if (mime_open() == E_OK) {
+			_cstr_t mt = mime_resolve(doc);
+
+			if (mt)
+				io_fwrite("%s:	%s\r\n", RES_CONTENT_TYPE, mt);
+		}
+	}
 	//...
 
 	send_env_var(RES_SERVER, "Server");
