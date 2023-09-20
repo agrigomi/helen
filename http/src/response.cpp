@@ -123,6 +123,8 @@ static void send_header(int rc, _cstr_t doc = NULL, size_t size = 0, struct stat
 			if (mt)
 				io_fwrite("%s:	%s\r\n", RES_CONTENT_TYPE, mt);
 		}
+
+		send_env_var(REQ_CONNECTION, "Connection");
 	}
 	//...
 

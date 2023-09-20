@@ -48,6 +48,7 @@
 #define RES_CONTENT_LENGTH	"Content-Length"
 #define RES_CONTENT_TYPE	"Content-Type"
 #define RES_LAST_MODIFIED	"Last-Modified"
+#define RES_CONNECTION		"Connection"
 
 // HTTP response code
 #define HTTPRC_CONTINUE			100 // Continue
