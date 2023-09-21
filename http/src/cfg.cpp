@@ -15,7 +15,7 @@
 
 #define VHOST_CAPACITY		128
 #define VHOST_DATA_SIZE		64 // in KBytes
-#define MAPPING_CAPACITY	256
+#define MAPPING_CAPACITY	1024
 #define MAPPING_DATA_SIZE	64
 
 #define VHOST_SRC	"http.json"
