@@ -91,11 +91,12 @@ _err_t mime_open(void) {
 		struct stat st_dst;
 		char dst_path[MAX_PATH] = "";
 		char lock_path[MAX_PATH] = "";
+		_cstr_t dir = argv_value(OPT_DIR);
 
 		memset(&st_src, 0, sizeof(struct stat));
 		memset(&st_dst, 0, sizeof(struct stat));
-		snprintf(dst_path, sizeof(dst_path), "%s/%s", argv_value(OPT_DIR), MIME_TYPES_DST);
-		snprintf(lock_path, sizeof(lock_path), "%s/%s", argv_value(OPT_DIR), MIME_TYPES_LOCK);
+		snprintf(dst_path, sizeof(dst_path), "%s/%s", dir, MIME_TYPES_DST);
+		snprintf(lock_path, sizeof(lock_path), "%s/%s", dir, MIME_TYPES_LOCK);
 
 _compare_time_:
 		stat(dst_path, &st_dst);
