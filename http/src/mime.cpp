@@ -63,7 +63,6 @@ static _err_t compile_mime_types(void) {
 								char fext[32];
 								int sz = snprintf(fext, sizeof(fext), ".%s", str);
 
-								TRACE("%s:	%s\n", fext, ctype);
 								hf_add(&_g_hf_cxt_, fext, sz, ctype, strlen(ctype) + 1);
 
 								return 0;
@@ -147,7 +146,7 @@ _cstr_t mime_resolve(_cstr_t path) {
 		while (l && path[l] != '.')
 			l--;
 
-r = (_cstr_t)hf_get(&_g_hf_cxt_, (void *)&path[l], strlen(&path[l]), &sz);
+		r = (_cstr_t)hf_get(&_g_hf_cxt_, (void *)&path[l], strlen(&path[l]), &sz);
 	}
 
 	return r;
