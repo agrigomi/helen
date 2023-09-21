@@ -482,6 +482,19 @@ _err_t cfg_init(void) {
 	return r;
 }
 
+void cfg_uninit(void) {
+	mime_close();
+
+	_vhost_mapping_t::iterator it = _g_mapping_.begin();
+
+	while (it != _g_mapping_.end()) {
+		hf_close(&((*it).second));
+		it++;
+	}
+
+	hf_close(&_g_vhost_cxt_);
+}
+
 /**
 Returns pointer to _vhost_t ot NULL */
 _vhost_t *cfg_get_vhost(_cstr_t host) {

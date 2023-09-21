@@ -224,6 +224,7 @@ typedef struct __attribute__((packed)) {
 
 /* returns E_OK for success */
 _err_t cfg_init(void);
+void cfg_uninit(void);
 /**
 Returns pointer to _vhost_t ot NULL */
 _vhost_t *cfg_get_vhost(_cstr_t host);

@@ -61,14 +61,17 @@ int main(int argc, char *argv[]) {
 	});
 	signal(SIGINT, [](__attribute__((unused)) int sig) {
 		TRACE("http[%d]: SIGINT\n", getpid());
+		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGKILL, [](__attribute__((unused)) int sig) {
 		TRACE("http[%d]: SIGKILL\n", getpid());
+		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGTERM, [](__attribute__((unused)) int sig) {
 		TRACE("http[%d]: SIGTERM\n", getpid());
+		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGPIPE, [](__attribute__((unused)) int sig) {
@@ -81,8 +84,10 @@ int main(int argc, char *argv[]) {
 		else if (argv_check(OPT_VER))
 			printf("%s\n", VERSION);
 		else {
-			if ((r = cfg_init() == E_OK))
+			if ((r = cfg_init() == E_OK)) {
 				r = io_start();
+				cfg_uninit();
+			}
 		}
 	} else {
 		usage();
