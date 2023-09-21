@@ -326,7 +326,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_url_rec(p_jcxt, &(pjv->object), &rec);
-								l = snprintf(key, sizeof(key), "%s_%s",
+								l = snprintf(key, sizeof(key), "%s_%s.url",
 										rec.url.method,
 										rec.url._url());
 								hf_add(p_hfcxt, key, l, &rec, rec._size());
@@ -349,7 +349,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_err_rec(p_jcxt, &(pjv->object), &rec);
-								l = snprintf(key, sizeof(key), RC_PREFIX "%d", rec.err.code);
+								l = snprintf(key, sizeof(key), RC_PREFIX "%d.err", rec.err.code);
 								hf_add(p_hfcxt, key, l, &rec, rec._size());
 							}
 
@@ -517,7 +517,7 @@ _mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url) {
 
 		if (phf_cxt) {
 			char key[256] = "";
-			unsigned int l = snprintf(key, sizeof(key), "%s_%s", method, url);
+			unsigned int l = snprintf(key, sizeof(key), "%s_%s.url", method, url);
 			unsigned int sz;
 
 			r = (_mapping_t *)hf_get(phf_cxt, key, l, &sz);
@@ -549,7 +549,7 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc) {
 
 		if (phf_cxt) {
 			char key[32] = "";
-			unsigned int l = snprintf(key, sizeof(key), RC_PREFIX "%d", rc);
+			unsigned int l = snprintf(key, sizeof(key), RC_PREFIX "%d.err", rc);
 			unsigned int sz;
 
 			r = (_mapping_t *)hf_get(phf_cxt, key, l, &sz);

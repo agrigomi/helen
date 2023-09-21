@@ -349,8 +349,10 @@ static _err_t send_directory_response(_vhost_t *p_vhost, _cstr_t method, _cstr_t
 	cfg_load_mapping(p_vhost);
 
 	_mapping_t *p_url_map = cfg_get_url_mapping(p_vhost->host, method, url);
-	if (p_url_map)
+	if (p_url_map) {
+		TRACE("http[%d]: Mapped directory '%s'\n", getpid(), url);
 		r = send_mapped_response(&(p_url_map->url));
+	}
 
 	return r;
 }
@@ -362,9 +364,10 @@ static _err_t send_unresolved_path(_vhost_t *p_vhost, _cstr_t method, _cstr_t ur
 
 	_mapping_t *p_url_map = cfg_get_url_mapping(p_vhost->host, method, url);
 
-	if (p_url_map)
+	if (p_url_map) {
+		TRACE("http[%d] Path not found, resolved by mapping '%s'\n", getpid(), url);
 		r = send_mapped_response(&(p_url_map->url));
-	else {
+	} else {
 		r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
 		TRACE("http[%d]: Not found (error path) '%s'\n", getpid(), err_path);
 	}
