@@ -10,8 +10,8 @@ static int proc_open_pipe(_proc_t *pcxt) {
 	pcxt->PREAD_FD = pcxt->PWRITE_FD = -1;
 	pcxt->CREAD_FD = pcxt->CWRITE_FD = -1;
 
-	if((r = pipe(pcxt->fd_in)) == 0) {
-		if((r = pipe(pcxt->fd_out)) == -1)
+	if ((r = pipe(pcxt->fd_in)) == 0) {
+		if ((r = pipe(pcxt->fd_out)) == -1)
 			proc_close_pipe(pcxt);
 	} else
 		proc_close_pipe(pcxt);
@@ -20,19 +20,19 @@ static int proc_open_pipe(_proc_t *pcxt) {
 }
 
 void proc_close_pipe(_proc_t *pcxt) {
-	if(pcxt->PREAD_FD != -1) {
+	if (pcxt->PREAD_FD != -1) {
 		close(pcxt->PREAD_FD);
 		pcxt->PREAD_FD = -1;
 	}
-	if(pcxt->PWRITE_FD != -1) {
+	if (pcxt->PWRITE_FD != -1) {
 		close(pcxt->PWRITE_FD);
 		pcxt->PWRITE_FD = -1;
 	}
-	if(pcxt->CREAD_FD != -1) {
+	if (pcxt->CREAD_FD != -1) {
 		close(pcxt->CREAD_FD);
 		pcxt->CREAD_FD = -1;
 	}
-	if(pcxt->CWRITE_FD != -1) {
+	if (pcxt->CWRITE_FD != -1) {
 		close(pcxt->CWRITE_FD);
 		pcxt->CWRITE_FD = -1;
 	}
@@ -42,14 +42,14 @@ static int do_fork(_proc_t *pcxt) {
 	int r = -1;
 
 	pcxt->status = -1;
-	if((r = proc_open_pipe(pcxt)) == 0) {
-		if((pcxt->cpid = fork()) != -1) {
-			if(pcxt->cpid == 0) {
+	if ((r = proc_open_pipe(pcxt)) == 0) {
+		if ((pcxt->cpid = fork()) != -1) {
+			if (pcxt->cpid == 0) {
 				/* for child process */
 				dup2(pcxt->CREAD_FD, STDIN_FILENO);
 				dup2(pcxt->CWRITE_FD, STDOUT_FILENO);
 				proc_close_pipe(pcxt);
-			} else if(pcxt->cpid > 0) {
+			} else if (pcxt->cpid > 0) {
 				/* for parent process */
 				close(pcxt->CREAD_FD);
 				pcxt->CREAD_FD = -1;
@@ -72,8 +72,8 @@ int proc_exec_ve(_proc_t *pcxt, /* process context */
 		) {
 	int r = -1;
 
-	if((r = do_fork(pcxt)) == 0) {
-		if(pcxt->cpid == 0)
+	if ((r = do_fork(pcxt)) == 0) {
+		if (pcxt->cpid == 0)
 			/* child process */
 			exit(execve(path, (char **)argv, (char **)envp));
 	}
@@ -87,8 +87,8 @@ int proc_exec_v(_proc_t *pcxt, /* process context */
 		) {
 	int r = -1;
 
-	if((r = do_fork(pcxt)) == 0) {
-		if(pcxt->cpid == 0)
+	if ((r = do_fork(pcxt)) == 0) {
+		if (pcxt->cpid == 0)
 			/* child process */
 			exit(execv(path, (char **)argv));
 	}
@@ -102,8 +102,8 @@ int proc_exec_cb(_proc_t *pcxt, /* process context */
 		) {
 	int r = -1;
 
-	if((r = do_fork(pcxt)) == 0) {
-		if(pcxt->cpid == 0)
+	if ((r = do_fork(pcxt)) == 0) {
+		if (pcxt->cpid == 0)
 			/* child process */
 			exit(pcb(udata));
 	}
@@ -128,7 +128,7 @@ int proc_read_ts(_proc_t *pcxt, void *buf, int sz, int ts) {
 	timeout.tv_sec = ts;
 	timeout.tv_usec = 0;
 
-	if((r = select(pcxt->PREAD_FD + 1, &set, NULL, NULL, &timeout)) > 0)
+	if ((r = select(pcxt->PREAD_FD + 1, &set, NULL, NULL, &timeout)) > 0)
 		r = read(pcxt->PREAD_FD, buf, sz);
 
 	return r;
@@ -146,7 +146,7 @@ int proc_read_tus(_proc_t *pcxt, void *buf, int sz, int tus) {
 	timeout.tv_sec = 0;
 	timeout.tv_usec = tus;
 
-	if((r = select(pcxt->PREAD_FD + 1, &set, NULL, NULL, &timeout)) > 0)
+	if ((r = select(pcxt->PREAD_FD + 1, &set, NULL, NULL, &timeout)) > 0)
 		r = read(pcxt->PREAD_FD, buf, sz);
 
 	return r;
@@ -162,8 +162,8 @@ int proc_write(_proc_t *pcxt, void *buf, int sz) {
 int proc_status(_proc_t *pcxt) {
 	int r = pcxt->status;
 
-	if(r == -1) {
-		if(waitpid(pcxt->cpid, &pcxt->status, WNOHANG) > 0)
+	if (r == -1) {
+		if (waitpid(pcxt->cpid, &pcxt->status, WNOHANG) > 0)
 			r = WEXITSTATUS(pcxt->status);
 	} else
 		r = WEXITSTATUS(r);
