@@ -275,7 +275,7 @@ static _err_t send_header(_resp_t *p) {
 
 	// header append
 	if (header_append)
-		i += str_resolve(header_append, _g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i);
+		i += str_resolve(header_append, p->header + i, p->sz_hbuffer - i);
 
 _eoh_:
 	// EOH
