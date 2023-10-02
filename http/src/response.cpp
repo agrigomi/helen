@@ -110,7 +110,14 @@ typedef struct {
 		_cstr_t		static_text;
 		_mapping_t	*p_mapping;
 	};
+	char		*header;
+	int		sz_hbuffer;
 } _resp_t;
+
+typedef struct {
+	_cstr_t		var;
+	_cstr_t 	(*vcb)(_resp_t *);
+} _hdr_t;
 
 static int resolve_method(_cstr_t method) {
 	int n = 0;
@@ -150,75 +157,132 @@ static void split_by_space(_cstr_t str, _u32 str_size, _str_t dst_arr[], _u32 ar
 	}
 }
 
+static char _g_vhdr_[4096];
+
+static _hdr_t _g_hdef_[] = {
+	{ RES_ACCEPT_RANGE,		[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
+						return "Bytes";
+					}},
+	{ RES_ALLOW,			[] (_resp_t *p) -> _cstr_t {
+						_cstr_t r = NULL;
+
+						if (p->rc == HTTPRC_METHOD_NOT_ALLOWED)
+							r = ALLOW_METHOD;
+
+						return r;
+					}},
+	{ RES_CONTENT_LENGTH,		[] (_resp_t *p) -> _cstr_t {
+						if (p->b_st)
+							snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", p->st.st_size);
+						else if (p->rc_type == RCT_STATIC && p->static_text)
+								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", strlen(p->static_text));
+						else if (p->rc_type == RCT_MAPPING && p->p_mapping) {
+							if (p->p_mapping->_exec())
+								_g_vhdr_[0] = 0;
+							else {
+								_g_vhdr_[0] = '0';
+								_g_vhdr_[1] = 0;
+							}
+						} else
+							_g_vhdr_[0] = 0;
+
+						return _g_vhdr_;
+					}},
+	{ RES_CONTENT_TYPE,		[] (_resp_t *p) -> _cstr_t {
+						_cstr_t r = NULL;
+
+						if (p->rc_type == RCT_STATIC && p->static_text)
+							r = "text/html";
+						else {
+							if (p->path) {
+								mime_open();
+								r = mime_resolve(p->path);
+							}
+						}
+
+						return r;
+					}},
+	{ RES_CONTENT_ENCODING,		[] (_resp_t *p) -> _cstr_t {
+						return "";
+					}},
+	{ RES_DATE,			[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
+						time_t _time = time(NULL);
+						struct tm *_tm = gmtime(&_time);
+
+						strftime(_g_vhdr_, sizeof(_g_vhdr_),
+								 "%a, %d %b %Y %H:%M:%S GMT", _tm);
+						return _g_vhdr_;
+					}},
+	{ RES_EXPIRES,			[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
+						time_t _time = time(NULL) + (72 * 60 * 60);
+						struct tm *_tm = gmtime(&_time);
+
+						strftime(_g_vhdr_, sizeof(_g_vhdr_),
+								 "%a, %d %b %Y %H:%M:%S GMT", _tm);
+						return _g_vhdr_;
+					}},
+	{ RES_LAST_MODIFIED,		[] (_resp_t *p) -> _cstr_t {
+						if (p->b_st) {
+							tm *_tm = gmtime(&(p->st.st_mtime));
+
+							strftime(_g_vhdr_, sizeof(_g_vhdr_),
+								 "%a, %d %b %Y %H:%M:%S GMT", _tm);
+						} else
+							_g_vhdr_[0] = 0;
+
+						return _g_vhdr_;
+					}},
+	{ RES_CONNECTION,		[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
+						_cstr_t connection = getenv(REQ_CONNECTION);
+
+						return (connection) ? connection : "Close";
+					}},
+	{ RES_SERVER,			[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
+						return SERVER_NAME;
+					}},
+	{ NULL,				NULL }
+};
+
 static _err_t send_header(_resp_t *p) {
 	_err_t r = E_OK;
 	_cstr_t protocol = (p->protocol) ? p->protocol : "HTTP/1.1";
 	_cstr_t text = _g_resp_text_[p->rc];
 	char *header_append = NULL;
-	int i = 0;
-
-	if (!text)
-		text = "Unknown";
+	int i = 0, n = 0;
 
 	// First response line
-	i += snprintf(_g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i, "%s %d %s\r\n", protocol, p->rc, text);
+	i += snprintf(p->header + i, p->sz_hbuffer - i, "%s %d %s\r\n",
+			protocol, p->rc, (text) ? text : "Unknown");
 
-	if (p->rc_type == RCT_MAPPING && p->p_mapping) {
+	if (p->i_method == METHOD_HEAD)
+		goto _eoh_;
+
+	if (p->rc_type == RCT_MAPPING && p->p_mapping)
 		header_append = p->p_mapping->_header_append();
 
-		if (header_append[0])
-			i += str_resolve(header_append, _g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i);
-	} else if (p->rc_type == RCT_STATIC && p->static_text) {
-		// content len
-		i += snprintf(_g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i,
-				RES_CONTENT_LENGTH ": %lu\r\n", strlen(p->static_text));
+	while (_g_hdef_[n].var) {
+		_cstr_t val = _g_hdef_[n].vcb(p);
+		bool set = true;
 
-		if (!p->b_st) {
-			_cstr_t connection = getenv(REQ_CONNECTION);
+		if (header_append && header_append[0])
+			set = strcasestr(header_append, _g_hdef_[n].var) == NULL;
 
-			i += snprintf(_g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i,
-					RES_CONNECTION ": %s\r\n", (connection) ? connection : "Close");
+		if (set && val && val[0])
+			i += snprintf(p->header + i, p->sz_hbuffer - 1, "%s: %s\r\n", _g_hdef_[n].var, val);
 
-			if (connection && strcasecmp(connection, "keep-alive") == 0)
-				r = E_OK;
-			else
-				r = E_DONE;
-		}
+		n++;
 	}
 
-	if (p->b_st) {
-		_cstr_t connection = getenv(REQ_CONNECTION);
-		tm *_tm = gmtime(&(p->st.st_mtime));
+	// header append
+	if (header_append)
+		i += str_resolve(header_append, _g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i);
 
-		// last modified
-		i += strftime(_g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i,
-				RES_LAST_MODIFIED ": %a, %d %b %Y %H:%M:%S GMT\r\n", _tm);
-		// content len
-		i += snprintf(_g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i,
-				RES_CONTENT_LENGTH ": %lu\r\n", p->st.st_size);
-
-		i += snprintf(_g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i,
-				RES_CONNECTION ": %s\r\n", (connection) ? connection : "Keep-Alive");
-	}
-
-	// MIME TYPE
-	if (p->path) {
-		mime_open();
-
-		_cstr_t mime = mime_resolve(p->path);
-
-		if(mime)
-			i += snprintf(_g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i,
-					RES_CONTENT_TYPE ": %s\r\n", mime);
-	}
-
-	// server
-	i += snprintf(_g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i,
-					"Server: %s\r\n", SERVER_NAME);
+_eoh_:
 	// EOH
-	i += snprintf(_g_resp_buffer_ + i, sizeof(_g_resp_buffer_) - i, "\r\n");
+	strncpy(p->header + i, "\r\n", p->sz_hbuffer - i);
+	i += 2;
 
-	io_write(_g_resp_buffer_, i);
+	io_write(p->header, i);
 
 	return r;
 }
@@ -317,8 +381,7 @@ static _err_t send_response(_resp_t *p) {
 				if ((p->b_st = (stat(p->path, &(p->st)) == 0)))
 					goto _send_file_;
 				else {
-					p->rc = HTTPRC_NOT_FOUND;
-					if ((p->static_text = _g_resp_content_[p->rc])) {
+					if (p->rc >= HTTPRC_BAD_REQUEST && (p->static_text = _g_resp_content_[p->rc])) {
 						p->rc_type = RCT_STATIC;
 						goto _send_static_text_;
 					} else
@@ -393,6 +456,7 @@ _err_t res_processing(void) {
 		char resolved_path[PATH_MAX];
 
 		memset(&resp, 0, sizeof(_resp_t));
+		_g_resp_buffer_[0] = 0;
 		setenv(DOC_ROOT, p_vhost->root, 1);
 		cfg_load_mapping(p_vhost);
 
@@ -400,6 +464,8 @@ _err_t res_processing(void) {
 		resp.url = getenv(REQ_URL);
 		resp.s_method = getenv(REQ_METHOD);
 		resp.protocol = getenv(REQ_PROTOCOL);
+		resp.header = _g_resp_buffer_;
+		resp.sz_hbuffer = sizeof(_g_resp_buffer_);
 
 		if (resp.s_method && resp.url && resp.protocol) {
 			resp.i_method = (resp.s_method) ? resolve_method(resp.s_method) : 0;

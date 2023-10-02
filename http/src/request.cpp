@@ -83,7 +83,8 @@ _err_t req_receive(int timeout) {
 				while ((r = io_read_line(line, sizeof(line))) > 0)
 					set_env_var(line, ":");
 
-				setenv(RES_SERVER, SERVER_NAME, 1);
+				setenv(RES_ENV_SERVER, SERVER_NAME, 1);
+				setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
 			} else {
 				TRACE("http[%d] Invalid request\n", getpid());
 				r = send_error_response(NULL, HTTPRC_BAD_REQUEST);

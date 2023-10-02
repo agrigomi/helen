@@ -19,6 +19,7 @@
 #define OPT_SSL_METHOD	"ssl-method"
 
 #define SERVER_NAME	"Helen"
+#define ALLOW_METHOD	"GET, POST, HEAD"
 
 // Common environment variables
 #define DOC_ROOT		"DOC_ROOT"
@@ -42,13 +43,21 @@
 #define REQ_MISSING		"REQ_MISSING"
 
 // HTTP response environment variables
-#define RES_SERVER		"RES_SERVER"
+#define RES_ENV_SERVER		"RES_SERVER"
+#define RES_ENV_ALLOW		"RES_ALLOW"
 
 // HTTP response native variables
+#define RES_ALLOW		"Allow"
+#define RES_ACCEPT_POST		"Accept-Post"
+#define RES_ACCEPT_RANGE	"Accept-Range"
 #define RES_CONTENT_LENGTH	"Content-Length"
 #define RES_CONTENT_TYPE	"Content-Type"
+#define RES_CONTENT_ENCODING	"Content-Encoding"
+#define RES_DATE		"Date"
 #define RES_LAST_MODIFIED	"Last-Modified"
 #define RES_CONNECTION		"Connection"
+#define RES_EXPIRES		"Expires"
+#define RES_SERVER		"Server"
 
 // HTTP response code
 #define HTTPRC_CONTINUE			100 // Continue
@@ -137,6 +146,10 @@ struct __attribute__((packed)) mapping_url {
 	char *_proc(void) {
 		return buffer + off_proc;
 	}
+
+bool _exec(void) {
+		return exec;
+	}
 };
 
 #define PREFIX_RESP_CODE	"RC_"
@@ -161,6 +174,10 @@ struct __attribute__((packed)) mapping_err {
 
 	char *_proc(void) {
 		return buffer + off_proc;
+	}
+
+	bool _exec(void) {
+		return exec;
 	}
 };
 
@@ -213,6 +230,21 @@ typedef struct __attribute__((packed)) {
 				break;
 			case MAPPING_TYPE_ERR:
 				r = err._proc();
+				break;
+		}
+
+		return r;
+	}
+
+	bool _exec(void) {
+		bool r = false;
+
+		switch (type) {
+			case MAPPING_TYPE_URL:
+				r = url._exec();
+				break;
+			case MAPPING_TYPE_ERR:
+				r = err._exec();
 				break;
 		}
 
