@@ -429,6 +429,8 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 		resp.i_method = (resp.s_method) ? resolve_method(resp.s_method) : 0;
 		resp.url = getenv(REQ_URL);
 		resp.protocol = getenv(REQ_PROTOCOL);
+		resp.header = _g_resp_buffer_;
+		resp.sz_hbuffer = sizeof(_g_resp_buffer_);
 
 		if (p_err_map) {
 			resp.rc_type = RCT_MAPPING;
