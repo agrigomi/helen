@@ -49,7 +49,7 @@
 // HTTP response native variables
 #define RES_ALLOW		"Allow"
 #define RES_ACCEPT_POST		"Accept-Post"
-#define RES_ACCEPT_RANGE	"Accept-Range"
+#define RES_ACCEPT_RANGES	"Accept-Ranges"
 #define RES_CONTENT_LENGTH	"Content-Length"
 #define RES_CONTENT_TYPE	"Content-Type"
 #define RES_CONTENT_ENCODING	"Content-Encoding"

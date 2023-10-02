@@ -160,7 +160,7 @@ static void split_by_space(_cstr_t str, _u32 str_size, _str_t dst_arr[], _u32 ar
 static char _g_vhdr_[4096];
 
 static _hdr_t _g_hdef_[] = {
-	{ RES_ACCEPT_RANGE,		[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
+	{ RES_ACCEPT_RANGES,		[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
 						return "Bytes";
 					}},
 	{ RES_ALLOW,			[] (_resp_t *p) -> _cstr_t {
@@ -194,7 +194,7 @@ static _hdr_t _g_hdef_[] = {
 						if (p->rc_type == RCT_STATIC && p->static_text)
 							r = "text/html";
 						else {
-							if (p->path) {
+							if (p->path && p->b_st) {
 								mime_open();
 								r = mime_resolve(p->path);
 							}
