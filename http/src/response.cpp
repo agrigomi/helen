@@ -213,12 +213,16 @@ static _hdr_t _g_hdef_[] = {
 								 "%a, %d %b %Y %H:%M:%S GMT", _tm);
 						return _g_vhdr_;
 					}},
-	{ RES_EXPIRES,			[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
-						time_t _time = time(NULL) + (72 * 60 * 60);
-						struct tm *_tm = gmtime(&_time);
+	{ RES_EXPIRES,			[] (_resp_t *p) -> _cstr_t {
+						if (p->rc >= 200 && p->rc < 400) {
+							time_t _time = time(NULL) + (72 * 60 * 60);
+							struct tm *_tm = gmtime(&_time);
 
-						strftime(_g_vhdr_, sizeof(_g_vhdr_),
+							strftime(_g_vhdr_, sizeof(_g_vhdr_),
 								 "%a, %d %b %Y %H:%M:%S GMT", _tm);
+						} else
+							_g_vhdr_[0] = 0;
+
 						return _g_vhdr_;
 					}},
 	{ RES_LAST_MODIFIED,		[] (_resp_t *p) -> _cstr_t {
