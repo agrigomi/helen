@@ -28,6 +28,7 @@
 #define REQ_METHOD		"REQ_METHOD"
 #define REQ_URL			"REQ_URL"
 #define REQ_PROTOCOL		"REQ_PROTOCOL"
+#define REQ_UPGRADE		"REQ_UPGRADE"
 #define REQ_CONNECTION		"REQ_CONNECTION"
 #define REQ_ACCEPT		"REQ_ACCEPT"
 #define REQ_ACCEPT_ENCODING	"REQ_ACCEPT_ENCODING"
@@ -57,6 +58,7 @@
 #define RES_LAST_MODIFIED	"Last-Modified"
 #define RES_CONNECTION		"Connection"
 #define RES_EXPIRES		"Expires"
+#define RES_UPGRADE		"Upgrade"
 #define RES_SERVER		"Server"
 
 // HTTP response code
@@ -93,6 +95,7 @@
 #define HTTPRC_REQ_URI_TOO_LARGE	414 // Request-URI Too Large
 #define HTTPRC_UNSUPPORTED_MEDIA_TYPE	415 // Unsupported Media Type
 #define HTTPRC_EXPECTATION_FAILED	417 // Expectation Failed
+#define HTTPRC_UPGRADE_REQUIRED		426 // Upgrade protocol
 #define HTTPRC_INTERNAL_SERVER_ERROR	500 // Internal Server Error
 #define HTTPRC_NOT_IMPLEMENTED		501 // Not Implemented
 #define HTTPRC_BAD_GATEWAY		502 // Bad Gateway
@@ -125,6 +128,7 @@ struct __attribute__((packed)) mapping_url {
 	bool no_stderr;			// dup2 for stderr
 	short resp_code;		// HTTP response code
 	char method[8];			// HTTP method
+	short off_protocol;		// offset to req. protocols
 	short off_url;			// offset to URL
 	short off_header_append;	// offset to rest of header
 	short off_proc;			// offset to response command or file
@@ -133,6 +137,10 @@ struct __attribute__((packed)) mapping_url {
 
 	unsigned int _size(void) {
 		return sizeof(struct mapping_url) - sizeof(buffer) + buffer_len;
+	}
+
+	char *_protocol(void) {
+		return buffer + off_protocol;
 	}
 
 	char *_url(void) {
@@ -206,6 +214,20 @@ typedef struct __attribute__((packed)) {
 		return r;
 	}
 
+	char *_protocol(void) {
+		char *r = NULL;
+
+		switch (type) {
+			case MAPPING_TYPE_URL:
+				r = url._protocol();
+				break;
+			case MAPPING_TYPE_ERR:
+				break;
+		}
+
+		return r;
+	}
+
 	char *_header_append(void) {
 		char *r = NULL;
 
@@ -269,10 +291,10 @@ _err_t cfg_load_mapping(_cstr_t);
 
 /**
 Get mapping record by vhost record and URL */
-_mapping_t *cfg_get_url_mapping(_vhost_t *, _cstr_t method, _cstr_t url);
+_mapping_t *cfg_get_url_mapping(_vhost_t *, _cstr_t method, _cstr_t url, _cstr_t proto);
 /**
 Get mapping record by vhost name and URL */
-_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url);
+_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url, _cstr_t proto);
 /**
 Get mapping record by vhost record and response code */
 _mapping_t *cfg_get_err_mapping(_vhost_t *, short rc);

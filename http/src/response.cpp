@@ -48,6 +48,7 @@ static std::map<int, _cstr_t> _g_resp_text_ = {
 	{ HTTPRC_REQ_URI_TOO_LARGE,	"Request-URI Too Large" },
 	{ HTTPRC_UNSUPPORTED_MEDIA_TYPE,"Unsupported Media Type" },
 	{ HTTPRC_EXPECTATION_FAILED,	"Expectation Failed" },
+	{ HTTPRC_UPGRADE_REQUIRED,	"Upgrade required" },
 	{ HTTPRC_INTERNAL_SERVER_ERROR,	"Internal Server Error" },
 	{ HTTPRC_NOT_IMPLEMENTED,	"Not Implemented" },
 	{ HTTPRC_BAD_GATEWAY,		"Bad Gateway" },
@@ -98,6 +99,7 @@ typedef struct {
 	int		i_method; // resolved method
 	char		*url; // request URL
 	char		*protocol;
+	char		*proto_upgrade;
 	char		*path; // resolved path (real path)
 	bool		b_st; // valid stat
 	struct stat	st; // file status
@@ -157,11 +159,29 @@ static void split_by_space(_cstr_t str, _u32 str_size, _str_t dst_arr[], _u32 ar
 	}
 }
 
+static _cstr_t file_extension(_cstr_t path) {
+	_cstr_t r = NULL;
+	size_t l = strlen(path);
+
+	while (l && path[l] != '.')
+		l--;
+
+	if (l)
+		r = &path[l];
+
+	return r;
+}
+
 static char _g_vhdr_[4096];
 
 static _hdr_t _g_hdef_[] = {
-	{ RES_ACCEPT_RANGES,		[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
-						return "Bytes";
+	{ RES_ACCEPT_RANGES,		[] (_resp_t *p) -> _cstr_t {
+						_cstr_t r = NULL;
+
+						if (p->rc >= 200 && p->rc < 400)
+							r = "Bytes";
+
+						return r;
 					}},
 	{ RES_ALLOW,			[] (_resp_t *p) -> _cstr_t {
 						_cstr_t r = NULL;
@@ -179,6 +199,8 @@ static _hdr_t _g_hdef_[] = {
 						else if (p->rc_type == RCT_MAPPING && p->p_mapping) {
 							if (p->p_mapping->_exec())
 								_g_vhdr_[0] = 0;
+							else if (p->path)
+								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", strlen(p->path));
 							else {
 								_g_vhdr_[0] = '0';
 								_g_vhdr_[1] = 0;
@@ -236,10 +258,15 @@ static _hdr_t _g_hdef_[] = {
 
 						return _g_vhdr_;
 					}},
-	{ RES_CONNECTION,		[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
-						_cstr_t connection = getenv(REQ_CONNECTION);
+	{ RES_CONNECTION,		[] (_resp_t *p) -> _cstr_t {
+						_cstr_t r = getenv(REQ_CONNECTION);
 
-						return (connection) ? connection : "Close";
+						return (r) ? r : "Close";
+					}},
+	{ RES_UPGRADE,			[] (_resp_t *p) -> _cstr_t {
+						_cstr_t r = getenv(REQ_UPGRADE);
+
+						return r;
 					}},
 	{ RES_SERVER,			[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
 						return SERVER_NAME;
@@ -349,7 +376,7 @@ static _err_t send_file_content(_resp_t *p) {
 static _err_t send_response(_resp_t *p) {
 	_err_t r = E_FAIL;
 	bool header = true;
-	char *proc = NULL;
+	_cstr_t proc = NULL;
 	bool exec = false;
 	char path[MAX_PATH];
 
@@ -376,20 +403,17 @@ static _err_t send_response(_resp_t *p) {
 
 			if (exec) {
 				if (header)
-					send_header(p);
+					r = send_header(p);
 
 				r = send_exec(path);
 			} else {
 				p->path = path;
 
-				if ((p->b_st = (stat(p->path, &(p->st)) == 0)))
+				if ((p->b_st = (stat(path, &(p->st)) == 0))) {
 					goto _send_file_;
-				else {
-					if (p->rc >= HTTPRC_BAD_REQUEST && (p->static_text = _g_resp_content_[p->rc])) {
-						p->rc_type = RCT_STATIC;
-						goto _send_static_text_;
-					} else
-						goto _send_header_;
+				} else {
+					r = send_header(p);
+					io_write(path, strlen(path));
 				}
 			}
 		} else
@@ -433,6 +457,7 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 		resp.i_method = (resp.s_method) ? resolve_method(resp.s_method) : 0;
 		resp.url = getenv(REQ_URL);
 		resp.protocol = getenv(REQ_PROTOCOL);
+		resp.proto_upgrade = getenv(REQ_UPGRADE);
 		resp.header = _g_resp_buffer_;
 		resp.sz_hbuffer = sizeof(_g_resp_buffer_);
 
@@ -449,6 +474,18 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 	}
 
 	return r;
+}
+
+static void switch_to_err(_resp_t *p, int rc) {
+	if (rc >= HTTPRC_BAD_REQUEST) {
+		p->rc = rc;
+
+		TRACE("http[%d]: #%d %s '%s'\n", getpid(), p->rc, _g_resp_text_[p->rc], p->url);
+		if ((p->p_mapping = cfg_get_err_mapping(p->p_vhost, p->rc)))
+			p->rc_type = RCT_MAPPING;
+		else if ((p->static_text = _g_resp_content_[p->rc]))
+			p->rc_type = RCT_STATIC;
+	}
 }
 
 _err_t res_processing(void) {
@@ -470,16 +507,21 @@ _err_t res_processing(void) {
 		resp.url = getenv(REQ_URL);
 		resp.s_method = getenv(REQ_METHOD);
 		resp.protocol = getenv(REQ_PROTOCOL);
+		resp.proto_upgrade = getenv(REQ_UPGRADE);
 		resp.header = _g_resp_buffer_;
 		resp.sz_hbuffer = sizeof(_g_resp_buffer_);
 
 		if (resp.s_method && resp.url && resp.protocol) {
 			resp.i_method = (resp.s_method) ? resolve_method(resp.s_method) : 0;
-			resp.protocol = getenv(REQ_PROTOCOL);
 
 			if (resp.i_method == METHOD_GET || resp.i_method == METHOD_POST || resp.i_method == METHOD_HEAD) {
-				if ((resp.p_mapping = cfg_get_url_mapping(p_vhost->host, resp.s_method, resp.url))) {
+				if ((resp.p_mapping = cfg_get_url_mapping(p_vhost->host, resp.s_method, resp.url, resp.protocol))) {
+					_cstr_t proto = resp.p_mapping->_protocol();
+
 					resp.rc_type = RCT_MAPPING;
+					if (proto[0])
+						resp.protocol = (char *)proto;
+
 					resp.rc = (resp.p_mapping->url.resp_code) ? resp.p_mapping->url.resp_code : HTTPRC_OK;
 				} else {
 					snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, resp.url);
@@ -489,26 +531,18 @@ _err_t res_processing(void) {
 							if ((resp.b_st = (stat(resp.path, &resp.st) == 0)))
 								resp.rc = HTTPRC_OK;
 							else
-								resp.rc = HTTPRC_NOT_FOUND;
+								switch_to_err(&resp, HTTPRC_NOT_FOUND);
 						} else {
-							resp.rc = HTTPRC_FORBIDDEN;
 							resp.path = NULL;
+							switch_to_err(&resp, HTTPRC_FORBIDDEN);;
 						}
 					} else
-						resp.rc = HTTPRC_NOT_FOUND;
+						switch_to_err(&resp, HTTPRC_NOT_FOUND);
 				}
 			} else
-				resp.rc = HTTPRC_METHOD_NOT_ALLOWED;
+				switch_to_err(&resp,HTTPRC_METHOD_NOT_ALLOWED);
 		} else
-			resp.rc = HTTPRC_BAD_REQUEST;
-
-		if (resp.rc >= HTTPRC_BAD_REQUEST) {
-			TRACE("http[%d]: %s '%s'\n", getpid(), _g_resp_text_[resp.rc], resp.url);
-			if ((resp.p_mapping = cfg_get_err_mapping(p_vhost->host, resp.rc)))
-				resp.rc_type = RCT_MAPPING;
-			else if ((resp.static_text = _g_resp_content_[resp.rc]))
-				resp.rc_type = RCT_STATIC;
-		}
+			switch_to_err(&resp, HTTPRC_BAD_REQUEST);
 
 		r = send_response(&resp);
 	}

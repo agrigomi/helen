@@ -196,6 +196,7 @@ static int fill_header_append(_json_value_t *jvha, char *buffer, unsigned int sz
 
 static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
 	_json_value_t *method = json_select(p_jcxt, "method", pjo);
+	_json_value_t *protocol = json_select(p_jcxt, "protocol", pjo);
 	_json_value_t *url = json_select(p_jcxt, "url", pjo);
 	_json_value_t *header = json_select(p_jcxt, "header", pjo);
 	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
@@ -206,6 +207,7 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 
 	p->type = MAPPING_TYPE_URL;
 	jv_string(method, p->url.method, sizeof(p->url.method));
+
 	if (header)
 		p->url.header = (header->jvt == JSON_TRUE);
 	if (no_stderr)
@@ -215,6 +217,11 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 
 	p->url.buffer_len = 0;
 	memset(p->url.buffer, 0, sizeof(p->url.buffer));
+
+	// protocol
+	p->url.off_protocol = p->url.buffer_len;
+	p->url.buffer_len += jv_string(protocol, p->url.buffer + p->url.buffer_len,
+			sizeof(p->url.buffer) - p->url.buffer_len) + 1;
 
 	// add URL to buffer
 	p->url.off_url = p->url.buffer_len;
@@ -323,10 +330,12 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 							if (pjv->jvt == JSON_OBJECT) {
 								char key[256] = "";
 								unsigned int l = 0;
+								_cstr_t proto = NULL;
 
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_url_rec(p_jcxt, &(pjv->object), &rec);
-								l = snprintf(key, sizeof(key), "%s_%s.url",
+								proto = rec._protocol();
+								l = snprintf(key, sizeof(key), "%s_%s",
 										rec.url.method,
 										rec.url._url());
 								hf_add(p_hfcxt, key, l, &rec, rec._size());
@@ -349,7 +358,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_err_rec(p_jcxt, &(pjv->object), &rec);
-								l = snprintf(key, sizeof(key), RC_PREFIX "%d.err", rec.err.code);
+								l = snprintf(key, sizeof(key), RC_PREFIX "%d", rec.err.code);
 								hf_add(p_hfcxt, key, l, &rec, rec._size());
 							}
 
@@ -510,18 +519,18 @@ _vhost_t *cfg_get_vhost(_cstr_t host) {
 
 /**
 Get mapping record by vhost record and URL */
-_mapping_t *cfg_get_url_mapping(_vhost_t *pvhost, _cstr_t method, _cstr_t url) {
+_mapping_t *cfg_get_url_mapping(_vhost_t *pvhost, _cstr_t method, _cstr_t url, _cstr_t proto) {
 	_mapping_t *r = NULL;
 
 	if (pvhost)
-		r = cfg_get_url_mapping(pvhost->host, method, url);
+		r = cfg_get_url_mapping(pvhost->host, method, url, proto);
 
 	return r;
 }
 
 /**
 Get mapping record by vhost name and URL */
-_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url) {
+_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url, _cstr_t proto) {
 	_mapping_t *r = NULL;
 	_vhost_mapping_t::iterator it = _g_mapping_.find(host);
 
@@ -530,7 +539,7 @@ _mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url) {
 
 		if (phf_cxt) {
 			char key[256] = "";
-			unsigned int l = snprintf(key, sizeof(key), "%s_%s.url", method, url);
+			unsigned int l = snprintf(key, sizeof(key), "%s_%s", method, url);
 			unsigned int sz;
 
 			r = (_mapping_t *)hf_get(phf_cxt, key, l, &sz);
@@ -562,7 +571,7 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc) {
 
 		if (phf_cxt) {
 			char key[32] = "";
-			unsigned int l = snprintf(key, sizeof(key), RC_PREFIX "%d.err", rc);
+			unsigned int l = snprintf(key, sizeof(key), RC_PREFIX "%d", rc);
 			unsigned int sz;
 
 			r = (_mapping_t *)hf_get(phf_cxt, key, l, &sz);
