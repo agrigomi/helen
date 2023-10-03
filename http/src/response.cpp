@@ -409,9 +409,9 @@ static _err_t send_response(_resp_t *p) {
 			} else {
 				p->path = path;
 
-				if ((p->b_st = (stat(path, &(p->st)) == 0))) {
+				if ((p->b_st = (stat(path, &(p->st)) == 0)))
 					goto _send_file_;
-				} else {
+				else {
 					r = send_header(p);
 					io_write(path, strlen(path));
 				}
@@ -428,11 +428,17 @@ _send_static_text_:
 		}
 	} else if (p->b_st) {
 _send_file_:
-		if (header)
-			r = send_header(p);
+		if (p->st.st_mode & S_IXUSR) {
+			// executable
+			if (p->path)
+				send_exec(p->path);
+		} else {
+			if (header)
+				r = send_header(p);
 
-		if (p->path)
-			r = send_file_content(p);
+			if (p->path)
+				r = send_file_content(p);
+		}
 	} else {
 _send_header_:
 		if (header)
