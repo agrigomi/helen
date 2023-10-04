@@ -224,7 +224,7 @@ static _hdr_t _g_hdef_[] = {
 
 						return r;
 					}},
-	{ RES_CONTENT_ENCODING,		[] (_resp_t *p) -> _cstr_t {
+	{ RES_CONTENT_ENCODING,		[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
 						return "";
 					}},
 	{ RES_DATE,			[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
@@ -258,12 +258,12 @@ static _hdr_t _g_hdef_[] = {
 
 						return _g_vhdr_;
 					}},
-	{ RES_CONNECTION,		[] (_resp_t *p) -> _cstr_t {
+	{ RES_CONNECTION,		[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
 						_cstr_t r = getenv(REQ_CONNECTION);
 
 						return (r) ? r : "Close";
 					}},
-	{ RES_UPGRADE,			[] (_resp_t *p) -> _cstr_t {
+	{ RES_UPGRADE,			[] (_resp_t __attribute__((unused)) *p) -> _cstr_t {
 						_cstr_t r = getenv(REQ_UPGRADE);
 
 						return r;
@@ -419,7 +419,6 @@ static _err_t send_response(_resp_t *p) {
 		} else
 			goto _send_header_;
 	} else if (p->rc_type == RCT_STATIC && p->static_text) {
-_send_static_text_:
 		int l = strlen(p->static_text);
 
 		if (l) {
@@ -527,8 +526,10 @@ _err_t res_processing(void) {
 					_cstr_t proto = resp.p_mapping->_protocol();
 
 					resp.rc_type = RCT_MAPPING;
-					if (proto[0])
+					if (proto[0]) {
 						resp.protocol = (char *)proto;
+						setenv(REQ_PROTOCOL, proto, 1);
+					}
 
 					resp.rc = (resp.p_mapping->url.resp_code) ? resp.p_mapping->url.resp_code : HTTPRC_OK;
 				} else {
