@@ -432,12 +432,14 @@ _send_file_:
 			// executable
 			if (p->path)
 				send_exec(p->path);
-		} else {
+		} else if (p->st.st_mode & S_IRUSR) {
 			if (header)
 				r = send_header(p);
 
 			if (p->path)
 				r = send_file_content(p);
+		} else {
+			TRACE("http[%d]: No read permissions\n", getpid());
 		}
 	} else {
 _send_header_:
