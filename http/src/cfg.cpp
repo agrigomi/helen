@@ -330,11 +330,9 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 							if (pjv->jvt == JSON_OBJECT) {
 								char key[256] = "";
 								unsigned int l = 0;
-								_cstr_t proto = NULL;
 
 								memset(&rec, 0, sizeof(_mapping_t));
 								fill_url_rec(p_jcxt, &(pjv->object), &rec);
-								proto = rec._protocol();
 								l = snprintf(key, sizeof(key), "%s_%s",
 										rec.url.method,
 										rec.url._url());
@@ -530,7 +528,8 @@ _mapping_t *cfg_get_url_mapping(_vhost_t *pvhost, _cstr_t method, _cstr_t url, _
 
 /**
 Get mapping record by vhost name and URL */
-_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url, _cstr_t proto) {
+_mapping_t *cfg_get_url_mapping(_cstr_t host, _cstr_t method, _cstr_t url,
+		_cstr_t __attribute__((unused)) proto) {
 	_mapping_t *r = NULL;
 	_vhost_mapping_t::iterator it = _g_mapping_.find(host);
 
