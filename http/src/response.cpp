@@ -192,9 +192,12 @@ static _hdr_t _g_hdef_[] = {
 						return r;
 					}},
 	{ RES_CONTENT_LENGTH,		[] (_resp_t *p) -> _cstr_t {
-						if (p->b_st)
-							snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", p->st.st_size);
-						else if (p->rc_type == RCT_STATIC && p->static_text)
+						if (p->b_st) {
+							if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges) {
+								//...
+							} else
+								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", p->st.st_size);
+						} else if (p->rc_type == RCT_STATIC && p->static_text)
 								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", strlen(p->static_text));
 						else if (p->rc_type == RCT_MAPPING && p->p_mapping) {
 							if (p->p_mapping->_exec())
@@ -213,12 +216,19 @@ static _hdr_t _g_hdef_[] = {
 	{ RES_CONTENT_TYPE,		[] (_resp_t *p) -> _cstr_t {
 						_cstr_t r = NULL;
 
-						if (p->rc_type == RCT_STATIC && p->static_text)
-							r = "text/html";
-						else {
-							if (p->path && p->b_st) {
-								mime_open();
-								r = mime_resolve(p->path);
+						if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges) {
+							snprintf(_g_vhdr_, sizeof(_g_vhdr_),
+								"multipart/byteranges; boundary=%s\r\n",
+								p->boundary);
+							r = _g_vhdr_;
+						} else {
+							if (p->rc_type == RCT_STATIC && p->static_text)
+								r = "text/html";
+							else {
+								if (p->path && p->b_st) {
+									mime_open();
+									r = mime_resolve(p->path);
+								}
 							}
 						}
 
@@ -432,6 +442,13 @@ _send_file_:
 			if (p->path)
 				send_exec(p->path);
 		} else if (p->st.st_mode & S_IRUSR) {
+			_cstr_t range = getenv(REQ_RANGE);
+			_cstr_t if_range = getenv(REQ_IF_RANGE);
+
+			if (range || if_range) {
+				//...
+			}
+
 			if (header)
 				r = send_header(p);
 

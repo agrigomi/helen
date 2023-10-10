@@ -39,6 +39,7 @@
 #define REQ_PRAGMA		"REQ_PRAGMA"
 #define REQ_CACHE_CONTROL	"REQ_CACHE_CONTROL"
 #define REQ_RANGE		"REQ_RANGE"
+#define REQ_IF_RANGE		"REQ_IF_RANGE"
 #define REQ_DIR			"REQ_DIR"
 #define REQ_FILE		"REQ_FILE"
 #define REQ_MISSING		"REQ_MISSING"
@@ -54,6 +55,7 @@
 #define RES_CONTENT_LENGTH	"Content-Length"
 #define RES_CONTENT_TYPE	"Content-Type"
 #define RES_CONTENT_ENCODING	"Content-Encoding"
+#define RES_CONTENT_RANGE	"Content-Range"
 #define RES_DATE		"Date"
 #define RES_LAST_MODIFIED	"Last-Modified"
 #define RES_CONNECTION		"Connection"
@@ -155,7 +157,7 @@ struct __attribute__((packed)) mapping_url {
 		return buffer + off_proc;
 	}
 
-bool _exec(void) {
+	bool _exec(void) {
 		return exec;
 	}
 };
