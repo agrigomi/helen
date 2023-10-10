@@ -302,14 +302,17 @@ static _err_t send_header(_resp_t *p) {
 		header_append = p->p_mapping->_header_append();
 
 	while (_g_hdef_[n].var) {
-		_cstr_t val = _g_hdef_[n].vcb(p);
 		bool set = true;
 
 		if (header_append && header_append[0])
 			set = strcasestr(header_append, _g_hdef_[n].var) == NULL;
 
-		if (set && val && val[0])
-			i += snprintf(p->header + i, p->sz_hbuffer - 1, "%s: %s\r\n", _g_hdef_[n].var, val);
+		if (set) {
+			_cstr_t val = _g_hdef_[n].vcb(p);
+
+			if (val && val[0])
+				i += snprintf(p->header + i, p->sz_hbuffer - 1, "%s: %s\r\n", _g_hdef_[n].var, val);
+		}
 
 		n++;
 	}
