@@ -386,6 +386,77 @@ static _err_t send_file_content(_resp_t *p) {
 	return r;
 }
 
+static void switch_to_err(_resp_t *p, int rc) {
+	if (rc >= HTTPRC_BAD_REQUEST) {
+		p->rc = rc;
+
+		TRACE("http[%d]: #%d %s '%s'\n", getpid(), p->rc, _g_resp_text_[p->rc], p->url);
+		if ((p->p_mapping = cfg_get_err_mapping(p->p_vhost, p->rc)))
+			p->rc_type = RCT_MAPPING;
+		else if ((p->static_text = _g_resp_content_[p->rc]))
+			p->rc_type = RCT_STATIC;
+	}
+}
+
+static _v_range_t _gv_ranges_;
+static _range_t _g_range_;
+
+static _err_t parse_range(_resp_t *p, _cstr_t range) {
+	_err_t r = E_FAIL;
+	_cstr_t if_range = getenv(REQ_IF_RANGE);
+
+	_gv_ranges_.clear();
+	strncpy(_g_vhdr_, range, sizeof(_g_vhdr_));
+
+	str_split(_g_vhdr_, "=", [] (int idx, char *str, void *udata) -> int {
+		int r = -1;
+		_resp_t *p = (_resp_t *)udata;
+
+		if (idx == 0) {
+			// Range units
+			if (strncasecmp(str, "bytes", 5) == 0)
+				r = 0;
+		} else if (idx == 1) {
+			// ranges
+			str_split(str, ",", [] (int __attribute__((unused)) idx, char *str,
+					void *udata) -> int {
+				int r = 0;
+				_resp_t *p = (_resp_t *)udata;
+
+				memset(&_g_range_, 0, sizeof(_range_t));
+
+				str_split(str, "-", [] (int idx, char *str,
+						void __attribute__((unused)) *udata) -> int {
+					if (idx == 0)
+						_g_range_.begin = atoi(str);
+					else if (idx == 1)
+						_g_range_.size = atoi(str);
+
+					return 0;
+				}, udata);
+
+				if ((_g_range_.begin + _g_range_.size) <= (unsigned long)p->st.st_size)
+					_gv_ranges_.push_back(_g_range_);
+				else
+					r = -1;
+
+				return r;
+			}, udata);
+
+			r = 0;
+		}
+
+		return r;
+	}, p);
+
+	if (_gv_ranges_.size()) {
+		p->pv_ranges = &_gv_ranges_;
+		r = E_OK;
+	}
+
+	return r;
+}
+
 static _err_t send_response(_resp_t *p) {
 	_err_t r = E_FAIL;
 	bool header = true;
@@ -396,6 +467,7 @@ static _err_t send_response(_resp_t *p) {
 	if (p->i_method == METHOD_HEAD)
 		goto _send_header_;
 
+_send_response_:
 	// For mapping
 	if (p->rc_type == RCT_MAPPING && p->p_mapping) {
 		switch (p->p_mapping->type) {
@@ -446,10 +518,9 @@ _send_file_:
 				send_exec(p->path);
 		} else if (p->st.st_mode & S_IRUSR) {
 			_cstr_t range = getenv(REQ_RANGE);
-			_cstr_t if_range = getenv(REQ_IF_RANGE);
 
-			if (range || if_range) {
-				//...
+			if (range) {
+				parse_range(p, range);
 			}
 
 			if (header)
@@ -501,18 +572,6 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 	}
 
 	return r;
-}
-
-static void switch_to_err(_resp_t *p, int rc) {
-	if (rc >= HTTPRC_BAD_REQUEST) {
-		p->rc = rc;
-
-		TRACE("http[%d]: #%d %s '%s'\n", getpid(), p->rc, _g_resp_text_[p->rc], p->url);
-		if ((p->p_mapping = cfg_get_err_mapping(p->p_vhost, p->rc)))
-			p->rc_type = RCT_MAPPING;
-		else if ((p->static_text = _g_resp_content_[p->rc]))
-			p->rc_type = RCT_STATIC;
-	}
 }
 
 _err_t res_processing(void) {
