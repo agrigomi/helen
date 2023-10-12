@@ -96,6 +96,7 @@
 #define HTTPRC_REQ_ENTITY_TOO_LARGE	413 // Request Entity Too Large
 #define HTTPRC_REQ_URI_TOO_LARGE	414 // Request-URI Too Large
 #define HTTPRC_UNSUPPORTED_MEDIA_TYPE	415 // Unsupported Media Type
+#define HTTPRC_RANGE_NOT_SATISFIABLE	416 // Range Not Satisfiable
 #define HTTPRC_EXPECTATION_FAILED	417 // Expectation Failed
 #define HTTPRC_UPGRADE_REQUIRED		426 // Upgrade protocol
 #define HTTPRC_INTERNAL_SERVER_ERROR	500 // Internal Server Error

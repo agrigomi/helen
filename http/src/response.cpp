@@ -47,6 +47,7 @@ static std::map<int, _cstr_t> _g_resp_text_ = {
 	{ HTTPRC_REQ_ENTITY_TOO_LARGE,	"Request Entity Too Large" },
 	{ HTTPRC_REQ_URI_TOO_LARGE,	"Request-URI Too Large" },
 	{ HTTPRC_UNSUPPORTED_MEDIA_TYPE,"Unsupported Media Type" },
+	{ HTTPRC_RANGE_NOT_SATISFIABLE,	"Range Not Satisfiable" },
 	{ HTTPRC_EXPECTATION_FAILED,	"Expectation Failed" },
 	{ HTTPRC_UPGRADE_REQUIRED,	"Upgrade required" },
 	{ HTTPRC_INTERNAL_SERVER_ERROR,	"Internal Server Error" },
@@ -61,7 +62,8 @@ static std::map<int, _cstr_t> _g_resp_content_ = {
 	{ HTTPRC_NOT_FOUND,		"<!DOCTYPE html><html><head></head><body><h1>Not found #404</h1></body></html>" },
 	{ HTTPRC_INTERNAL_SERVER_ERROR,	"<!DOCTYPE html><html><head></head><body><h1>Internal server error #500</h1></body></html>" },
 	{ HTTPRC_FORBIDDEN,		"<!DOCTYPE html><html><head></head><body><h1>Forbidden path #403</h1></body></html>" },
-	{ HTTPRC_NOT_IMPLEMENTED,	"<!DOCTYPE html><html><head></head><body><h1>Not implemented #501</h1></body></html>" }
+	{ HTTPRC_NOT_IMPLEMENTED,	"<!DOCTYPE html><html><head></head><body><h1>Not implemented #501</h1></body></html>" },
+	{ HTTPRC_RANGE_NOT_SATISFIABLE,	"<!DOCTYPE html><html><head></head><body><h1>Range Not Satisfiable #416</h1></body></html>" }
 };
 
 static const char *methods[] = { "GET", "HEAD", "POST",
@@ -194,7 +196,16 @@ static _hdr_t _g_hdef_[] = {
 	{ RES_CONTENT_LENGTH,		[] (_resp_t *p) -> _cstr_t {
 						if (p->b_st) {
 							if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges) {
-								//...
+								_v_range_t::iterator i = p->pv_ranges->begin();
+								unsigned long l = 0;
+
+								while (i != p->pv_ranges->end()) {
+									l += strlen((*i).header) + (*i).size;
+									i++;
+								}
+
+								l += strlen(p->boundary) + 4;
+								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", l);
 							} else
 								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", p->st.st_size);
 						} else if (p->rc_type == RCT_STATIC && p->static_text)
@@ -218,7 +229,7 @@ static _hdr_t _g_hdef_[] = {
 
 						if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges) {
 							snprintf(_g_vhdr_, sizeof(_g_vhdr_),
-								"multipart/byteranges; boundary=%s\r\n",
+								"multipart/byteranges; boundary=%s",
 								p->boundary);
 							r = _g_vhdr_;
 						} else {
@@ -433,15 +444,45 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 						_g_range_.size = atoi(str);
 
 					return 0;
-				}, udata);
+				}, p);
 
-				if ((_g_range_.begin + _g_range_.size) <= (unsigned long)p->st.st_size)
+				if ((_g_range_.begin + _g_range_.size) <= (unsigned long)p->st.st_size) {
+					int i = 0;
+
+					if (!_g_range_.size)
+						// to the end of file
+						_g_range_.size = p->st.st_size - _g_range_.begin;
+
+					/////// range header //////////
+
+					// boundary
+					i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
+							"--%s\r\n", p->boundary);
+					// content type
+					if (p->path) {
+						mime_open();
+
+						_cstr_t mt = mime_resolve(p->path);
+
+						if (mt)
+							i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
+								RES_CONTENT_TYPE ": %s\r\n", mt);
+					}
+
+					// content range + EOH
+					i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
+							RES_CONTENT_RANGE ": Bytes %lu-%lu/%lu\r\n\r\n",
+							_g_range_.begin, _g_range_.size, p->st.st_size);
+
+					TRACE("http[%d]: range header\n%s", getpid(), _g_range_.header);
+					//////////////////////////////
+
 					_gv_ranges_.push_back(_g_range_);
-				else
+				} else
 					r = -1;
 
 				return r;
-			}, udata);
+			}, p);
 
 			r = 0;
 		}
@@ -520,7 +561,15 @@ _send_file_:
 			_cstr_t range = getenv(REQ_RANGE);
 
 			if (range) {
-				parse_range(p, range);
+				if (parse_range(p, range) == E_OK) {
+					p->rc = HTTPRC_PART_CONTENT;
+				} else {
+					p->b_st = false;
+					p->path = NULL;
+
+					switch_to_err(p, HTTPRC_RANGE_NOT_SATISFIABLE);
+					goto _send_response_;
+				}
 			}
 
 			if (header)
