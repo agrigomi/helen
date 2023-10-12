@@ -409,8 +409,8 @@ static void switch_to_err(_resp_t *p, int rc) {
 	}
 }
 
-static _v_range_t _gv_ranges_;
-static _range_t _g_range_;
+static _v_range_t _gv_ranges_; // ranges vector
+static _range_t _g_range_; // range element
 
 static _err_t parse_range(_resp_t *p, _cstr_t range) {
 	_err_t r = E_FAIL;
@@ -439,13 +439,16 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 				str_split(str, "-", [] (int idx, char *str,
 						void __attribute__((unused)) *udata) -> int {
 					if (idx == 0)
+						// range start
 						_g_range_.begin = atoi(str);
 					else if (idx == 1)
+						// range size
 						_g_range_.size = atoi(str);
 
 					return 0;
 				}, p);
 
+				// _g_range_ shoult contains a range metrics (offset ans size)
 				if ((_g_range_.begin + _g_range_.size) <= (unsigned long)p->st.st_size) {
 					int i = 0;
 
@@ -466,7 +469,7 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 
 						if (mt)
 							i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
-								RES_CONTENT_TYPE ": %s\r\n", mt);
+									RES_CONTENT_TYPE ": %s\r\n", mt);
 					}
 
 					// content range + EOH
@@ -479,6 +482,7 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 
 					_gv_ranges_.push_back(_g_range_);
 				} else
+					// invalid range
 					r = -1;
 
 				return r;
