@@ -557,10 +557,10 @@ _send_response_:
 		}
 	} else if (p->b_st) {
 _send_file_:
-		if (p->st.st_mode & S_IXUSR) {
+		if ((p->st.st_mode & S_IXUSR) && !S_ISDIR(p->st.st_mode)) {
 			// executable
 			if (p->path)
-				send_exec(p->path);
+				r = send_exec(p->path);
 		} else if (p->st.st_mode & S_IRUSR) {
 			_cstr_t range = getenv(REQ_RANGE);
 
