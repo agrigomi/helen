@@ -611,34 +611,39 @@ _send_response_:
 		}
 	} else if (p->b_st) {
 _send_file_:
-		if ((p->st.st_mode & S_IXUSR) && !S_ISDIR(p->st.st_mode)) {
-			// executable
-			if (p->path)
-				r = send_exec(p->path);
-		} else if (p->st.st_mode & S_IRUSR) {
-			_cstr_t range = getenv(REQ_RANGE);
+		if (!S_ISDIR(p->st.st_mode)) {
+			// Not a directory
+			if ((p->st.st_mode & S_IXUSR)) {
+				// executable
+				if (p->path)
+					r = send_exec(p->path);
+			} else if (p->st.st_mode & S_IRUSR) {
+				_cstr_t range = getenv(REQ_RANGE);
 
-			if (range) {
-				generate_boundary(p);
+				if (range) {
+					generate_boundary(p);
 
-				if (parse_range(p, range) == E_OK)
-					p->rc = HTTPRC_PART_CONTENT;
-				else {
-					p->b_st = false;
-					p->path = NULL;
+					if (parse_range(p, range) == E_OK)
+						p->rc = HTTPRC_PART_CONTENT;
+					else {
+						p->b_st = false;
+						p->path = NULL;
 
-					switch_to_err(p, HTTPRC_RANGE_NOT_SATISFIABLE);
-					goto _send_response_;
+						switch_to_err(p, HTTPRC_RANGE_NOT_SATISFIABLE);
+						goto _send_response_;
+					}
 				}
+
+				if (header)
+					r = send_header(p);
+
+				if (p->path)
+					r = send_file_content(p);
+			} else {
+				TRACE("http[%d]: No read permissions\n", getpid());
 			}
-
-			if (header)
-				r = send_header(p);
-
-			if (p->path)
-				r = send_file_content(p);
 		} else {
-			TRACE("http[%d]: No read permissions\n", getpid());
+			TRACE("http[%d]: Directory request\n", getpid());
 		}
 	} else {
 _send_header_:
