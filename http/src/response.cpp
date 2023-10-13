@@ -388,11 +388,44 @@ static _err_t send_file_content(_resp_t *p) {
 	int nb = 0;
 
 	if (fd > 0) {
-		while ((nb = read(fd, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
-			io_write(_g_resp_buffer_, nb);
+		if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges) {
+			_v_range_t::iterator i = p->pv_ranges->begin();
 
+			while (i != p->pv_ranges->end()) {
+				unsigned long l = 0;
+				unsigned long s = (*i).size;
+				_cstr_t hdr = (*i).header;
+
+				if ( lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
+					goto _close_file_;
+
+				TRACE("http[%d]: Partial content (%lu-%lu)\n", getpid(), (*i).begin, s);
+				// send range header
+				io_write(hdr, strlen(hdr));
+
+				// send range content
+				while ((nb = read(fd, _g_resp_buffer_,
+						((s - l) < sizeof(_g_resp_buffer_)) ?
+						(s - l) : sizeof(_g_resp_buffer_))) > 0 && l < s) {
+					io_write(_g_resp_buffer_, nb);
+					l += nb;
+				}
+
+				i++;
+			}
+
+			// done
+			io_fwrite("\r\n--%s--", p->boundary);
+
+			r = E_OK;
+		} else {
+			while ((nb = read(fd, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
+				io_write(_g_resp_buffer_, nb);
+
+			r = E_OK;
+		}
+_close_file_:
 		close(fd);
-		r = E_OK;
 	}
 
 	return r;
@@ -461,7 +494,7 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 
 					// boundary
 					i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
-							"--%s\r\n", p->boundary);
+							"\r\n--%s\r\n", p->boundary);
 					// content type
 					if (p->path) {
 						mime_open();
@@ -478,7 +511,6 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 							RES_CONTENT_RANGE ": Bytes %lu-%lu/%lu\r\n\r\n",
 							_g_range_.begin, _g_range_.size, p->st.st_size);
 
-					TRACE("http[%d]: range header\n%s", getpid(), _g_range_.header);
 					//////////////////////////////
 
 					_gv_ranges_.push_back(_g_range_);
