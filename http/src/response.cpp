@@ -13,6 +13,7 @@
 #include "fcfg.h"
 #include "str.h"
 #include "respawn.h"
+#include "sha1.h"
 
 static std::map<int, _cstr_t> _g_resp_text_ = {
 	{ HTTPRC_CONTINUE,		"Continue" },
@@ -94,7 +95,7 @@ typedef std::vector<_range_t> _v_range_t;
 #define RCT_STATIC	1
 #define RCT_MAPPING	2
 
-#define MAX_BOUNDARY	20
+#define MAX_BOUNDARY	(SHA1HashSize * 2) + 1
 
 typedef struct {
 	char		*s_method;
@@ -204,7 +205,7 @@ static _hdr_t _g_hdef_[] = {
 									i++;
 								}
 
-								l += strlen(p->boundary) + 4;
+								l += strlen(p->boundary) + 6; // \r\n--<boundary>--
 								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", l);
 							} else
 								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", p->st.st_size);
@@ -502,6 +503,27 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 	return r;
 }
 
+static void generate_boundary(_resp_t *p) {
+	SHA1Context sha1_cxt;
+	unsigned char sha1_result[SHA1HashSize];
+	int i = 0, j = 0;
+	static const char *hex = "0123456789abcdef";
+
+	SHA1Reset(&sha1_cxt);
+	memset(sha1_result, 0, sizeof(sha1_result));
+
+	if (p->path)
+		SHA1Input(&sha1_cxt, (unsigned char *)p->path, strlen(p->path));
+
+	SHA1Input(&sha1_cxt, (unsigned char *)(&p->st), sizeof(struct stat));
+	SHA1Result(&sha1_cxt, sha1_result);
+
+	for (; i < SHA1HashSize && j < MAX_BOUNDARY; i++, j += 2) {
+		p->boundary[j] = hex[(sha1_result[i] >> 4) & 0x0f];
+		p->boundary[j + 1] = hex[sha1_result[i] & 0x0f];
+	}
+}
+
 static _err_t send_response(_resp_t *p) {
 	_err_t r = E_FAIL;
 	bool header = true;
@@ -565,9 +587,11 @@ _send_file_:
 			_cstr_t range = getenv(REQ_RANGE);
 
 			if (range) {
-				if (parse_range(p, range) == E_OK) {
+				generate_boundary(p);
+
+				if (parse_range(p, range) == E_OK)
 					p->rc = HTTPRC_PART_CONTENT;
-				} else {
+				else {
 					p->b_st = false;
 					p->path = NULL;
 
