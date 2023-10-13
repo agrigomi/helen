@@ -103,7 +103,7 @@ typedef struct {
 	char		*url; // request URL
 	char		*protocol;
 	char		*proto_upgrade;
-	char		*path; // resolved path (real path)
+	_cstr_t		path; // resolved path (real path)
 	bool		b_st; // valid stat
 	struct stat	st; // file status
 	_vhost_t	*p_vhost;
@@ -688,6 +688,17 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 	return r;
 }
 
+static _cstr_t resolve_path(_cstr_t path, char *resolved) {
+	_cstr_t r = NULL;
+
+	if (strstr(path, ".."))
+		r = realpath(path, resolved);
+	else
+		r = path;
+
+	return r;
+}
+
 _err_t res_processing(void) {
 	_err_t r = E_FAIL;
 	_cstr_t host = getenv(REQ_HOST);
@@ -728,7 +739,7 @@ _err_t res_processing(void) {
 				} else {
 					snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, resp.url);
 
-					if ((resp.path = realpath(doc_path, resolved_path))) {
+					if ((resp.path = resolve_path(doc_path, resolved_path))) {
 						if (memcmp(resp.path, p_vhost->root, strlen(p_vhost->root)) == 0) {
 							if ((resp.b_st = (stat(resp.path, &resp.st) == 0)))
 								resp.rc = HTTPRC_OK;
