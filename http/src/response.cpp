@@ -582,7 +582,7 @@ _send_response_:
 				break;
 		}
 
-		if (proc[0]) {
+		if (proc && proc[0]) {
 			str_resolve(proc, path, sizeof(path));
 
 			if (exec) {
