@@ -98,11 +98,11 @@ typedef std::vector<_range_t> _v_range_t;
 #define MAX_BOUNDARY	(SHA1HashSize * 2) + 1
 
 typedef struct {
-	char		*s_method;
+	_cstr_t		s_method;
 	int		i_method; // resolved method
-	char		*url; // request URL
-	char		*protocol;
-	char		*proto_upgrade;
+	_cstr_t		url; // request URL
+	_cstr_t		protocol;
+	_cstr_t		proto_upgrade;
 	_cstr_t		path; // resolved path (real path)
 	bool		b_st; // valid stat
 	struct stat	st; // file status
