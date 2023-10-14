@@ -474,10 +474,10 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 						void __attribute__((unused)) *udata) -> int {
 					if (idx == 0)
 						// range start
-						_g_range_.begin = atoi(str);
+						_g_range_.begin = atol(str);
 					else if (idx == 1)
 						// range size
-						_g_range_.size = atoi(str);
+						_g_range_.size = atol(str);
 
 					return 0;
 				}, p);
