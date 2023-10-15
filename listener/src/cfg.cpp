@@ -142,9 +142,11 @@ static void server_accept(_listen_t *pl) {
 				}
 
 				TRACE("hl[%d]: Incoming connection from %s on port %d\n", getpid(), strip, pl->port);
-				set_env(pl, "PEER_IP", strip);
+
 				if ((cpid = fork()) == 0) { // child
 					_g_fork_ = true;
+					set_env(pl, "PEER_IP", strip);
+
 					cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *arg) {
 						p->flags &= ~LISTEN_RUNNING;
 						close(p->server_fd);
