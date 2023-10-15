@@ -70,6 +70,32 @@ static void jv_string(_json_string_t *pjs, _char_t *dst, unsigned int sz_dst) {
 		strncpy(dst, pjs->data, ((sz_dst-1) < pjs->size) ? (sz_dst-1) : pjs->size);
 }
 
+static void set_env(_listen_t *pl, _cstr_t var, _cstr_t val) {
+	_char_t str[1024];
+	int lv = strlen(var);
+	int i = 0;
+
+	for (; i < MAX_ENV; i++) {
+		if (pl->env[i] == NULL)
+			break;
+
+		if (strncmp(pl->env[i], var, lv) == 0 && pl->env[i][lv] == '=')
+			break;
+	}
+
+	if (i < MAX_ENV) {
+		int l = snprintf(str, sizeof(str), "%s=%s", var, val) + 1;
+
+		if (pl->env[i])
+			free(pl->env[i]);
+
+		if ((pl->env[i] = (_str_t)malloc(l))) {
+			memset(pl->env[i], 0, l);
+			strncpy(pl->env[i], str, l);
+		}
+	}
+}
+
 static void server_accept(_listen_t *pl) {
 	pthread_create(&pl->thread, NULL, [](void *udata)->void* {
 		_listen_t *pl = (_listen_t *)udata;
@@ -116,7 +142,7 @@ static void server_accept(_listen_t *pl) {
 				}
 
 				TRACE("hl[%d]: Incoming connection from %s on port %d\n", getpid(), strip, pl->port);
-
+				set_env(pl, "PEER_IP", strip);
 				if ((cpid = fork()) == 0) { // child
 					_g_fork_ = true;
 					cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *arg) {
@@ -282,7 +308,7 @@ static void parse_env_array(_json_array_t *pja_env, _str_t dst_arr[], _u32 arr_s
 	_json_value_t *p_jv = NULL;
 	_u32 i = 0;
 
-	while ((p_jv = json_array_element(pja_env, i))) {
+	while ((p_jv = json_array_element(pja_env, i)) && i < MAX_ENV) {
 		if (p_jv->jvt == JSON_STRING) {
 			if ((dst_arr[i] = (_str_t)malloc(p_jv->string.size + 1))) {
 				memset(dst_arr[i], 0, p_jv->string.size + 1);
