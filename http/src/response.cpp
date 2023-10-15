@@ -194,19 +194,42 @@ static _hdr_t _g_hdef_[] = {
 
 						return r;
 					}},
+	{ RES_CONTENT_RANGE,		[] (_resp_t *p) -> _cstr_t {
+						_cstr_t r = NULL;
+
+						if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges && p->b_st) {
+							if (p->pv_ranges->size() == 1) {
+								_v_range_t::iterator i = p->pv_ranges->begin();
+
+								snprintf(_g_vhdr_, sizeof(_g_vhdr_),
+										"Bytes %lu-%lu/%lu",
+										(*i).begin, (*i).end,
+										p->st.st_size);
+								r = _g_vhdr_;
+							}
+						}
+
+						return r;
+					}},
 	{ RES_CONTENT_LENGTH,		[] (_resp_t *p) -> _cstr_t {
 						if (p->b_st) {
 							if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges) {
 								_v_range_t::iterator i = p->pv_ranges->begin();
-								unsigned long l = 0;
 
-								while (i != p->pv_ranges->end()) {
-									l += strlen((*i).header) + ((*i).end - (*i).begin);
-									i++;
-								}
+								if (p->pv_ranges->size() > 1) {
+									// multipart
+									unsigned long l = 0;
 
-								l += strlen(p->boundary) + 6; // \r\n--<boundary>--
-								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", l);
+									while (i != p->pv_ranges->end()) {
+										l += strlen((*i).header) + ((*i).end - (*i).begin + 1);
+										i++;
+									}
+
+									l += strlen(p->boundary) + 6; // \r\n--<boundary>--
+									snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", l);
+								} else
+									// single part
+									snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", (*i).end - (*i).begin + 1);
 							} else
 								snprintf(_g_vhdr_, sizeof(_g_vhdr_), "%lu", p->st.st_size);
 						} else if (p->rc_type == RCT_STATIC && p->static_text)
@@ -228,7 +251,7 @@ static _hdr_t _g_hdef_[] = {
 	{ RES_CONTENT_TYPE,		[] (_resp_t *p) -> _cstr_t {
 						_cstr_t r = NULL;
 
-						if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges) {
+						if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges && p->pv_ranges->size() > 1) {
 							snprintf(_g_vhdr_, sizeof(_g_vhdr_),
 								"multipart/byteranges; boundary=%s",
 								p->boundary);
@@ -390,18 +413,45 @@ static _err_t send_file_content(_resp_t *p) {
 	if (fd > 0) {
 		if (p->rc == HTTPRC_PART_CONTENT && p->pv_ranges) {
 			_v_range_t::iterator i = p->pv_ranges->begin();
+			unsigned long l = 0, s = 0;
 
-			while (i != p->pv_ranges->end()) {
-				unsigned long l = 0;
-				unsigned long s = (*i).end - (*i).begin;
-				_cstr_t hdr = (*i).header;
+			if (p->pv_ranges->size() > 1) {
+				// multipart
+				while (i != p->pv_ranges->end()) {
+					_cstr_t hdr = (*i).header;
 
-				if ( lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
+					l = 0;
+					s = (*i).end - (*i).begin + 1;
+
+					if (lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
+						goto _close_file_;
+
+					TRACE("http[%d]: Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
+					// send range header
+					io_write(hdr, strlen(hdr));
+
+					// send range content
+					while ((nb = read(fd, _g_resp_buffer_,
+							((s - l) < sizeof(_g_resp_buffer_)) ?
+							(s - l) : sizeof(_g_resp_buffer_))) > 0 && l < s) {
+						io_write(_g_resp_buffer_, nb);
+						l += nb;
+					}
+
+					i++;
+				}
+
+				// done
+				io_fwrite("\r\n--%s--", p->boundary);
+			} else {
+				// single part
+				l = 0;
+				s = (*i).end - (*i).begin + 1;
+
+				if (lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
 					goto _close_file_;
 
-				TRACE("http[%d]: Partial content (%lu-%lu)\n", getpid(), (*i).begin, s);
-				// send range header
-				io_write(hdr, strlen(hdr));
+				TRACE("http[%d]: Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
 
 				// send range content
 				while ((nb = read(fd, _g_resp_buffer_,
@@ -410,12 +460,7 @@ static _err_t send_file_content(_resp_t *p) {
 					io_write(_g_resp_buffer_, nb);
 					l += nb;
 				}
-
-				i++;
 			}
-
-			// done
-			io_fwrite("\r\n--%s--", p->boundary);
 
 			r = E_OK;
 		} else {
@@ -482,14 +527,14 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 					return 0;
 				}, p);
 
+				if (!_g_range_.end)
+					// to the end of file
+					_g_range_.end = p->st.st_size - 1;
+
 				// _g_range_ shoult contains a range metrics (offset ans size)
-				if ((_g_range_.end > _g_range_.begin) &&
+				if ((_g_range_.end >= _g_range_.begin) &&
 						_g_range_.begin + (_g_range_.end - _g_range_.begin) <= (unsigned long)p->st.st_size) {
 					int i = 0;
-
-					if (!_g_range_.end)
-						// to the end of file
-						_g_range_.end = p->st.st_size;
 
 					/////// range header //////////
 
