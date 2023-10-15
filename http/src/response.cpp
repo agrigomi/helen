@@ -85,7 +85,7 @@ static char _g_resp_buffer_[256 * 1024];
 
 typedef struct {
 	unsigned long begin; // start offset in content
-	unsigned long size; // size in bytes
+	unsigned long end; // size in bytes
 	char	header[512]; // range header
 } _range_t;
 
@@ -201,7 +201,7 @@ static _hdr_t _g_hdef_[] = {
 								unsigned long l = 0;
 
 								while (i != p->pv_ranges->end()) {
-									l += strlen((*i).header) + (*i).size;
+									l += strlen((*i).header) + ((*i).end - (*i).begin);
 									i++;
 								}
 
@@ -393,7 +393,7 @@ static _err_t send_file_content(_resp_t *p) {
 
 			while (i != p->pv_ranges->end()) {
 				unsigned long l = 0;
-				unsigned long s = (*i).size;
+				unsigned long s = (*i).end - (*i).begin;
 				_cstr_t hdr = (*i).header;
 
 				if ( lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
@@ -476,19 +476,20 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 						// range start
 						_g_range_.begin = atol(str);
 					else if (idx == 1)
-						// range size
-						_g_range_.size = atol(str);
+						// range end
+						_g_range_.end = atol(str);
 
 					return 0;
 				}, p);
 
 				// _g_range_ shoult contains a range metrics (offset ans size)
-				if ((_g_range_.begin + _g_range_.size) <= (unsigned long)p->st.st_size) {
+				if ((_g_range_.end > _g_range_.begin) &&
+						_g_range_.begin + (_g_range_.end - _g_range_.begin) <= (unsigned long)p->st.st_size) {
 					int i = 0;
 
-					if (!_g_range_.size)
+					if (!_g_range_.end)
 						// to the end of file
-						_g_range_.size = p->st.st_size - _g_range_.begin;
+						_g_range_.end = p->st.st_size;
 
 					/////// range header //////////
 
@@ -509,7 +510,7 @@ static _err_t parse_range(_resp_t *p, _cstr_t range) {
 					// content range + EOH
 					i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
 							RES_CONTENT_RANGE ": Bytes %lu-%lu/%lu\r\n\r\n",
-							_g_range_.begin, _g_range_.size, p->st.st_size);
+							_g_range_.begin, _g_range_.end, p->st.st_size);
 
 					//////////////////////////////
 
