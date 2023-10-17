@@ -185,6 +185,15 @@ int io_wait_input(int timeout) {
 	return r;
 }
 
+int io_get_stdin_fd(void) {
+	int r = STDIN_FILENO;
+
+	if (_g_ssl_in_)
+		r = SSL_get_fd(_g_ssl_in_);
+
+	return r;
+}
+
 int io_verify_input(void) {
 	int r = 0;
 
@@ -288,6 +297,10 @@ static _err_t io_loop(int timeout) {
 	}
 
 	return r;
+}
+
+bool io_is_ssl(void) {
+	return (_g_ssl_in_) ? true : false;
 }
 
 _err_t io_start(void) {

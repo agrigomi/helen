@@ -367,36 +367,44 @@ _eoh_:
 	return r;
 }
 
-static _err_t send_exec(_cstr_t cmd) {
+static _err_t exec(_cstr_t argv[]) {
 	_err_t r = E_FAIL;
-	_str_t argv[256];
 	_proc_t proc;
-	int i = 0;
-
-	memset(argv, 0, sizeof(argv));
-	split_by_space(cmd, strlen(cmd), argv, 256);
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
-	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
 	if (proc_exec_v(&proc, argv[0], argv) == 0) {
-		int nb = 0;
+		int nb_in = 0, nb_out = 0;
 
 		do {
-			if ((nb = io_verify_input()) > 0) {
-				nb = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_));
-				proc_write(&proc, _g_resp_buffer_, nb);
+			if ((nb_in = io_verify_input()) > 0) {
+				nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_));
+				proc_write(&proc, _g_resp_buffer_, nb_in);
 			}
 
-			ioctl(proc.PREAD_FD, FIONREAD, &nb);
-			if (nb > 0) {
-				nb = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_));
-				io_write(_g_resp_buffer_, nb);
+			ioctl(proc.PREAD_FD, FIONREAD, &nb_out);
+			if (nb_out > 0) {
+				nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_));
+				io_write(_g_resp_buffer_, nb_out);
 			}
 		} while (proc_status(&proc) == -1);
 
 		r = E_DONE;
 	}
+
+	return r;
+}
+
+static _err_t send_exec(_cstr_t cmd) {
+	_err_t r = E_FAIL;
+	_str_t argv[256];
+	int i = 0;
+
+	memset(argv, 0, sizeof(argv));
+	split_by_space(cmd, strlen(cmd), argv, 256);
+
+	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
+	r = exec((_cstr_t *)argv);
 
 	while (argv[i]) {
 		free(argv[i]);
@@ -751,7 +759,8 @@ static _char_t 	_g_proxy_dst_host_[256] = "";
 static _cstr_t 	_g_proxy_openssl_proc_[] = { "/usr/bin/openssl", "s_client", "-quiet", "-verify_quiet", "-connect", NULL, NULL };
 static _cstr_t 	_g_proxy_nc_proc_[] = { "/bin/nc.openbsd", "-C", _g_proxy_dst_host_, _g_proxy_dst_port_, NULL};
 
-static void do_connect(_resp_t *p) {
+static _err_t do_connect(_resp_t *p) {
+	_err_t r = E_DONE;
 	_char_t lb[1024] = "";
 
 	strncpy(lb, p->url, sizeof(lb));
@@ -778,14 +787,22 @@ static void do_connect(_resp_t *p) {
 
 			TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
 					_g_proxy_openssl_proc_[5]);
-			execv(_g_proxy_openssl_proc_[0], (char* const*)_g_proxy_openssl_proc_);
+			if (io_is_ssl())
+				r = exec(_g_proxy_openssl_proc_);
+			else
+				execv(_g_proxy_openssl_proc_[0], (char* const*)_g_proxy_openssl_proc_);
 		} else {
 			// use nc
 			TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
 					_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
-			execv(_g_proxy_nc_proc_[0], (char * const*)_g_proxy_nc_proc_);
+			if (io_is_ssl())
+				r = exec(_g_proxy_openssl_proc_);
+			else
+				execv(_g_proxy_nc_proc_[0], (char * const*)_g_proxy_nc_proc_);
 		}
 	}
+
+	return r;
 }
 
 _err_t res_processing(void) {

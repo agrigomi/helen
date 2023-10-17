@@ -310,11 +310,13 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc);
 
 /* returns E_OK for success */
 _err_t io_start(void);
+bool io_is_ssl(void);
 /**
 Wait for input with timeout in seconds
 return number of bytes  */
 int io_wait_input(int timeout);
 int io_verify_input(void);
+int io_get_stdin_fd(void);
 /**
 Read line from input stream
 return line size (without \r\n) */
