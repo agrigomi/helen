@@ -14,6 +14,7 @@
 #include "str.h"
 #include "respawn.h"
 #include "sha1.h"
+#include "argv.h"
 
 static std::map<int, _cstr_t> _g_resp_text_ = {
 	{ HTTPRC_CONTINUE,		"Continue" },
@@ -745,6 +746,48 @@ static _cstr_t resolve_path(_cstr_t path, char *resolved) {
 	return r;
 }
 
+static _char_t 	_g_proxy_dst_port_[8] = "443";
+static _char_t 	_g_proxy_dst_host_[256] = "";
+static _cstr_t 	_g_proxy_openssl_proc_[] = { "/usr/bin/openssl", "s_client", "-quiet", "-verify_quiet", "-connect", NULL, NULL };
+static _cstr_t 	_g_proxy_nc_proc_[] = { "/bin/nc.openbsd", "-C", _g_proxy_dst_host_, _g_proxy_dst_port_, NULL};
+
+static void do_connect(_resp_t *p) {
+	_char_t lb[1024] = "";
+
+	strncpy(lb, p->url, sizeof(lb));
+
+	str_split(lb, ":", [] (int idx, char *str, void *udata) -> int {
+		switch (idx) {
+			case 0:
+				strncpy(_g_proxy_dst_host_, str, sizeof(_g_proxy_dst_host_));
+				break;
+			case 1:
+				strncpy(_g_proxy_dst_port_, str, sizeof(_g_proxy_dst_port_));
+				break;
+		}
+
+		return 0;
+	}, NULL);
+
+	int port = atoi(_g_proxy_dst_port_);
+
+	if (port) {
+		if (port == 443 || port == 8443) {
+			// use openssl
+			_g_proxy_openssl_proc_[5] = p->url;
+
+			TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
+					_g_proxy_openssl_proc_[5]);
+			execv(_g_proxy_openssl_proc_[0], (char* const*)_g_proxy_openssl_proc_);
+		} else {
+			// use nc
+			TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
+					_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
+			execv(_g_proxy_nc_proc_[0], (char * const*)_g_proxy_nc_proc_);
+		}
+	}
+}
+
 _err_t res_processing(void) {
 	_err_t r = E_FAIL;
 	_cstr_t host = getenv(REQ_HOST);
@@ -798,12 +841,17 @@ _err_t res_processing(void) {
 					} else
 						switch_to_err(&resp, HTTPRC_NOT_FOUND);
 				}
-			} else
-				switch_to_err(&resp,HTTPRC_METHOD_NOT_ALLOWED);
-		} else
-			switch_to_err(&resp, HTTPRC_BAD_REQUEST);
 
-		r = send_response(&resp);
+				r = send_response(&resp);
+			} else if (resp.i_method == METHOD_CONNECT) {
+				if (argv_check(OPT_PROXY))
+					do_connect(&resp);
+				else
+					r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
+			} else
+				r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
+		} else
+			r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
 	}
 
 	return r;

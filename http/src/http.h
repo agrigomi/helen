@@ -17,6 +17,7 @@
 #define OPT_SSL_CERT	"ssl-cert"
 #define OPT_SSL_KEY	"ssl-key"
 #define OPT_SSL_METHOD	"ssl-method"
+#define OPT_PROXY	"proxy"
 
 #define SERVER_NAME	"Helen"
 #define ALLOW_METHOD	"GET, POST, HEAD"
