@@ -367,27 +367,45 @@ _eoh_:
 	return r;
 }
 
-static _err_t exec(_cstr_t argv[]) {
+static _err_t exec(_cstr_t argv[], int tmout) {
 	_err_t r = E_FAIL;
 	_proc_t proc;
+	fd_set selectset;
+	struct timeval timeout = {tmout, 0}; //timeout in sec.
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
 	if (proc_exec_v(&proc, argv[0], argv) == 0) {
+		int fd_stdin = io_get_stdin_fd();
+		int fd_max = fd_stdin;
 		int nb_in = 0, nb_out = 0;
+		int sr = -1, st = -1;;
+
+		if (proc.PREAD_FD > fd_max)
+			fd_max = proc.PREAD_FD;
 
 		do {
-			if ((nb_in = io_verify_input()) > 0) {
-				nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_));
-				proc_write(&proc, _g_resp_buffer_, nb_in);
+			FD_ZERO(&selectset);
+			FD_SET(fd_stdin, &selectset);
+			FD_SET(proc.PREAD_FD, &selectset);
+
+			if ((sr = select(fd_max + 1, &selectset, NULL, NULL, &timeout)) > 0) {
+				if ((nb_in = io_verify_input()) > 0) {
+					nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_));
+					proc_write(&proc, _g_resp_buffer_, nb_in);
+				}
+
+				ioctl(proc.PREAD_FD, FIONREAD, &nb_out);
+				if (nb_out > 0) {
+					nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_));
+					io_write(_g_resp_buffer_, nb_out);
+				}
+			} else {
+				TRACE("http[%d]: I/O error #%d\n", getpid(), sr);
 			}
 
-			ioctl(proc.PREAD_FD, FIONREAD, &nb_out);
-			if (nb_out > 0) {
-				nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_));
-				io_write(_g_resp_buffer_, nb_out);
-			}
-		} while (proc_status(&proc) == -1);
+			st = proc_status(&proc);
+		} while (sr > 0 && st == -1 && (nb_in > 0 || nb_out > 0));
 
 		r = E_DONE;
 	}
@@ -404,7 +422,7 @@ static _err_t send_exec(_cstr_t cmd) {
 	split_by_space(cmd, strlen(cmd), argv, 256);
 
 	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
-	r = exec((_cstr_t *)argv);
+	r = exec((_cstr_t *)argv, atoi(argv_value(OPT_TIMEOUT)));
 
 	while (argv[i]) {
 		free(argv[i]);
@@ -765,7 +783,8 @@ static _err_t do_connect(_resp_t *p) {
 
 	strncpy(lb, p->url, sizeof(lb));
 
-	str_split(lb, ":", [] (int idx, char *str, void *udata) -> int {
+	str_split(lb, ":", [] (int idx, char *str,
+			void __attribute__((unused)) *udata) -> int {
 		switch (idx) {
 			case 0:
 				strncpy(_g_proxy_dst_host_, str, sizeof(_g_proxy_dst_host_));
@@ -788,7 +807,7 @@ static _err_t do_connect(_resp_t *p) {
 			TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
 					_g_proxy_openssl_proc_[5]);
 			if (io_is_ssl())
-				r = exec(_g_proxy_openssl_proc_);
+				r = exec(_g_proxy_openssl_proc_, atoi(argv_value(OPT_TIMEOUT)));
 			else
 				execv(_g_proxy_openssl_proc_[0], (char* const*)_g_proxy_openssl_proc_);
 		} else {
@@ -796,7 +815,7 @@ static _err_t do_connect(_resp_t *p) {
 			TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
 					_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
 			if (io_is_ssl())
-				r = exec(_g_proxy_openssl_proc_);
+				r = exec(_g_proxy_openssl_proc_, atoi(argv_value(OPT_TIMEOUT)));
 			else
 				execv(_g_proxy_nc_proc_[0], (char * const*)_g_proxy_nc_proc_);
 		}
