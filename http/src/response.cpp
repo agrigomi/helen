@@ -806,18 +806,12 @@ static _err_t do_connect(_resp_t *p) {
 
 			TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
 					_g_proxy_openssl_proc_[5]);
-			if (io_is_ssl())
-				r = exec(_g_proxy_openssl_proc_, atoi(argv_value(OPT_TIMEOUT)));
-			else
-				execv(_g_proxy_openssl_proc_[0], (char* const*)_g_proxy_openssl_proc_);
+			r = exec(_g_proxy_openssl_proc_, atoi(argv_value(OPT_TIMEOUT)));
 		} else {
 			// use nc
 			TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
 					_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
-			if (io_is_ssl())
-				r = exec(_g_proxy_openssl_proc_, atoi(argv_value(OPT_TIMEOUT)));
-			else
-				execv(_g_proxy_nc_proc_[0], (char * const*)_g_proxy_nc_proc_);
+			r = exec(_g_proxy_openssl_proc_, atoi(argv_value(OPT_TIMEOUT)));
 		}
 	}
 
