@@ -22,6 +22,14 @@ pcb:	[in] Callback function
 udata:	[in] Pointer to user data */
 void str_split(char *str, const char *div, int (*pcb)(int idx, char *str, void *udata), void *udata);
 
+/**
+Divide string by string delimiter
+Split string separated by div character
+str:	[in] Source string
+div:	[in] Delimiter
+left:	[out] left part of string
+right:	[out] Right part (NULL if divider not found)*/
+void str_div_s(char *str, const char *div, char **left, char **right);
 void str_trim_left(char *str);
 void str_trim_right(char *str);
 void str_trim(char *str);

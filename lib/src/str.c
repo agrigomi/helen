@@ -98,3 +98,19 @@ void str_split(char *str, const char *div, int (*pcb)(int idx, char *str, void *
 	}
 }
 
+void str_div_s(char *str, const char *div, char **left, char **right) {
+	size_t l_div = 0;
+	char *p_div = NULL;
+	*right = NULL;
+	*left = NULL;
+
+	if (str) {
+		l_div = strlen(div);
+		*left = str;
+		if ((p_div = strstr(str, div))) {
+			*p_div = 0;
+			*right = p_div + l_div;
+		}
+	}
+}
+
