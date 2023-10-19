@@ -99,7 +99,7 @@ void req_decode_url(_cstr_t url) {
 	}
 }
 
-static _err_t decode_request(char *request) {
+ _err_t decode_request(char *request) {
 	_err_t r = E_FAIL;
 	char *rest = NULL;
 	char *token = NULL;
@@ -138,10 +138,8 @@ _err_t req_receive(int timeout) {
 
 				if (strcmp(scheme, "file") == 0) {
 					// read header lines
-					while (io_read_line(line, sizeof(line)) > 0) {
-						TRACE("%s\n", line);
+					while (io_read_line(line, sizeof(line)) > 0)
 						set_env_var(line, ":");
-					}
 
 					setenv(RES_ENV_SERVER, SERVER_NAME, 1);
 					setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);

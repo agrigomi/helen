@@ -861,7 +861,7 @@ _err_t res_processing(void) {
 
 		resp.p_vhost = p_vhost;
 		resp.url = getenv(REQ_URL);
-		resp.uri = getenv(REQ_URI);;
+		resp.uri = getenv(REQ_PATH);
 		resp.s_method = getenv(REQ_METHOD);
 		resp.protocol = getenv(REQ_PROTOCOL);
 		resp.proto_upgrade = getenv(REQ_UPGRADE);

@@ -45,6 +45,10 @@ static void usage(void) {
 int main(int argc, char *argv[]) {
 	int r = 0;
 
+/*	char req[] = "GET /bower_components/Ionicons/fonts/ionicons.woff?v=2.0.0 HTTP/1.1";
+ 	_err_t decode_request(char *request);
+	decode_request(req);
+*/
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {
 		int stat;
 		pid_t	pid;
