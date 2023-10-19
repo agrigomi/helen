@@ -101,7 +101,8 @@ typedef std::vector<_range_t> _v_range_t;
 typedef struct {
 	_cstr_t		s_method;
 	int		i_method; // resolved method
-	_cstr_t		url; // request URL
+	_cstr_t		url; // request url
+	_cstr_t		uri; // request URI
 	_cstr_t		protocol;
 	_cstr_t		proto_upgrade;
 	_cstr_t		path; // resolved path (real path)
@@ -508,7 +509,7 @@ static void switch_to_err(_resp_t *p, int rc) {
 	if (rc >= HTTPRC_BAD_REQUEST) {
 		p->rc = rc;
 
-		TRACE("http[%d]: #%d %s '%s'\n", getpid(), p->rc, _g_resp_text_[p->rc], p->url);
+		TRACE("http[%d]: #%d %s '%s'\n", getpid(), p->rc, _g_resp_text_[p->rc], p->uri);
 		if ((p->p_mapping = cfg_get_err_mapping(p->p_vhost, p->rc)))
 			p->rc_type = RCT_MAPPING;
 		else if ((p->static_text = _g_resp_content_[p->rc]))
@@ -741,7 +742,7 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 		resp.p_vhost = p_vhost;
 		resp.s_method = getenv(REQ_METHOD);
 		resp.i_method = (resp.s_method) ? resolve_method(resp.s_method) : 0;
-		resp.url = getenv(REQ_URL);
+		resp.uri = getenv(REQ_PATH);
 		resp.protocol = getenv(REQ_PROTOCOL);
 		resp.proto_upgrade = getenv(REQ_UPGRADE);
 		resp.header = _g_resp_buffer_;
@@ -778,6 +779,28 @@ static _char_t 	_g_proxy_dst_host_[256] = "";
 static _cstr_t 	_g_proxy_openssl_proc_[] = { "/usr/bin/openssl", "s_client", "-quiet", "-verify_quiet", "-connect", NULL, NULL };
 static _cstr_t 	_g_proxy_nc_proc_[] = { "/bin/nc.openbsd", "-C", _g_proxy_dst_host_, _g_proxy_dst_port_, NULL};
 
+_err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri) {
+	_err_t r = E_FAIL;
+	_char_t lb[1024] = "";
+
+	if (strcasecmp(scheme, "http") == 0) {
+		if (port)
+			strncpy(_g_proxy_dst_port_, port, sizeof(_g_proxy_dst_port_));
+		else
+			strncpy(_g_proxy_dst_port_, "80", sizeof(_g_proxy_dst_port_));
+
+		//
+	} else if (strcasecmp(scheme, "https") == 0) {
+		if (port)
+			strncpy(_g_proxy_dst_port_, port, sizeof(_g_proxy_dst_port_));
+		else
+			strncpy(_g_proxy_dst_port_, "443", sizeof(_g_proxy_dst_port_));
+		//
+	}
+
+	return r;
+}
+
 static _err_t do_connect(_resp_t *p) {
 	_err_t r = E_DONE;
 	_char_t lb[1024] = "";
@@ -805,7 +828,7 @@ static _err_t do_connect(_resp_t *p) {
 
 		if (port == 443 || port == 8443) {
 			// use openssl
-			_g_proxy_openssl_proc_[5] = p->url;
+			_g_proxy_openssl_proc_[5] = p->uri;
 
 			TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
 					_g_proxy_openssl_proc_[5]);
@@ -838,17 +861,21 @@ _err_t res_processing(void) {
 
 		resp.p_vhost = p_vhost;
 		resp.url = getenv(REQ_URL);
+		resp.uri = getenv(REQ_URI);;
 		resp.s_method = getenv(REQ_METHOD);
 		resp.protocol = getenv(REQ_PROTOCOL);
 		resp.proto_upgrade = getenv(REQ_UPGRADE);
 		resp.header = _g_resp_buffer_;
 		resp.sz_hbuffer = sizeof(_g_resp_buffer_);
 
-		if (resp.s_method && resp.url && resp.protocol) {
+		if(!resp.uri)
+			resp.uri = resp.url;
+
+		if (resp.s_method && resp.uri && resp.protocol) {
 			resp.i_method = (resp.s_method) ? resolve_method(resp.s_method) : 0;
 
 			if (resp.i_method == METHOD_GET || resp.i_method == METHOD_POST || resp.i_method == METHOD_HEAD) {
-				if ((resp.p_mapping = cfg_get_url_mapping(p_vhost->host, resp.s_method, resp.url, resp.protocol))) {
+				if ((resp.p_mapping = cfg_get_url_mapping(p_vhost->host, resp.s_method, resp.uri, resp.protocol))) {
 					_cstr_t proto = resp.p_mapping->_protocol();
 
 					resp.rc_type = RCT_MAPPING;
@@ -859,7 +886,7 @@ _err_t res_processing(void) {
 
 					resp.rc = (resp.p_mapping->url.resp_code) ? resp.p_mapping->url.resp_code : HTTPRC_OK;
 				} else {
-					snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, resp.url);
+					snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, resp.uri);
 
 					if ((resp.path = resolve_path(doc_path, resolved_path))) {
 						if (memcmp(resp.path, p_vhost->root, strlen(p_vhost->root)) == 0) {

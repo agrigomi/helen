@@ -28,6 +28,15 @@
 // HTTP request environment variables
 #define REQ_METHOD		"REQ_METHOD"
 #define REQ_URL			"REQ_URL"
+#define REQ_SCHEME		"REQ_SCHEME"
+#define REQ_AUTHORITY		"REQ_AUTHORITY"
+#define REQ_DOMAIN		"REQ_DOMAIN"
+#define REQ_PORT		"REQ_PORT"
+#define REQ_URI			"REQ_URI"
+#define REQ_URN			"REQ_URN"
+#define REQ_PATH		"REQ_PATH"
+#define REQ_PARAMETERS		"REQ_PARAMETERS"
+#define REQ_ANCHOR		"REQ_ANCHOR"
 #define REQ_PROTOCOL		"REQ_PROTOCOL"
 #define REQ_UPGRADE		"REQ_UPGRADE"
 #define REQ_CONNECTION		"REQ_CONNECTION"
@@ -334,10 +343,12 @@ int io_fwrite(const char *fmt, ...);
 
 // Request
 _err_t req_receive(int timeout);
+void req_decode_url(_cstr_t url);
 
 // Response
 _err_t res_processing(void);
 _err_t send_error_response(_vhost_t *p_vhost, int rc);
+_err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri);
 
 // Mime Types
 _err_t mime_open(void);
