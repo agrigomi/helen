@@ -417,12 +417,13 @@ static _err_t send_exec(_cstr_t cmd) {
 	_err_t r = E_FAIL;
 	_str_t argv[256];
 	int i = 0;
+	int timeout = atoi(argv_value(OPT_TIMEOUT));
 
 	memset(argv, 0, sizeof(argv));
 	split_by_space(cmd, strlen(cmd), argv, 256);
 
 	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
-	r = exec((_cstr_t *)argv, atoi(argv_value(OPT_TIMEOUT)));
+	r = exec((_cstr_t *)argv, timeout);
 
 	while (argv[i]) {
 		free(argv[i]);
@@ -800,18 +801,20 @@ static _err_t do_connect(_resp_t *p) {
 	int port = atoi(_g_proxy_dst_port_);
 
 	if (port) {
+		int timeout = atoi(argv_value(OPT_TIMEOUT));
+
 		if (port == 443 || port == 8443) {
 			// use openssl
 			_g_proxy_openssl_proc_[5] = p->url;
 
 			TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
 					_g_proxy_openssl_proc_[5]);
-			r = exec(_g_proxy_openssl_proc_, atoi(argv_value(OPT_TIMEOUT)));
+			r = exec(_g_proxy_openssl_proc_, timeout);
 		} else {
 			// use nc
 			TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
 					_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
-			r = exec(_g_proxy_openssl_proc_, atoi(argv_value(OPT_TIMEOUT)));
+			r = exec(_g_proxy_openssl_proc_, timeout);
 		}
 	}
 

@@ -80,8 +80,10 @@ _err_t req_receive(int timeout) {
 			// parse request
 			if (decode_request(line) == E_OK) {
 				// read header lines
-				while ((r = io_read_line(line, sizeof(line))) > 0)
+				while ((r = io_read_line(line, sizeof(line))) > 0) {
+					TRACE("%s\n", line);
 					set_env_var(line, ":");
+				}
 
 				setenv(RES_ENV_SERVER, SERVER_NAME, 1);
 				setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
