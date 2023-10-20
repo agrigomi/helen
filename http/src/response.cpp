@@ -393,7 +393,7 @@ static _err_t exec(_cstr_t argv[], int tmout, _cstr_t _write = NULL) {
 			FD_SET(fd_stdin, &selectset);
 			FD_SET(proc.PREAD_FD, &selectset);
 
-			if ((sr = select(fd_max + 1, &selectset, NULL, NULL, &timeout)) > 0) {
+			if ((sr = select(fd_max + 1, &selectset, NULL, NULL, &timeout) > 0)) {
 				if ((nb_in = io_verify_input()) > 0) {
 					nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_));
 					proc_write(&proc, _g_resp_buffer_, nb_in);
@@ -409,7 +409,7 @@ static _err_t exec(_cstr_t argv[], int tmout, _cstr_t _write = NULL) {
 			}
 
 			st = proc_status(&proc);
-		} while (sr > 0 && st == -1 && (nb_in > 0 || nb_out > 0));
+		} while (sr > 0 && st == -1 && ((nb_in > 0) | (nb_out > 0)));
 
 		if(st == -1)
 			proc_break(&proc);
@@ -790,6 +790,8 @@ _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, 
 	_char_t lb[1024] = "";
 	int timeout = atoi(argv_value(OPT_TIMEOUT));
 
+	memset(lb, 0, sizeof(lb));
+
 	if (strcasecmp(scheme, "http") == 0) {
 		if (port)
 			strncpy(_g_proxy_dst_port_, port, sizeof(_g_proxy_dst_port_));
@@ -922,7 +924,7 @@ _err_t res_processing(void) {
 				r = send_response(&resp);
 			} else if (resp.i_method == METHOD_CONNECT) {
 				if (argv_check(OPT_PROXY))
-					do_connect(&resp);
+					r = do_connect(&resp);
 				else
 					r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 			} else
