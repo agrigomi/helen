@@ -6,6 +6,7 @@
 #include "trace.h"
 #include "str.h"
 #include "url-codec.h"
+#include "argv.h"
 
 static void set_env_var(char *vstr, const char *div) {
 	char *rest = NULL;
@@ -144,7 +145,26 @@ _err_t req_receive(int timeout) {
 					setenv(RES_ENV_SERVER, SERVER_NAME, 1);
 					setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
 				} else {
-					// proxy connect to URL
+					if (argv_check(OPT_PROXY)) {
+						// proxy connect to URL
+						_cstr_t method = getenv(REQ_METHOD);
+						_cstr_t domain = getenv(REQ_DOMAIN);
+						_cstr_t port = getenv(REQ_PORT);
+						_cstr_t uri = getenv(REQ_URI);
+						_cstr_t proto = getenv(REQ_PROTOCOL);
+
+						if (port) {
+							TRACE("http[%d]: --> '%s %s://%s:%s%s %s'\n", getpid(),
+								method, scheme, domain, port, uri, proto);
+						} else {
+							TRACE("http[%d]: --> '%s %s://%s%s %s'\n", getpid(),
+								method, scheme, domain, uri, proto);
+						}
+						r = do_connect(method, scheme, domain, port, uri, proto);
+					} else {
+						TRACE("http[%d] Proxy request\n", getpid());
+						r = send_error_response(NULL, HTTPRC_BAD_REQUEST);
+					}
 				}
 			} else {
 				TRACE("http[%d] Invalid request\n", getpid());

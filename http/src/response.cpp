@@ -368,7 +368,7 @@ _eoh_:
 	return r;
 }
 
-static _err_t exec(_cstr_t argv[], int tmout) {
+static _err_t exec(_cstr_t argv[], int tmout, _cstr_t _write = NULL) {
 	_err_t r = E_FAIL;
 	_proc_t proc;
 	fd_set selectset;
@@ -381,6 +381,9 @@ static _err_t exec(_cstr_t argv[], int tmout) {
 		int fd_max = fd_stdin;
 		int nb_in = 0, nb_out = 0;
 		int sr = -1, st = -1;;
+
+		if (_write)
+			proc_write(&proc, (void *)_write, strlen(_write));
 
 		if (proc.PREAD_FD > fd_max)
 			fd_max = proc.PREAD_FD;
@@ -407,6 +410,9 @@ static _err_t exec(_cstr_t argv[], int tmout) {
 
 			st = proc_status(&proc);
 		} while (sr > 0 && st == -1 && (nb_in > 0 || nb_out > 0));
+
+		if(st == -1)
+			proc_break(&proc);
 
 		r = E_DONE;
 	}
@@ -779,9 +785,10 @@ static _char_t 	_g_proxy_dst_host_[256] = "";
 static _cstr_t 	_g_proxy_openssl_proc_[] = { "/usr/bin/openssl", "s_client", "-quiet", "-verify_quiet", "-connect", NULL, NULL };
 static _cstr_t 	_g_proxy_nc_proc_[] = { "/bin/nc.openbsd", "-C", _g_proxy_dst_host_, _g_proxy_dst_port_, NULL};
 
-_err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri) {
+_err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri, _cstr_t proto) {
 	_err_t r = E_FAIL;
 	_char_t lb[1024] = "";
+	int timeout = atoi(argv_value(OPT_TIMEOUT));
 
 	if (strcasecmp(scheme, "http") == 0) {
 		if (port)
@@ -789,13 +796,23 @@ _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, 
 		else
 			strncpy(_g_proxy_dst_port_, "80", sizeof(_g_proxy_dst_port_));
 
-		//
+		strncpy(_g_proxy_dst_host_, domain, sizeof(_g_proxy_dst_host_));
+		snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
+		TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
+				_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
+		r = exec(_g_proxy_nc_proc_, timeout, lb);
 	} else if (strcasecmp(scheme, "https") == 0) {
 		if (port)
 			strncpy(_g_proxy_dst_port_, port, sizeof(_g_proxy_dst_port_));
 		else
 			strncpy(_g_proxy_dst_port_, "443", sizeof(_g_proxy_dst_port_));
-		//
+
+		snprintf(_g_proxy_dst_host_, sizeof(_g_proxy_dst_host_), "%s:%s", domain, _g_proxy_dst_port_);
+		_g_proxy_openssl_proc_[5] = _g_proxy_dst_host_;
+		snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
+		TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
+				_g_proxy_openssl_proc_[5]);
+		r = exec(_g_proxy_openssl_proc_, timeout, lb);
 	}
 
 	return r;
