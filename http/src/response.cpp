@@ -368,51 +368,33 @@ _eoh_:
 	return r;
 }
 
-static _err_t exec(_cstr_t argv[], int tmout, _cstr_t _write = NULL) {
+static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, _cstr_t _write = NULL) {
 	_err_t r = E_FAIL;
 	_proc_t proc;
-	fd_set selectset;
-	struct timeval timeout = {tmout, 0}; //timeout in sec.
+	pthread_t pt;
+	int nb_out = 0;
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
 	if (proc_exec_v(&proc, argv[0], argv) == 0) {
-		int fd_stdin = io_get_stdin_fd();
-		int fd_max = fd_stdin;
-		int nb_in = 0, nb_out = 0;
-		int sr = -1, st = -1;;
-
 		if (_write)
 			proc_write(&proc, (void *)_write, strlen(_write));
 
-		if (proc.PREAD_FD > fd_max)
-			fd_max = proc.PREAD_FD;
+		pthread_create(&pt, NULL, [] (void *udata) -> void * {
+			int nb_in = 0;
+			_proc_t *p = (_proc_t *)udata;
 
-		do {
-			FD_ZERO(&selectset);
-			FD_SET(fd_stdin, &selectset);
-			FD_SET(proc.PREAD_FD, &selectset);
+			while ((nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
+				proc_write(p, _g_resp_buffer_, nb_in);
 
-			if ((sr = select(fd_max + 1, &selectset, NULL, NULL, &timeout) > 0)) {
-				if ((nb_in = io_verify_input()) > 0) {
-					nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_));
-					proc_write(&proc, _g_resp_buffer_, nb_in);
-				}
+			proc_break(p);
+			return NULL;
+		}, &proc);
 
-				ioctl(proc.PREAD_FD, FIONREAD, &nb_out);
-				if (nb_out > 0) {
-					nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_));
-					io_write(_g_resp_buffer_, nb_out);
-				}
-			} else {
-				TRACE("http[%d]: I/O error #%d\n", getpid(), sr);
-			}
+		while ((nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
+			io_write(_g_resp_buffer_, nb_out);
 
-			st = proc_status(&proc);
-		} while (sr > 0 && st == -1 && ((nb_in > 0) | (nb_out > 0)));
-
-		if(st == -1)
-			proc_break(&proc);
+		proc_break(&proc);
 
 		r = E_DONE;
 	}
