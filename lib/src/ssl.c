@@ -88,19 +88,15 @@ int ssl_write(SSL *pssl, const void *buffer, int size) {
 
 int ssl_read_line(SSL *pssl, char *buffer, int size) {
 	int r = 0;
-	int i = 0;
 
-	for (; i < size; i++) {
-		if (SSL_read(pssl, (buffer + r), 1) == 1) {
-			if (*(buffer + r) == '\n') {
-				*(buffer + r) = 0;
-				break;
-			} else if (*(buffer + r) == '\r')
-				;
-			else
-				r++;
-		} else
-			r = -1;
+	while (r < size && SSL_read(pssl, (buffer + r), 1) == 1) {
+		if (*(buffer + r) == '\n') {
+			*(buffer + r) = 0;
+			break;
+		} else if (*(buffer + r) == '\r')
+			;
+		else
+			r++;
 	}
 
 	return r;
