@@ -51,14 +51,20 @@ void req_decode_url(_cstr_t url) {
 	// scheme
 	str_div_s(decoded_url, "://", &scheme, &urn);
 	if (urn) {
-		s = urn;
-		setenv(REQ_SCHEME, scheme, 1);
+		if ((urn - s) <= 8) {
+			s = urn;
+			setenv(REQ_SCHEME, scheme, 1);
+			setenv(REQ_URN, urn, 1);
+		} else {
+			*(urn - 3) = ':'; //restore
+			urn = s;
+			setenv(REQ_SCHEME, "file", 1);
+		}
 	} else {
 		s = urn = scheme;
 		setenv(REQ_SCHEME, "file", 1);
+		setenv(REQ_URN, urn, 1);
 	}
-
-	setenv(REQ_URN, urn, 1);
 
 	// URI
 	if ((uri = strstr(s, "/"))) {
