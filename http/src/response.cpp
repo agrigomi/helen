@@ -368,7 +368,7 @@ _eoh_:
 	return r;
 }
 
-static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, _cstr_t _write = NULL) {
+static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input = false, _cstr_t _write = NULL) {
 	_err_t r = E_FAIL;
 	_proc_t proc;
 	pthread_t pt;
@@ -380,16 +380,18 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, _cstr_t _w
 		if (_write)
 			proc_write(&proc, (void *)_write, strlen(_write));
 
-		pthread_create(&pt, NULL, [] (void *udata) -> void * {
-			int nb_in = 0;
-			_proc_t *p = (_proc_t *)udata;
+		if (input) {
+			pthread_create(&pt, NULL, [] (void *udata) -> void * {
+				int nb_in = 0;
+				_proc_t *p = (_proc_t *)udata;
 
-			while ((nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
-				proc_write(p, _g_resp_buffer_, nb_in);
+				while ((nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
+					proc_write(p, _g_resp_buffer_, nb_in);
 
-			proc_break(p);
-			return NULL;
-		}, &proc);
+				proc_break(p);
+				return NULL;
+			}, &proc);
+		}
 
 		while ((nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
 			io_write(_g_resp_buffer_, nb_out);
@@ -402,7 +404,7 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, _cstr_t _w
 	return r;
 }
 
-static _err_t send_exec(_cstr_t cmd) {
+static _err_t send_exec(_cstr_t cmd, bool input = false) {
 	_err_t r = E_FAIL;
 	_str_t argv[256];
 	int i = 0;
@@ -412,7 +414,7 @@ static _err_t send_exec(_cstr_t cmd) {
 	split_by_space(cmd, strlen(cmd), argv, 256);
 
 	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
-	r = exec((_cstr_t *)argv, timeout);
+	r = exec((_cstr_t *)argv, timeout, input);
 
 	while (argv[i]) {
 		free(argv[i]);
@@ -652,7 +654,7 @@ _send_response_:
 				if (header)
 					r = send_header(p);
 
-				r = send_exec(path);
+				r = send_exec(path, p->p_mapping->_input());
 			} else {
 				p->path = path;
 
@@ -679,7 +681,7 @@ _send_file_:
 			if ((p->st.st_mode & S_IXUSR)) {
 				// executable
 				if (p->path)
-					r = send_exec(p->path);
+					r = send_exec(p->path, true);
 			} else if (p->st.st_mode & S_IRUSR) {
 				_cstr_t range = getenv(REQ_RANGE);
 
@@ -784,7 +786,7 @@ _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, 
 		snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
 		TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
 				_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
-		r = exec(_g_proxy_nc_proc_, timeout, lb);
+		r = exec(_g_proxy_nc_proc_, timeout, true, lb);
 	} else if (strcasecmp(scheme, "https") == 0) {
 		if (port)
 			strncpy(_g_proxy_dst_port_, port, sizeof(_g_proxy_dst_port_));
@@ -796,7 +798,7 @@ _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, 
 		snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
 		TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
 				_g_proxy_openssl_proc_[5]);
-		r = exec(_g_proxy_openssl_proc_, timeout, lb);
+		r = exec(_g_proxy_openssl_proc_, timeout, true, lb);
 	}
 
 	return r;
@@ -833,12 +835,12 @@ static _err_t do_connect(_resp_t *p) {
 
 			TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
 					_g_proxy_openssl_proc_[5]);
-			r = exec(_g_proxy_openssl_proc_, timeout);
+			r = exec(_g_proxy_openssl_proc_, timeout, true);
 		} else {
 			// use nc
 			TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
 					_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
-			r = exec(_g_proxy_openssl_proc_, timeout);
+			r = exec(_g_proxy_openssl_proc_, timeout, true);
 		}
 	}
 

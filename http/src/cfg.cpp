@@ -200,6 +200,7 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *url = json_select(p_jcxt, "url", pjo);
 	_json_value_t *header = json_select(p_jcxt, "header", pjo);
 	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
+	_json_value_t *input = json_select(p_jcxt, "input", pjo);
 	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
 	_json_value_t *response_code = json_select(p_jcxt, "response-code", pjo);
@@ -212,6 +213,8 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 		p->url.header = (header->jvt == JSON_TRUE);
 	if (no_stderr)
 		p->url.no_stderr = (no_stderr->jvt == JSON_TRUE);
+	if (input)
+		p->url.input = (input->jvt == JSON_TRUE);
 
 	p->url.resp_code = atoi(jv_string(response_code).c_str());
 
@@ -256,6 +259,7 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *code = json_select(p_jcxt, "code", pjo);
 	_json_value_t *header = json_select(p_jcxt, "header", pjo);
 	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
+	_json_value_t *input = json_select(p_jcxt, "input", pjo);
 	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
 	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
@@ -268,6 +272,8 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 		p->err.header = (header->jvt == JSON_TRUE);
 	if (no_stderr)
 		p->err.no_stderr = (no_stderr->jvt == JSON_TRUE);
+	if (input)
+		p->err.input = (input->jvt == JSON_TRUE);
 
 	// Add header-append
 	p->err.off_header_append = p->err.buffer_len;

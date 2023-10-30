@@ -139,6 +139,7 @@ struct __attribute__((packed)) mapping_url {
 	bool header;			// respond header by parent process
 	bool exec;			// exec. flag
 	bool no_stderr;			// dup2 for stderr
+	bool input;			// use input
 	short resp_code;		// HTTP response code
 	char method[8];			// HTTP method
 	short off_protocol;		// offset to req. protocols
@@ -171,6 +172,10 @@ struct __attribute__((packed)) mapping_url {
 	bool _exec(void) {
 		return exec;
 	}
+
+	bool _input(void) {
+		return input;
+	}
 };
 
 #define PREFIX_RESP_CODE	"RC_"
@@ -180,6 +185,7 @@ struct __attribute__((packed)) mapping_err {
 	bool header;			// respond header by parent process
 	bool exec;			// exec. flag
 	bool no_stderr;			// dup2 for stderr
+	bool input;			// use input
 	short off_header_append;	// offset to rest of header
 	short off_proc;			// offset to response command or file
 	short buffer_len;		// size of data in buffer
@@ -199,6 +205,10 @@ struct __attribute__((packed)) mapping_err {
 
 	bool _exec(void) {
 		return exec;
+	}
+
+	bool _input(void) {
+		return input;
 	}
 };
 
@@ -280,6 +290,21 @@ typedef struct __attribute__((packed)) {
 				break;
 			case MAPPING_TYPE_ERR:
 				r = err._exec();
+				break;
+		}
+
+		return r;
+	}
+
+	bool _input(void) {
+		bool r = false;
+
+		switch (type) {
+			case MAPPING_TYPE_URL:
+				r = url._input();
+				break;
+			case MAPPING_TYPE_ERR:
+				r = err._input();
 				break;
 		}
 
