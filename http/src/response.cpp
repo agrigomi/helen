@@ -681,7 +681,7 @@ _send_file_:
 			if ((p->st.st_mode & S_IXUSR)) {
 				// executable
 				if (p->path)
-					r = send_exec(p->path, true);
+					r = send_exec(p->path);
 			} else if (p->st.st_mode & S_IRUSR) {
 				_cstr_t range = getenv(REQ_RANGE);
 
