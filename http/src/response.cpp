@@ -840,7 +840,7 @@ static _err_t do_connect(_resp_t *p) {
 			// use nc
 			TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
 					_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
-			r = exec(_g_proxy_openssl_proc_, timeout, true);
+			r = exec(_g_proxy_nc_proc_, timeout, true);
 		}
 	}
 
@@ -871,7 +871,7 @@ _err_t res_processing(void) {
 		resp.header = _g_resp_buffer_;
 		resp.sz_hbuffer = sizeof(_g_resp_buffer_);
 
-		if(!resp.uri)
+		if (!resp.uri)
 			resp.uri = resp.url;
 
 		if (resp.s_method && resp.uri && resp.protocol) {
