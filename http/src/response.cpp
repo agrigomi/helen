@@ -767,7 +767,7 @@ static _cstr_t resolve_path(_cstr_t path, char *resolved) {
 static _char_t 	_g_proxy_dst_port_[8] = "443";
 static _char_t 	_g_proxy_dst_host_[256] = "";
 static _cstr_t 	_g_proxy_openssl_proc_[] = { "/usr/bin/openssl", "s_client", "-quiet", "-verify_quiet", "-connect", NULL, NULL };
-static _cstr_t 	_g_proxy_nc_proc_[] = { "/bin/nc.openbsd", "-C", _g_proxy_dst_host_, _g_proxy_dst_port_, NULL};
+static _cstr_t 	_g_proxy_nc_proc_[] = { "/bin/nc.openbsd", "-N", _g_proxy_dst_host_, _g_proxy_dst_port_, NULL};
 
 _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri, _cstr_t proto) {
 	_err_t r = E_FAIL;
