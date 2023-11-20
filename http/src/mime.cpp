@@ -103,22 +103,23 @@ _compare_time_:
 
 		if ((r = stat(MIME_TYPES_SRC, &st_src)) == E_OK) {
 			if (st_src.st_mtime > st_dst.st_mtime) {
-				if ((r = hf_create(&_g_hf_cxt_, dst_path, MT_CAPACITY, MT_DATA)) == E_OK) {
-					// compile ...
-					if (access(lock_path, F_OK) == F_OK) {
-						// locked, wait for unlock
-						while (access(lock_path, F_OK) == F_OK)
-							usleep(10000);
+				if (access(lock_path, F_OK) == F_OK) {
+					// locked, wait for unlock
+					while (access(lock_path, F_OK) == F_OK)
+						usleep(10000);
 
-						goto _compare_time_;
-					}
-
-					// lock
-					touch(lock_path);
-					r = compile_mime_types();
-					// unlock
-					unlink(lock_path);
+					goto _compare_time_;
 				}
+
+				// lock
+				touch(lock_path);
+
+				// compile ...
+				if ((r = hf_create(&_g_hf_cxt_, dst_path, MT_CAPACITY, MT_DATA)) == E_OK)
+					r = compile_mime_types();
+
+				// unlock
+				unlink(lock_path);
 			} else
 				r = hf_open(&_g_hf_cxt_, dst_path, O_RDONLY);
 
