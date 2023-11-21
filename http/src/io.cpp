@@ -257,28 +257,25 @@ int io_fwrite(const char *fmt, ...) {
 Read line from input stream
 return line size (without \r\n) */
 int io_read_line(char *buffer, int size) {
-	int r = -1, n = 0;
+	int r = 0;
 
 	if (_g_ssl_in_)
 		// SSL input
 		r = ssl_read_line(_g_ssl_in_, buffer, size);
 	else { // STDIO input
-		while (n < size) {
-			if (read(STDIN_FILENO, (buffer + n), 1) == 1) {
-				if (r == -1)
-					r = 0;
-
-				if (*(buffer + n) == '\n') {
-					*(buffer + n) = 0;
+		while (r < size) {
+			if (read(STDIN_FILENO, (buffer + r), 1) == 1) {
+				if (*(buffer + r) == '\n') {
+					*(buffer + r) = 0;
 					break;
-				} else if (*(buffer + n) == '\r')
+				} else if (*(buffer + r) == '\r')
 					;
-				else {
-					n++;
-					r = n;
-				}
-			} else
+				else
+					r++;
+			} else {
+				r = -1;
 				break;
+			}
 		}
 	}
 
