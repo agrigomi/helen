@@ -367,7 +367,7 @@ return >0 for number of sent bytes <=0 means fail */
 int io_fwrite(const char *fmt, ...);
 
 // Request
-_err_t req_receive(int timeout);
+_err_t req_receive(int timeout, int *req_len);
 void req_decode_url(_cstr_t url);
 
 // Response

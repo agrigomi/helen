@@ -106,7 +106,7 @@ void req_decode_url(_cstr_t url) {
 	}
 }
 
- _err_t decode_request(char *request) {
+_err_t decode_request(char *request) {
 	_err_t r = E_FAIL;
 	char *rest = NULL;
 	char *token = NULL;
@@ -128,13 +128,14 @@ void req_decode_url(_cstr_t url) {
 	return r;
 }
 
-_err_t req_receive(int timeout) {
+_err_t req_receive(int timeout, int *req_len) {
 	_err_t r = E_FAIL;
 	char line[2048];
+	int rl = 0; // request length
 
 	if (io_wait_input(timeout) > 0) {
 		// read request line
-		if (io_read_line(line, sizeof(line)) > 0) {
+		if ((rl = io_read_line(line, sizeof(line))) > 0) {
 			TRACE("http[%d] %s\n", getpid(), line);
 			// parse request
 			if ((r = decode_request(line)) == E_OK) {
@@ -144,9 +145,13 @@ _err_t req_receive(int timeout) {
 					scheme = "file";
 
 				if (strcmp(scheme, "file") == 0) {
+					int hl = 0; // header line length
+
 					// read header lines
-					while (io_read_line(line, sizeof(line)) > 0)
+					while ((hl = io_read_line(line, sizeof(line))) > 0) {
+						rl += hl;
 						set_env_var(line, ":");
+					}
 
 					setenv(RES_ENV_SERVER, SERVER_NAME, 1);
 					setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
@@ -176,7 +181,15 @@ _err_t req_receive(int timeout) {
 				TRACE("http[%d] Invalid request\n", getpid());
 				r = send_error_response(NULL, HTTPRC_BAD_REQUEST);
 			}
+		} else if(rl == 0) {
+			// empty request
+			r = E_OK;
+			TRACE("http[%d] Empty request\n", getpid());
+		} else {
+			TRACE("http[%d] Disconnect\n", getpid());
 		}
+
+		*req_len = rl;
 	} else {
 		send_error_response(NULL, HTTPRC_REQUEST_TIMEOUT);
 		TRACE("http[%d] Request timed out\n", getpid());
