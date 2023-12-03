@@ -103,7 +103,8 @@ void req_decode_url(_cstr_t url) {
 			if (port)
 				setenv(REQ_PORT, port, 1);
 		}
-	}
+	} else
+		setenv(REQ_DOMAIN, s, 1);
 }
 
 _err_t decode_request(char *request) {

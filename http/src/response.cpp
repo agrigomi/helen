@@ -772,9 +772,13 @@ static _cstr_t 	_g_proxy_nc_proc_[] = { "/bin/nc.openbsd", "-N", _g_proxy_dst_ho
 _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri, _cstr_t proto) {
 	_err_t r = E_FAIL;
 	_char_t lb[1024] = "";
+
 	int timeout = atoi(argv_value(OPT_TIMEOUT));
 
 	memset(lb, 0, sizeof(lb));
+
+	TRACE("domain: %s\n", domain);
+	TRACE("uri: %s\n", uri);
 
 	if (strcasecmp(scheme, "http") == 0) {
 		if (port)
