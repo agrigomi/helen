@@ -191,7 +191,7 @@ _err_t req_receive(int timeout, int *req_len) {
 			r = E_OK;
 			TRACE("http[%d] Empty request\n", getpid());
 		} else {
-			TRACE("http[%d] Disconnect\n", getpid());
+			TRACE("http[%d] Disconnect (remote close)\n", getpid());
 		}
 
 		*req_len = rl;
