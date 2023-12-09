@@ -707,8 +707,11 @@ _send_file_:
 			} else {
 				TRACE("http[%d]: No read permissions\n", getpid());
 			}
-		} else {
+		} else { // Directory request
+			p->b_st = false; // temporary !!!
+			switch_to_err(p, HTTPRC_NOT_IMPLEMENTED);
 			TRACE("http[%d]: Directory request\n", getpid());
+			goto _send_response_;
 		}
 	} else {
 _send_header_:

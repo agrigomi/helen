@@ -12,6 +12,7 @@ static void set_env_var(char *vstr, const char *div) {
 	char *rest = NULL;
 	char *token = NULL;
 
+	TRACE("%s\n", vstr);
 	if ((token = strtok_r(vstr, div, &rest))) {
 		if (div[0] == ':') {
 			char lb[256] = "REQ_";
@@ -174,6 +175,10 @@ _err_t req_receive(int timeout, int *req_len) {
 						}
 						r = do_connect(method, scheme, domain, port, uri, proto);
 					} else {
+#ifdef _DEBUG_
+						while (io_read_line(line, sizeof(line)) > 0)
+							TRACE("%s\n", line);
+#endif
 						TRACE("http[%d] Proxy request\n", getpid());
 						r = send_error_response(NULL, HTTPRC_BAD_REQUEST);
 					}
