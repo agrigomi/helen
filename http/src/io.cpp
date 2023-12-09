@@ -132,7 +132,7 @@ static void server_accept(int server_fd, int tmout) {
 				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			}
 
-			TRACE("http[%d]: Incoming connection from %s\n", getpid(), strip);
+			TRACE("\nhttp[%d]: Incoming connection from %s\n", getpid(), strip);
 			setenv("PEER_IP", strip, 1);
 
 			if ((cpid = fork()) == 0) { // child

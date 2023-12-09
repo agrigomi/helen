@@ -138,7 +138,7 @@ _err_t req_receive(int timeout, int *req_len) {
 	if (io_wait_input(timeout) > 0) {
 		// read request line
 		if ((rl = io_read_line(line, sizeof(line))) > 0) {
-			TRACE("http[%d] %s\n", getpid(), line);
+			TRACE("\nhttp[%d] %s\n", getpid(), line);
 			// parse request
 			if ((r = decode_request(line)) == E_OK) {
 				_cstr_t scheme = getenv(REQ_SCHEME);
