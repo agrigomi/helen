@@ -13,6 +13,7 @@
 #define OPT_DIR		"dir"
 #define OPT_LISTEN	"l"
 #define OPT_PORT	"p"
+#define OPT_EXEC	"x"
 #define OPT_TIMEOUT	"timeout"
 #define OPT_SSL_CERT	"ssl-cert"
 #define OPT_SSL_KEY	"ssl-key"

@@ -678,7 +678,7 @@ _send_response_:
 _send_file_:
 		if (!S_ISDIR(p->st.st_mode)) {
 			// Not a directory
-			if ((p->st.st_mode & S_IXUSR)) {
+			if ((p->st.st_mode & S_IXUSR) && argv_check(OPT_EXEC)) {
 				// executable
 				if (p->path)
 					r = send_exec(p->path);

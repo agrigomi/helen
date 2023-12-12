@@ -11,12 +11,13 @@
 #include "sig.h"
 
 static _argv_t args[] = {
-	{ OPT_HELP,		OF_LONG,				NULL,				"Print this help" },
 	{ OPT_SHELP,		0,					NULL,				"Print this help" },
 	{ OPT_VER,		0,					NULL,				"Print version" },
-	{ OPT_DIR,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)".",			"Settings directory (--" OPT_DIR "=<patth>)" },
+	{ OPT_EXEC,		0,					NULL,				"Run executable files in documents root" },
 	{ OPT_LISTEN,		0,					NULL,				"Listen mode" },
 	{ OPT_PORT,		OF_VALUE |OF_PRESENT,			(_str_t)"8080",			"Listen port (-" OPT_PORT "<port number>)" },
+	{ OPT_HELP,		OF_LONG,				NULL,				"Print this help" },
+	{ OPT_DIR,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)".",			"Settings directory (--" OPT_DIR "=<patth>)" },
 	{ OPT_TIMEOUT,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)"30",			"Socket timeout in seconds (--" OPT_TIMEOUT "=<sec.>)" },
 	{ OPT_SSL_CERT,		OF_LONG | OF_VALUE,			NULL,				"SSL certificate file (PEM only)" },
 	{ OPT_SSL_KEY,		OF_LONG | OF_VALUE,			NULL,				"SSL private key file (PEM only)" },
@@ -32,9 +33,9 @@ static void usage(void) {
 	printf("options:\n");
 	while (args[n].opt_name) {
 		if (args[n].opt_flags & OF_LONG)
-			printf("--%s:      \t%s\n", args[n].opt_name, args[n].opt_help);
+			printf("--%-10s  \t %s\n", args[n].opt_name, args[n].opt_help);
 		else
-			printf("-%s:      \t%s\n", args[n].opt_name, args[n].opt_help);
+			printf("-%-10s   \t %s\n", args[n].opt_name, args[n].opt_help);
 
 		n++;
 	}
