@@ -410,6 +410,7 @@ _vhost_stat_cmp_:
 		}
 
 		touch(lock_path);
+		TRACE("http[%d] Compile virtual hosts\n", getpid());
 		r = compile_vhosts(src_path, dat_path);
 		unlink(lock_path);
 	} else {
@@ -448,6 +449,7 @@ _mapping_stat_cmp_:
 			}
 
 			touch(lock_path);
+			TRACE("http[%d] Compile mapping\n", getpid());
 			r = compile_mapping(src_path, dat_path, &hf_cxt);
 			unlink(lock_path);
 		} else
