@@ -906,7 +906,7 @@ _err_t res_processing(void) {
 								switch_to_err(&resp, HTTPRC_NOT_FOUND);
 						} else {
 							resp.path = NULL;
-							switch_to_err(&resp, HTTPRC_FORBIDDEN);;
+							switch_to_err(&resp, HTTPRC_FORBIDDEN);
 						}
 					} else
 						switch_to_err(&resp, HTTPRC_NOT_FOUND);
