@@ -373,6 +373,7 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 	_proc_t proc;
 	pthread_t pt;
 	int nb_out = 0;
+	unsigned int sum_out = 0;
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
@@ -384,19 +385,26 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 			pthread_create(&pt, NULL, [] (void *udata) -> void * {
 				int nb_in = 0;
 				_proc_t *p = (_proc_t *)udata;
+				unsigned int sum_in = 0;
 
-				while ((nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
+				while ((nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
 					proc_write(p, _g_resp_buffer_, nb_in);
+					sum_in += nb_in;
+				}
 
 				proc_break(p);
+				TRACE("http[%d] in: %u\n", getpid(), sum_in);
 				return NULL;
 			}, &proc);
 		}
 
-		while ((nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0)
+		while ((nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
 			io_write(_g_resp_buffer_, nb_out);
+			sum_out += nb_out;
+		}
 
 		proc_break(&proc);
+		TRACE("http[%d] out: %u\n", getpid(), sum_out);
 
 		r = E_DONE;
 	}
