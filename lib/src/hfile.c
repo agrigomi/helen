@@ -201,9 +201,13 @@ _fit_record_:
 			_hf_rec_hdr_t *p_ro = rec_ptr(p_cxt, p_cxt->htable[idx]); /* original record */
 
 			while (p_ro->next != HF_INVALID_OFFSET) {
+				/* Compare hash */
 				if (memcmp(p_ro->hash, p_rh->hash, sizeof(p_rh->hash)) == 0)
+					/* This key already exists.
+					   Return pointer to existing record */
 					return (void *)(p_ro + 1);
 
+				/* Move to next record in chain */
 				p_ro = rec_ptr(p_cxt, p_ro->next);
 			}
 
@@ -300,12 +304,17 @@ void *hf_get(_hf_context_t *p_cxt, void *key, int sz_key, unsigned int *sz_data)
 		while (off != HF_INVALID_OFFSET) {
 			_hf_rec_hdr_t *p_rec = rec_ptr(p_cxt, off);
 
+			/* Compare hash */
 			if (memcmp(p_rec->hash, hash_buffer, SHA1HashSize) == 0) {
+				/* This is a requested record */
 				*sz_data = p_rec->size;
+
+				/* Return data (behind the record header) */
 				r = (void *)(p_rec + 1);
 				break;
 			}
 
+			/* Move to next record in chain */
 			off = p_rec->next;
 		}
 	}
@@ -331,9 +340,11 @@ int hf_enum(_hf_context_t *p_cxt,
 		for (; i < n; i++) {
 			unsigned int size = p_rec_hdr->size;
 
+			/* Send current record to user */
 			if ((r = pcb((void *)(p_rec_hdr + 1), size, udata)) < 0)
 				break;
 
+			/* Move position to next record */
 			p_rec_hdr = (_hf_rec_hdr_t *)((void *)p_rec_hdr +
 					sizeof(_hf_rec_hdr_t) +
 					size);
