@@ -140,11 +140,16 @@ static void server_accept(int server_fd, int tmout) {
 				if (_g_ssl_context_) { // SSL case
 					SSL *cl_cxt = NULL;
 
-					if (setup_ssl_io(sl, &cl_cxt) == E_OK)
+					if (setup_ssl_io(sl, &cl_cxt) == E_OK) {
 						_g_ssl_in_ = _g_ssl_out_ = cl_cxt;
+						TRACE("http[%d]: Fork PID = %d SSL I/O\n", getpid(), getpid());
+					} else {
+						TRACE("http[%d]: Failed to setup SSL I/O\n", getpid());
+					}
 				} else {
 					dup2(sl, STDIN_FILENO);
 					dup2(sl, STDOUT_FILENO);
+					TRACE("http[%d]: Fork PID = %d RAW I/O\n", getpid(), getpid());
 				}
 
 				close(_g_server_fd_);
