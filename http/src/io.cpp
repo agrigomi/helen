@@ -296,7 +296,10 @@ static _err_t io_loop(int timeout) {
 			if ((r = res_processing()) == E_OK) {
 				_cstr_t connection = getenv(REQ_CONNECTION);
 
-				if (connection && strcasecmp(connection, "close") == 0)
+				if (connection) {
+					 if (strcasecmp(connection, "keep-alive") != 0)
+						 break;
+				} else
 					break;
 			} else
 				break;

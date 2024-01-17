@@ -757,8 +757,7 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 			resp.static_text = content;
 		}
 
-		if ((r = send_response(&resp)) == E_OK)
-			r = E_DONE;
+		r = send_response(&resp);
 	}
 
 	return r;
