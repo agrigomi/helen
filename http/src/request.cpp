@@ -180,12 +180,14 @@ _err_t req_receive(int timeout, int *req_len) {
 							TRACE("%s\n", line);
 #endif
 						TRACE("http[%d] Proxy request\n", getpid());
-						r = send_error_response(NULL, HTTPRC_BAD_REQUEST);
+						send_error_response(NULL, HTTPRC_BAD_REQUEST);
+						r = E_DONE;
 					}
 				}
 			} else {
 				TRACE("http[%d] Invalid request\n", getpid());
-				r = send_error_response(NULL, HTTPRC_BAD_REQUEST);
+				send_error_response(NULL, HTTPRC_BAD_REQUEST);
+				r = E_DONE;
 			}
 		} else if(rl == 0) {
 			// empty request
