@@ -380,16 +380,16 @@ static _json_err_t parse_array(_json_context_t *p_jcxt, _json_array_t *p_jarray,
 			else if (jvalue.jvt == JSON_OBJECT && c == '}')
 				;
 			else if ((jvalue.jvt == JSON_NUMBER ||
-				 jvalue.jvt == JSON_TRUE ||
-				 jvalue.jvt == JSON_FALSE ||
-				 jvalue.jvt == JSON_NULL) &&
+					jvalue.jvt == JSON_TRUE ||
+					jvalue.jvt == JSON_FALSE ||
+					jvalue.jvt == JSON_NULL) &&
 					(c == ',' || c == ' ' || c == '\r' ||
 					 c == '\n' || c == '\t'))
 				;
 			else if ((jvalue.jvt == JSON_NUMBER  ||
-				 jvalue.jvt == JSON_TRUE ||
-				 jvalue.jvt == JSON_FALSE ||
-				 jvalue.jvt == JSON_NULL) && c == ']') {
+					jvalue.jvt == JSON_TRUE ||
+					jvalue.jvt == JSON_FALSE ||
+					jvalue.jvt == JSON_NULL) && c == ']') {
 				if (!add_array_value(p_jcxt, p_jarray, &jvalue))
 					r = JSON_MEMORY_ERROR;
 				break;
@@ -551,21 +551,21 @@ _pair_value_:
 				else if (jpair.value.jvt == JSON_OBJECT && c == '}')
 					;
 				else if ((jpair.value.jvt == JSON_NUMBER ||
-					 jpair.value.jvt == JSON_TRUE ||
-					 jpair.value.jvt == JSON_FALSE ||
-					 jpair.value.jvt == JSON_NULL) &&
+						jpair.value.jvt == JSON_TRUE ||
+						jpair.value.jvt == JSON_FALSE ||
+						jpair.value.jvt == JSON_NULL) &&
 						(c == ' ' || c == '\r' ||
 						 c == '\n' || c == '\t'))
 					;
 				else if ((jpair.value.jvt == JSON_NUMBER ||
-					 jpair.value.jvt == JSON_TRUE ||
-					 jpair.value.jvt == JSON_FALSE ||
-					 jpair.value.jvt == JSON_NULL) && c == ',')
+						jpair.value.jvt == JSON_TRUE ||
+						jpair.value.jvt == JSON_FALSE ||
+						jpair.value.jvt == JSON_NULL) && c == ',')
 					flags = 0;
 				else if ((jpair.value.jvt == JSON_NUMBER ||
-					 jpair.value.jvt == JSON_TRUE ||
-					 jpair.value.jvt == JSON_FALSE ||
-					 jpair.value.jvt == JSON_NULL) && c == '}') {
+						jpair.value.jvt == JSON_TRUE ||
+						jpair.value.jvt == JSON_FALSE ||
+						jpair.value.jvt == JSON_NULL) && c == '}') {
 					if (!add_object_pair(p_jcxt, p_jobj, &jpair))
 						r = JSON_MEMORY_ERROR;
 					break;
