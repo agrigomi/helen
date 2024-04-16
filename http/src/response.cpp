@@ -348,7 +348,7 @@ static _err_t send_header(_resp_t *p) {
 			_cstr_t val = _g_hdef_[n].vcb(p);
 
 			if (val && val[0])
-				i += snprintf(p->header + i, p->sz_hbuffer - 1, "%s: %s\r\n", _g_hdef_[n].var, val);
+				i += snprintf(p->header + i, p->sz_hbuffer - i, "%s: %s\r\n", _g_hdef_[n].var, val);
 		}
 
 		n++;
