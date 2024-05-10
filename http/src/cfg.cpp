@@ -59,11 +59,10 @@ static _err_t stat_compare(const char *src, const char *dat) {
 	memset(&stat_src, 0, sizeof(struct stat));
 	memset(&stat_dat, 0, sizeof(struct stat));
 
-	stat(src, &stat_src);
-	stat(dat, &stat_dat);
-
-	if (stat_dat.st_mtim.tv_sec >= stat_src.st_mtim.tv_sec)
-		r = E_OK;
+	if (stat(src, &stat_src) == 0 && stat(dat, &stat_dat) == 0) {
+		if (stat_dat.st_mtim.tv_sec >= stat_src.st_mtim.tv_sec)
+			r = E_OK;
+	}
 
 	return r;
 }
