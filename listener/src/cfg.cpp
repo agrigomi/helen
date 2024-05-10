@@ -211,10 +211,16 @@ void cfg_start(void) {
 			if ((bind(p->server_fd, (struct sockaddr *)&serv, sizeof(struct sockaddr_in))) == 0) {
 				if (listen(p->server_fd, SOMAXCONN) == 0)
 					server_accept(p);
-				else
+				else {
+					TRACE("hl: Failed to listen '%s' on port %d\n", p->name, p->port);
 					close(p->server_fd);
-			} else
+				}
+			} else {
+				TRACE("hl: Failed to bind '%s' on port %d\n", p->name, p->port);
 				close(p->server_fd);
+			}
+		} else {
+			TRACE("hl: Error oppening socket for '%s'\n", p->name);
 		}
 	}, NULL);
 }
@@ -349,6 +355,7 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 
 	memset(&l, 0, sizeof(_listen_t));
 	jv_string(&p_jp->name, l.name, sizeof(l.name));
+	TRACE("hl: Add listener '%s'\n", l.name);
 
 	if (pjv_port && pjv_port->jvt == JSON_STRING &&  pjv_exec && pjv_exec->jvt == JSON_STRING) {
 		l.port = atoi(jv_string(pjv_port).c_str());
@@ -409,6 +416,8 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 		l.flags = LISTEN_STOPPED;
 		l.server_fd = -1;
 		_gv_listen.push_back(l);
+	} else {
+		TRACE("hl: Error parsing section for '%s'\n", l.name);
 	}
 }
 
