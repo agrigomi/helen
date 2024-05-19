@@ -18,6 +18,7 @@ static _argv_t args[] = {
 	{ OPT_PORT,		OF_VALUE |OF_PRESENT,			(_str_t)"8080",			"Listen port (-" OPT_PORT "<port number>)" },
 	{ OPT_HELP,		OF_LONG,				NULL,				"Print this help" },
 	{ OPT_DIR,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)".",			"Settings directory (--" OPT_DIR "=<patth>)" },
+	{ OPT_INTERFACE,	OF_LONG | OF_VALUE,			NULL,				"Interface name (--" OPT_INTERFACE "=<interface>)" },
 	{ OPT_TIMEOUT,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)"30",			"Socket timeout in seconds (--" OPT_TIMEOUT "=<sec.>)" },
 	{ OPT_SSL_CERT,		OF_LONG | OF_VALUE,			NULL,				"SSL certificate file (PEM only)" },
 	{ OPT_SSL_KEY,		OF_LONG | OF_VALUE,			NULL,				"SSL private key file (PEM only)" },

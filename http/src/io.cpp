@@ -1,6 +1,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <net/if.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -71,11 +72,21 @@ static _err_t setup_server_socket(int *p_fd) {
 
 	if ((*p_fd = socket(AF_INET, SOCK_STREAM, 0)) > 0) {
 		static struct sockaddr_in serv;
+		struct ifreq ifr;
 		_s32 opt = 1;
 		int port = atoi(argv_value(OPT_PORT));
+		_cstr_t ifc = argv_value(OPT_INTERFACE);
 
 		setsockopt(*p_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 		setsockopt(*p_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+
+		if (ifc) {
+			memset(&ifr, 0, sizeof(ifr));
+			snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), ifc);
+			if (setsockopt(*p_fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
+				TRACE("http[%d] Unknown interface name '%s'\n", getpid(), ifc);
+			}
+		}
 
 		serv.sin_family = AF_INET;
 		serv.sin_port = htons(port);
