@@ -45,6 +45,8 @@ void ssl_io(_listen_t *pl, SSL *cl_cxt) {
 		}, &io_cxt);
 
 		pthread_setname_np(pl->thread, "SSL tunnel");
+		pthread_detach(pl->thread);
+
 		while (!(io_cxt.flags & IO_RUNNING))
 			usleep(10);
 
@@ -59,7 +61,7 @@ void ssl_io(_listen_t *pl, SSL *cl_cxt) {
 
 		_ulong err = ERR_get_error();
 		if (err) {
-			_char_t error_string[2048] = "";
+			_char_t error_string[1024] = "";
 
 			ERR_error_string_n(err, error_string, sizeof(error_string));
 			TRACE("hl[%d]: SSL %s\n", getpid(), error_string);
