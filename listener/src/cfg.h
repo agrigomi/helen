@@ -15,6 +15,7 @@
 #define MAX_LISTEN_NAME	64
 #define MAX_ARGV	256
 #define MAX_ENV		256
+#define MAX_IFC		32
 #define MAX_PATH	256
 #define MAX_SSL_METHOD	64
 
@@ -26,6 +27,7 @@ typedef struct {
 	_u32	port;				// listen port
 	_str_t	argv[MAX_ARGV];			// process arguments
 	_str_t	env[MAX_ENV];			// environment variables (optional)
+	_char_t	ifc[MAX_IFC];			// interface name
 	pthread_t thread;			// thread context
 	int 	server_fd;			// server socket FD
 	int	timeout;			// Client socket timeout in seconds

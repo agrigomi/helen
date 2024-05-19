@@ -2,6 +2,7 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <net/if.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -204,6 +205,16 @@ void cfg_start(void) {
 			setsockopt(p->server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 			setsockopt(p->server_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
 
+			if (strlen(p->ifc)) {
+				struct ifreq ifr;
+
+				memset(&ifr, 0, sizeof(ifr));
+				snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), p->ifc);
+				if (setsockopt(p->server_fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
+					TRACE("hl[%d] Unknown interface name '%s'\n", getpid(), p->ifc);
+				}
+			}
+
 			serv.sin_family = AF_INET;
 			serv.sin_port = htons(p->port);
 			serv.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -349,6 +360,7 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 	_json_value_t *pjv_port = json_select(p_jcxt, "port", &(p_jp->value.object));
 	_json_value_t *pjv_exec = json_select(p_jcxt, "exec", &(p_jp->value.object));
 	_json_value_t *pjv_env  = json_select(p_jcxt, "env",  &(p_jp->value.object));
+	_json_value_t *pjv_ifc  = json_select(p_jcxt, "interface",  &(p_jp->value.object));
 	_json_value_t *pjv_tout = json_select(p_jcxt, "timeout",  &(p_jp->value.object));
 	_json_value_t *pjv_nostderr = json_select(p_jcxt, "no-stderr",  &(p_jp->value.object));
 	_json_value_t *pjv_ssl  = json_select(p_jcxt, "ssl",  &(p_jp->value.object));
@@ -367,6 +379,8 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 			else if (pjv_env->jvt == JSON_ARRAY)
 				parse_env_array(&pjv_env->array, l.env, MAX_ENV);
 		}
+
+		jv_string(pjv_ifc, l.ifc, sizeof(l.ifc));
 
 		l.timeout = atoi(jv_string(pjv_tout).c_str());
 
