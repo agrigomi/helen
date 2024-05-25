@@ -376,7 +376,7 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 	int nb_out = 0;
 	unsigned int sum_out = 0;
 	_cstr_t proto = getenv(REQ_PROTOCOL);
-	_char_t lb[64] = "";
+	_char_t lb[128] = "";
 
 	if (!proto)
 		proto = "HTTP/1.1";
@@ -389,7 +389,7 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 
 		if (response) {
 			// send positive response
-			int sz = snprintf(lb, sizeof(lb), "%s %d OK\r\n\r\n", proto, HTTPRC_OK);
+			int sz = snprintf(lb, sizeof(lb), "%s %d Connection Established\r\n\r\n", proto, HTTPRC_OK);
 			io_write(lb, sz);
 		}
 
@@ -421,7 +421,7 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 		r = E_DONE;
 	} else {
 		if (response) {
-			int sz = snprintf(lb, sizeof(lb), "%s %d OK\r\n\r\n", proto, HTTPRC_INTERNAL_SERVER_ERROR);
+			int sz = snprintf(lb, sizeof(lb), "%s %d Internal Server Error\r\n\r\n", proto, HTTPRC_INTERNAL_SERVER_ERROR);
 			io_write(lb, sz);
 		}
 	}
