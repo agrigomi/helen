@@ -83,6 +83,7 @@ static const char *methods[] = { "GET", "HEAD", "POST",
 #define METHOD_PATCH	8
 
 static char _g_resp_buffer_[256 * 1024];
+static char _g_req_buffer_[256 * 1024];
 
 typedef struct {
 	unsigned long begin; // start offset in content
@@ -368,12 +369,17 @@ _eoh_:
 	return r;
 }
 
-static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input = false, _cstr_t _write = NULL) {
+static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input = false, _cstr_t _write = NULL, bool response = false) {
 	_err_t r = E_FAIL;
 	_proc_t proc;
 	pthread_t pt;
 	int nb_out = 0;
 	unsigned int sum_out = 0;
+	_cstr_t proto = getenv(REQ_PROTOCOL);
+	_char_t lb[64] = "";
+
+	if (!proto)
+		proto = "HTTP/1.1";
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
@@ -381,14 +387,20 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 		if (_write)
 			proc_write(&proc, (void *)_write, strlen(_write));
 
+		if (response) {
+			// send positive response
+			int sz = snprintf(lb, sizeof(lb), "%s %d OK\r\n\r\n", proto, HTTPRC_OK);
+			io_write(lb, sz);
+		}
+
 		if (input) {
 			pthread_create(&pt, NULL, [] (void *udata) -> void * {
 				int nb_in = 0;
 				_proc_t *p = (_proc_t *)udata;
 				unsigned int sum_in = 0;
 
-				while ((nb_in = io_read(_g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
-					proc_write(p, _g_resp_buffer_, nb_in);
+				while ((nb_in = io_read(_g_req_buffer_, sizeof(_g_req_buffer_))) > 0) {
+					proc_write(p, _g_req_buffer_, nb_in);
 					sum_in += nb_in;
 				}
 
@@ -407,6 +419,11 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 		TRACE("http[%d] out: %u\n", getpid(), sum_out);
 
 		r = E_DONE;
+	} else {
+		if (response) {
+			int sz = snprintf(lb, sizeof(lb), "%s %d OK\r\n\r\n", proto, HTTPRC_INTERNAL_SERVER_ERROR);
+			io_write(lb, sz);
+		}
 	}
 
 	return r;
@@ -849,12 +866,12 @@ static _err_t do_connect(_resp_t *p) {
 
 			TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
 					_g_proxy_openssl_proc_[5]);
-			r = exec(_g_proxy_openssl_proc_, timeout, true);
+			r = exec(_g_proxy_openssl_proc_, timeout, true, NULL, true);
 		} else {
 			// use nc
 			TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
 					_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
-			r = exec(_g_proxy_nc_proc_, timeout, true);
+			r = exec(_g_proxy_nc_proc_, timeout, true, NULL, true);
 		}
 	}
 
