@@ -306,10 +306,14 @@ static _err_t io_loop(int timeout) {
 		if (req_len > 0) {
 			if ((r = res_processing()) == E_OK) {
 				_cstr_t connection = getenv(REQ_CONNECTION);
+				_cstr_t proxy_connection = (argv_check(OPT_PROXY)) ? getenv(REQ_PROXY_CONNECTION) : NULL;
 
 				if (connection) {
-					 if (strcasecmp(connection, "keep-alive") != 0)
+					if (strcasecmp(connection, "keep-alive") != 0)
 						 break;
+				} else if (proxy_connection) {
+					if (strcasecmp(proxy_connection, "keep-alive") != 0)
+						break;
 				} else
 					break;
 			} else
