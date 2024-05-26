@@ -328,6 +328,10 @@ bool io_is_ssl(void) {
 	return (_g_ssl_in_) ? true : false;
 }
 
+SSL_CTX *io_get_ssl_context(void) {
+	return _g_ssl_context_;
+}
+
 _err_t io_start(void) {
 	_err_t r = E_OK;
 	const char *ssl_method = NULL;

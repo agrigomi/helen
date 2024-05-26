@@ -1,3 +1,7 @@
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <netdb.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -369,29 +373,18 @@ _eoh_:
 	return r;
 }
 
-static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input = false, _cstr_t _write = NULL, bool response = false) {
+static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input = false, _cstr_t _write = NULL) {
 	_err_t r = E_FAIL;
 	_proc_t proc;
 	pthread_t pt;
 	int nb_out = 0;
 	unsigned int sum_out = 0;
-	_cstr_t proto = getenv(REQ_PROTOCOL);
-	_char_t lb[128] = "";
-
-	if (!proto)
-		proto = "HTTP/1.1";
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
 	if (proc_exec_v(&proc, argv[0], argv) == 0) {
 		if (_write)
 			proc_write(&proc, (void *)_write, strlen(_write));
-
-		if (response) {
-			// send positive response
-			int sz = snprintf(lb, sizeof(lb), "%s %d Connection Established\r\n\r\n", proto, HTTPRC_OK);
-			io_write(lb, sz);
-		}
 
 		if (input) {
 			pthread_create(&pt, NULL, [] (void *udata) -> void * {
@@ -400,6 +393,7 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 				unsigned int sum_in = 0;
 
 				while ((nb_in = io_read(_g_req_buffer_, sizeof(_g_req_buffer_))) > 0) {
+					TRACE("http[%d] >> %s", getpid(), _g_req_buffer_);
 					proc_write(p, _g_req_buffer_, nb_in);
 					sum_in += nb_in;
 				}
@@ -411,6 +405,7 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 		}
 
 		while ((nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
+			TRACE("http[%d] << %s", getpid(), _g_resp_buffer_);
 			io_write(_g_resp_buffer_, nb_out);
 			sum_out += nb_out;
 		}
@@ -419,11 +414,6 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 		TRACE("http[%d] out: %u\n", getpid(), sum_out);
 
 		r = E_DONE;
-	} else {
-		if (response) {
-			int sz = snprintf(lb, sizeof(lb), "%s %d Internal Server Error\r\n\r\n", proto, HTTPRC_INTERNAL_SERVER_ERROR);
-			io_write(lb, sz);
-		}
 	}
 
 	return r;
@@ -791,16 +781,216 @@ static _cstr_t resolve_path(_cstr_t path, char *resolved) {
 	return r;
 }
 
+static _err_t proxy_raw_client_connection(_cstr_t domain, int port, _cstr_t _write = NULL, bool response = false) {
+	_err_t r = E_FAIL;
+	int sock = -1;
+	struct sockaddr_in server;
+	struct hostent *hp;
+	_cstr_t proto = getenv(REQ_PROTOCOL);
+	_char_t lb[128] = "";
+
+	if (!proto)
+		proto = "HTTP/1.1";
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) > 0) {
+		server.sin_family = AF_INET;
+
+		if ((hp = gethostbyname(domain))) {
+			memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
+			server.sin_port = htons(port);
+			int set_opt = 1;
+
+			setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &set_opt, sizeof(set_opt));
+
+			if (connect(sock, (struct sockaddr *) &server, sizeof(server)) == 0) {
+				pthread_t pt;
+				int nb_in = 0;
+				unsigned int sum_in = 0;
+
+				if (_write)
+					write(sock, (void *)_write, strlen(_write));
+
+				if (response) {
+					// send positive response
+					int sz = snprintf(lb, sizeof(lb), "%s %d Connection Established\r\n\r\n", proto, HTTPRC_OK);
+					io_write(lb, sz);
+				}
+
+				pthread_create(&pt, NULL, [] (void *udata) -> void * {
+					int nb_out = 0;
+					int *p = (int *)udata;
+					unsigned int sum_out = 0;
+
+					while ((nb_out = read(*p, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
+						TRACE("http[%d] << [%d] %s", getpid(), nb_out, _g_resp_buffer_);
+						io_write(_g_resp_buffer_, nb_out);
+						sum_out += nb_out;
+						memset(_g_resp_buffer_, 0, nb_out);
+					}
+
+					TRACE("http[%d] out: %u\n", getpid(), sum_out);
+					close(*p);
+					*p = -1;
+					return NULL;
+				}, &sock);
+
+				pthread_setname_np(pt, "RAW connection");
+				pthread_detach(pt);
+
+				while (sock > 0 && (nb_in = io_read(_g_req_buffer_, sizeof(_g_req_buffer_))) > 0) {
+					TRACE("http[%d] >> [%d] %s", getpid(), nb_in, _g_req_buffer_);
+					write(sock, _g_req_buffer_, nb_in);
+					sum_in += nb_in;
+					memset(_g_req_buffer_, 0, nb_in);
+				}
+
+				TRACE("http[%d] in: %u\n", getpid(), sum_in);
+
+				pthread_cancel(pt);
+				r = E_OK;
+			} else {
+				if (response) {
+					int sz = snprintf(lb, sizeof(lb), "%s %d Internal Server Error\r\n\r\n", proto, HTTPRC_INTERNAL_SERVER_ERROR);
+					io_write(lb, sz);
+				}
+			}
+		} else {
+			TRACE("http:[%d] Failed to resolve host name '%s'\n", getpid(), domain);
+		}
+
+		if(sock > 0)
+			close(sock);
+	} else {
+		TRACE("http[%d] Failed to create client socket\n", getpid());
+	}
+
+	return r;
+}
+
+static SSL_CTX *create_ssl_context(void) {
+	const SSL_METHOD *method;
+
+	OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
+	SSL_load_error_strings();   /* Bring in and register error messages */
+	method = TLSv1_2_client_method();  /* Create new client-method instance */
+
+	return SSL_CTX_new(method);
+}
+
+static _err_t proxy_ssl_client_connection(_cstr_t domain, int port, _cstr_t _write = NULL, bool response = false) {
+	_err_t r = E_FAIL;
+	SSL_CTX *ssl_context = create_ssl_context();
+
+	if (ssl_context) {
+		int sd;
+		struct hostent *host;
+		struct sockaddr_in addr;
+		_cstr_t proto = getenv(REQ_PROTOCOL);
+		_char_t lb[128] = "";
+
+		if (!proto)
+			proto = "HTTP/1.1";
+
+		TRACE("http[%d]: Connecting to %s:%d...\n", getpid(), domain, port);
+
+		if ((host = gethostbyname(domain)) != NULL) {
+			if ((sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) > 0) {
+				bzero(&addr, sizeof(addr));
+				addr.sin_family = AF_INET;
+				addr.sin_port = htons(port);
+				addr.sin_addr.s_addr = *(long*)(host->h_addr);
+
+				if (connect(sd, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
+					SSL *ssl = SSL_new(ssl_context);
+
+					SSL_set_fd(ssl, sd);
+					if (SSL_connect(ssl) == 1) {
+						pthread_t pt;
+						int nb_in = 0;
+						unsigned int sum_in = 0;
+
+						if (_write)
+							SSL_write(ssl, (void *)_write, strlen(_write));
+
+						if (response) {
+							// send positive response
+							int sz = snprintf(lb, sizeof(lb), "%s %d Connection Established\r\n\r\n", proto, HTTPRC_OK);
+							io_write(lb, sz);
+						}
+
+						pthread_create(&pt, NULL, [] (void *udata) -> void * {
+							int nb_out = 0;
+							SSL **p = (SSL **)udata;
+							unsigned int sum_out = 0;
+
+							while ((nb_out = SSL_read(*p, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
+								TRACE("http[%d] << [%d] %s", getpid(), nb_out, _g_resp_buffer_);
+								io_write(_g_resp_buffer_, nb_out);
+								sum_out += nb_out;
+								memset(_g_resp_buffer_, 0, nb_out);
+							}
+
+							TRACE("http[%d] out: %u\n", getpid(), sum_out);
+							return NULL;
+						}, &ssl);
+
+						pthread_setname_np(pt, "SSL connection");
+						pthread_detach(pt);
+
+						while ((nb_in = io_read(_g_req_buffer_, sizeof(_g_req_buffer_))) > 0) {
+							TRACE("http[%d] >> [%d] %s", getpid(), nb_in, _g_req_buffer_);
+							SSL_write(ssl, _g_req_buffer_, nb_in);
+							sum_in += nb_in;
+							memset(_g_req_buffer_, 0, nb_in);
+						}
+
+						TRACE("http[%d] in: %u\n", getpid(), sum_in);
+
+						pthread_cancel(pt);
+						r = E_OK;
+					} else {
+						TRACE("http[%d] Unable to establish SSL connection to '%s'\n", getpid(), domain);
+						if (response) {
+							int sz = snprintf(lb, sizeof(lb), "%s %d Bad Gateway\r\n\r\n", proto, HTTPRC_BAD_GATEWAY);
+							io_write(lb, sz);
+						}
+					}
+
+					SSL_free(ssl);
+				} else {
+					TRACE("http[%d] Unable to create client socket\n", getpid());
+					if (response) {
+						int sz = snprintf(lb, sizeof(lb), "%s %d Bad Gateway\r\n\r\n", proto, HTTPRC_BAD_GATEWAY);
+						io_write(lb, sz);
+					}
+				}
+
+				close(sd);
+			}
+		} else {
+			TRACE("http[%d] Unable to resolve '%s'\n", getpid(), domain);
+			if (response) {
+				int sz = snprintf(lb, sizeof(lb), "%s %d Domain not found\r\n\r\n", proto, HTTPRC_NOT_FOUND);
+				io_write(lb, sz);
+			}
+		}
+
+		SSL_CTX_free(ssl_context);
+	} else {
+		TRACE("http[%d] Failed to create SSL client context\n", getpid());
+	}
+
+	return r;
+}
+
 static _char_t 	_g_proxy_dst_port_[8] = "443";
 static _char_t 	_g_proxy_dst_host_[256] = "";
-static _cstr_t 	_g_proxy_openssl_proc_[] = { "/usr/bin/openssl", "s_client", "-quiet", "-verify_quiet", "-connect", NULL, NULL };
-static _cstr_t 	_g_proxy_nc_proc_[] = { "/bin/nc.openbsd", "-N", _g_proxy_dst_host_, _g_proxy_dst_port_, NULL};
 
 _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri, _cstr_t proto) {
 	_err_t r = E_FAIL;
 	_char_t lb[1024] = "";
+	int _port = (port) ? atoi(port) : 0;;
 
-	int timeout = atoi(argv_value(OPT_TIMEOUT));
 
 	memset(lb, 0, sizeof(lb));
 
@@ -808,28 +998,19 @@ _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, 
 	TRACE("uri: %s\n", uri);
 
 	if (strcasecmp(scheme, "http") == 0) {
-		if (port)
-			strncpy(_g_proxy_dst_port_, port, sizeof(_g_proxy_dst_port_));
-		else
-			strncpy(_g_proxy_dst_port_, "80", sizeof(_g_proxy_dst_port_));
+		if (!_port)
+			_port = 80;
 
-		strncpy(_g_proxy_dst_host_, domain, sizeof(_g_proxy_dst_host_));
 		snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
-		TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
-				_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
-		r = exec(_g_proxy_nc_proc_, timeout, true, lb);
+		TRACE("http[%d] RAW client '%s%s %d'\n", getpid(), domain, uri, _port);
+		r = proxy_raw_client_connection(domain, _port, lb);
 	} else if (strcasecmp(scheme, "https") == 0) {
-		if (port)
-			strncpy(_g_proxy_dst_port_, port, sizeof(_g_proxy_dst_port_));
-		else
-			strncpy(_g_proxy_dst_port_, "443", sizeof(_g_proxy_dst_port_));
+		if (!port)
+			_port = 443;
 
-		snprintf(_g_proxy_dst_host_, sizeof(_g_proxy_dst_host_), "%s:%s", domain, _g_proxy_dst_port_);
-		_g_proxy_openssl_proc_[5] = _g_proxy_dst_host_;
 		snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
-		TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
-				_g_proxy_openssl_proc_[5]);
-		r = exec(_g_proxy_openssl_proc_, timeout, true, lb);
+		TRACE("http[%d] SSL client '%s%s %d'\n", getpid(), domain, uri, _port);
+		r = proxy_ssl_client_connection(domain, _port, lb);
 	}
 
 	return r;
@@ -858,20 +1039,12 @@ static _err_t do_connect(_resp_t *p) {
 	int port = atoi(_g_proxy_dst_port_);
 
 	if (port) {
-		int timeout = atoi(argv_value(OPT_TIMEOUT));
-
 		if (port == 443 || port == 8443) {
-			// use openssl
-			_g_proxy_openssl_proc_[5] = p->uri;
-
-			TRACE("http[%d]: Exec. '%s %s'\n", getpid(), _g_proxy_openssl_proc_[0],
-					_g_proxy_openssl_proc_[5]);
-			r = exec(_g_proxy_openssl_proc_, timeout, true, NULL, true);
+			TRACE("http[%d]: RAW client. '%s %d'\n", getpid(), _g_proxy_dst_host_, port);
+			r = proxy_ssl_client_connection(_g_proxy_dst_host_, port, NULL, true);
 		} else {
-			// use nc
-			TRACE("http[%d]: Exec. '%s %s %s'\n", getpid(), _g_proxy_nc_proc_[0],
-					_g_proxy_nc_proc_[2], _g_proxy_nc_proc_[3]);
-			r = exec(_g_proxy_nc_proc_, timeout, true, NULL, true);
+			TRACE("http[%d]: RAW client. '%s %d'\n", getpid(), _g_proxy_dst_host_, port);
+			r = proxy_raw_client_connection(_g_proxy_dst_host_, port, NULL, true);
 		}
 	}
 

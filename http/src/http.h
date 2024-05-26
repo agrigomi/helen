@@ -348,6 +348,8 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc);
 /* returns E_OK for success */
 _err_t io_start(void);
 bool io_is_ssl(void);
+SSL_CTX *io_get_ssl_context(void);
+
 /**
 Wait for input with timeout in seconds
 return number of bytes  */
