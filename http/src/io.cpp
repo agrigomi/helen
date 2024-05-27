@@ -177,7 +177,7 @@ static void server_accept(int server_fd, int tmout) {
 	_g_listening_ = false;
 }
 
-static int wait_input(int fd, int tmout) {
+int wait_input(int fd, int tmout) {
 	fd_set selectset;
 	struct timeval timeout = {tmout, 0}; //timeout in sec.
 
@@ -206,6 +206,14 @@ int io_get_stdin_fd(void) {
 
 	if (_g_ssl_in_)
 		r = SSL_get_fd(_g_ssl_in_);
+
+	return r;
+}
+
+int verify_input(int fd) {
+	int r = 0;
+
+	ioctl(fd, FIONREAD, &r);
 
 	return r;
 }

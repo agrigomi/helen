@@ -8,7 +8,7 @@
 #include "url-codec.h"
 #include "argv.h"
 
-static void set_env_var(char *vstr, const char *div) {
+void set_env_var(char *vstr, const char *div) {
 	char *rest = NULL;
 	char *token = NULL;
 
@@ -173,7 +173,8 @@ _err_t req_receive(int timeout, int *req_len) {
 							TRACE("http[%d]: --> '%s %s://%s%s %s'\n", getpid(),
 								method, scheme, domain, uri, proto);
 						}
-						r = do_connect(method, scheme, domain, port, uri, proto);
+						*req_len = 0;
+						return do_connect(method, scheme, domain, port, uri, proto);
 					} else {
 #ifdef _DEBUG_
 						while (io_read_line(line, sizeof(line)) > 0)

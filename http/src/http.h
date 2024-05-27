@@ -351,6 +351,10 @@ bool io_is_ssl(void);
 SSL_CTX *io_get_ssl_context(void);
 
 /**
+Return number of bytes in input buffer */
+int wait_input(int fd, int tmout);
+int verify_input(int fd);
+/**
 Wait for input with timeout in seconds
 return number of bytes  */
 int io_wait_input(int timeout);
@@ -372,6 +376,7 @@ return >0 for number of sent bytes <=0 means fail */
 int io_fwrite(const char *fmt, ...);
 
 // Request
+void set_env_var(char *vstr, const char *div);
 _err_t req_receive(int timeout, int *req_len);
 void req_decode_url(_cstr_t url);
 
@@ -384,6 +389,8 @@ _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, 
 _err_t mime_open(void);
 void mime_close(void);
 _cstr_t mime_resolve(_cstr_t path);
+
+
 
 #endif
 
