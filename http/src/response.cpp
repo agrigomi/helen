@@ -990,27 +990,38 @@ static _char_t 	_g_proxy_dst_host_[256] = "";
 
 _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri, _cstr_t proto) {
 	_err_t r = E_FAIL;
-	_char_t lb[1024] = "";
+	_char_t lb[2048] = "";
+	int sz_lb = 0, sz_line = 0;
 	int _port = (port) ? atoi(port) : 0;;
 
 
 	memset(lb, 0, sizeof(lb));
 
-	TRACE("domain: %s\n", domain);
-	TRACE("uri: %s\n", uri);
+	TRACE("http[%d] domain: %s\n", getpid(), domain);
+	TRACE("http[%d] uri: %s\n", getpid(), uri);
+
+	// Format request
+	sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
+	// Read the rest of the request
+	while ((sz_line = io_read_line(lb + sz_lb, sizeof(lb) - sz_lb)) > 0) {
+		sz_lb += sz_line;
+		strcat(lb, "\r\n");
+		sz_lb += 2;
+	}
+	strcat(lb, "\r\n");
+
+	TRACE("http[%d] request: %s\n", getpid(), lb);
 
 	if (strcasecmp(scheme, "http") == 0) {
 		if (!_port)
 			_port = 80;
 
-		snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
 		TRACE("http[%d] RAW client '%s%s %d'\n", getpid(), domain, uri, _port);
 		r = proxy_raw_client_connection(domain, _port, lb);
 	} else if (strcasecmp(scheme, "https") == 0) {
 		if (!port)
 			_port = 443;
 
-		snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
 		TRACE("http[%d] SSL client '%s%s %d'\n", getpid(), domain, uri, _port);
 		r = proxy_ssl_client_connection(domain, _port, lb);
 	}
