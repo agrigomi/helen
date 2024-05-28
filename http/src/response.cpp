@@ -393,7 +393,6 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 				unsigned int sum_in = 0;
 
 				while ((nb_in = io_read(_g_req_buffer_, sizeof(_g_req_buffer_))) > 0) {
-					TRACE("http[%d] >> %s", getpid(), _g_req_buffer_);
 					proc_write(p, _g_req_buffer_, nb_in);
 					sum_in += nb_in;
 				}
@@ -405,7 +404,6 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 		}
 
 		while ((nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
-			TRACE("http[%d] << %s", getpid(), _g_resp_buffer_);
 			io_write(_g_resp_buffer_, nb_out);
 			sum_out += nb_out;
 		}
@@ -816,7 +814,6 @@ static _err_t proxy_raw_client_connection(_cstr_t domain, int port, _cstr_t _wri
 						while(t--) {
 							if (verify_input(sock)) {
 								if ((nb_in = read(sock, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
-									TRACE("<< %s\n", _g_resp_buffer_);
 									if (io_write(_g_resp_buffer_, nb_in) <= 0)
 										break;
 								} else
@@ -840,7 +837,6 @@ static _err_t proxy_raw_client_connection(_cstr_t domain, int port, _cstr_t _wri
 						unsigned int sum_out = 0;
 
 						while ((nb_out = read(*p, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
-							TRACE("http[%d] << [%d] %s", getpid(), nb_out, _g_resp_buffer_);
 							if (io_write(_g_resp_buffer_, nb_out) <= 0)
 								break;
 							sum_out += nb_out;
@@ -855,7 +851,6 @@ static _err_t proxy_raw_client_connection(_cstr_t domain, int port, _cstr_t _wri
 					pthread_detach(pt);
 
 					while ((nb_in = io_read(_g_req_buffer_, sizeof(_g_req_buffer_))) > 0) {
-						TRACE("http[%d] >> [%lu] %s", getpid(), nb_in, _g_req_buffer_);
 						if (write(sock, _g_req_buffer_, nb_in) <= 0)
 							break;
 						sum_in += nb_in;
@@ -946,7 +941,6 @@ static _err_t proxy_ssl_client_connection(_cstr_t domain, int port, _cstr_t _wri
 								while(t--) {
 									if (verify_input(sd)) {
 										if ((nb_in = SSL_read(ssl, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
-											TRACE("<< %s\n", _g_resp_buffer_);
 											if (io_write(_g_resp_buffer_, nb_in) <= 0)
 												break;
 										} else
@@ -970,7 +964,6 @@ static _err_t proxy_ssl_client_connection(_cstr_t domain, int port, _cstr_t _wri
 								unsigned int sum_out = 0;
 
 								while ((nb_out = SSL_read(*p, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
-									TRACE("http[%d] << [%d] %s", getpid(), nb_out, _g_resp_buffer_);
 									if (io_write(_g_resp_buffer_, nb_out) <= 0)
 										break;
 									sum_out += nb_out;
@@ -985,7 +978,6 @@ static _err_t proxy_ssl_client_connection(_cstr_t domain, int port, _cstr_t _wri
 							pthread_detach(pt);
 
 							while ((nb_in = io_read(_g_req_buffer_, sizeof(_g_req_buffer_))) > 0) {
-								TRACE("http[%d] >> [%lu] %s", getpid(), nb_in, _g_req_buffer_);
 								if (SSL_write(ssl, _g_req_buffer_, nb_in) <= 0)
 									break;
 								sum_in += nb_in;
