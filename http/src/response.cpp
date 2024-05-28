@@ -393,7 +393,8 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 				unsigned int sum_in = 0;
 
 				while ((nb_in = io_read(_g_req_buffer_, sizeof(_g_req_buffer_))) > 0) {
-					proc_write(p, _g_req_buffer_, nb_in);
+					if (proc_write(p, _g_req_buffer_, nb_in) <= 0)
+						break;
 					sum_in += nb_in;
 				}
 
