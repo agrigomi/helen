@@ -54,31 +54,31 @@ int main(int argc, char *argv[]) {
 		while (1) {
 			if ((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) <= 0)
 				break;
-			TRACE("http[%d]: SIGCHLD: PID=%u, STATUS=%d\n", getpid(), pid, stat);
+			TRACE("http[%d] SIGCHLD: PID=%u, STATUS=%d\n", getpid(), pid, stat);
 		}
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
-		TRACE("http: SIGSEGV\n");
+		TRACE("http SIGSEGV\n");
 		dump_stack();
 		exit(0);
 	});
 	signal(SIGINT, [](__attribute__((unused)) int sig) {
-		TRACE("http[%d]: SIGINT\n", getpid());
+		TRACE("http[%d] SIGINT\n", getpid());
 		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGKILL, [](__attribute__((unused)) int sig) {
-		TRACE("http[%d]: SIGKILL\n", getpid());
+		TRACE("http[%d] SIGKILL\n", getpid());
 		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGTERM, [](__attribute__((unused)) int sig) {
-		TRACE("http[%d]: SIGTERM\n", getpid());
+		TRACE("http[%d] SIGTERM\n", getpid());
 		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGPIPE, [](__attribute__((unused)) int sig) {
-		TRACE("http[%d]: SIGPIPE\n", getpid());
+		TRACE("http[%d] SIGPIPE\n", getpid());
 	});
 
 	if (argv_parse(argc, (_cstr_t *)argv, args)) {

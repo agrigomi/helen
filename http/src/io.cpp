@@ -143,7 +143,7 @@ static void server_accept(int server_fd, int tmout) {
 				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			}
 
-			TRACE("\nhttp[%d]: Incoming connection from %s\n", getpid(), strip);
+			TRACE("http[%d] Incoming connection from %s\n", getpid(), strip);
 			setenv("PEER_IP", strip, 1);
 
 			if ((cpid = fork()) == 0) { // child
@@ -153,14 +153,14 @@ static void server_accept(int server_fd, int tmout) {
 
 					if (setup_ssl_io(sl, &cl_cxt) == E_OK) {
 						_g_ssl_in_ = _g_ssl_out_ = cl_cxt;
-						TRACE("http[%d]: Fork PID = %d SSL I/O\n", getpid(), getpid());
+						TRACE("http[%d] Fork PID = %d SSL I/O\n", getpid(), getpid());
 					} else {
-						TRACE("http[%d]: Failed to setup SSL I/O\n", getpid());
+						TRACE("http[%d] Failed to setup SSL I/O\n", getpid());
 					}
 				} else {
 					dup2(sl, STDIN_FILENO);
 					dup2(sl, STDOUT_FILENO);
-					TRACE("http[%d]: Fork PID = %d RAW I/O\n", getpid(), getpid());
+					TRACE("http[%d] Fork PID = %d RAW I/O\n", getpid(), getpid());
 				}
 
 				close(_g_server_fd_);

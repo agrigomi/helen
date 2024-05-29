@@ -459,7 +459,7 @@ static _err_t send_file_content(_resp_t *p) {
 					if (lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
 						goto _close_file_;
 
-					TRACE("http[%d]: Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
+					TRACE("http[%d] Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
 					// send range header
 					io_write(hdr, strlen(hdr));
 
@@ -484,7 +484,7 @@ static _err_t send_file_content(_resp_t *p) {
 				if (lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
 					goto _close_file_;
 
-				TRACE("http[%d]: Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
+				TRACE("http[%d] Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
 
 				// send range content
 				while ((nb = read(fd, _g_resp_buffer_,
@@ -513,7 +513,7 @@ static void switch_to_err(_resp_t *p, int rc) {
 	if (rc >= HTTPRC_BAD_REQUEST) {
 		p->rc = rc;
 
-		TRACE("http[%d]: #%d %s '%s'\n", getpid(), p->rc, _g_resp_text_[p->rc], p->uri);
+		TRACE("http[%d] #%d %s '%s'\n", getpid(), p->rc, _g_resp_text_[p->rc], p->uri);
 		if ((p->p_mapping = cfg_get_err_mapping(p->p_vhost, p->rc)))
 			p->rc_type = RCT_MAPPING;
 		else if ((p->static_text = _g_resp_content_[p->rc]))
@@ -719,12 +719,12 @@ _send_file_:
 				if (p->path)
 					r = send_file_content(p);
 			} else {
-				TRACE("http[%d]: No read permissions\n", getpid());
+				TRACE("http[%d] No read permissions\n", getpid());
 			}
 		} else { // Directory request
 			p->b_st = false; // temporary !!!
 			switch_to_err(p, HTTPRC_NOT_IMPLEMENTED);
-			TRACE("http[%d]: Directory request\n", getpid());
+			TRACE("http[%d] Directory request\n", getpid());
 			goto _send_response_;
 		}
 	} else {
@@ -1096,13 +1096,10 @@ static _err_t do_connect(_resp_t *p) {
 	int port = atoi(_g_proxy_dst_port_);
 
 	if (port) {
-		if (port == 443 || port == 8443) {
-			TRACE("http[%d]: RAW client. '%s %d'\n", getpid(), _g_proxy_dst_host_, port);
+		if (port == 443 || port == 8443)
 			r = proxy_ssl_client_connection(_g_proxy_dst_host_, port, NULL, true);
-		} else {
-			TRACE("http[%d]: RAW client. '%s %d'\n", getpid(), _g_proxy_dst_host_, port);
+		else
 			r = proxy_raw_client_connection(_g_proxy_dst_host_, port, NULL, true);
-		}
 	}
 
 	return r;
