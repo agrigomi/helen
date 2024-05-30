@@ -1,6 +1,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <netdb.h>
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
@@ -275,6 +276,85 @@ int io_fwrite(const char *fmt, ...) {
 	va_end(va);
 
 	return r;
+}
+
+_err_t io_create_raw_client_connection(_cstr_t domain, int port, int *socket_fd) {
+	_err_t r = E_FAIL;
+	struct hostent *hp;
+
+	if ((hp = gethostbyname(domain))) {
+		if ((*socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) > 0) {
+			struct sockaddr_in server;
+
+			bzero(&server, sizeof(server));
+			server.sin_family = AF_INET;
+			memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
+			server.sin_port = htons(port);
+			int set_opt = 1;
+
+			setsockopt(*socket_fd, SOL_SOCKET, SO_KEEPALIVE, &set_opt, sizeof(set_opt));
+
+			if (connect(*socket_fd, (struct sockaddr *) &server, sizeof(server)) == 0)
+				r = E_OK;
+		}
+	} else {
+		r = E_RESOLVE;
+		*socket_fd = -1;
+	}
+
+	return r;
+}
+
+static SSL_CTX *_g_ssl_ctx_ = NULL;
+
+static SSL_CTX *create_ssl_context(void) {
+	SSL_CTX *r = _g_ssl_ctx_;
+
+	if (!r) {
+		const SSL_METHOD *method;
+
+		OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
+		SSL_load_error_strings();   /* Bring in and register error messages */
+		method = TLSv1_2_client_method();  /* Create new client-method instance */
+
+		r =  _g_ssl_ctx_ = SSL_CTX_new(method);
+	}
+
+	return r;
+}
+
+_err_t io_create_ssl_client_connection(_cstr_t domain, int port, SSL **ssl_ctx) {
+	_err_t r = E_FAIL;
+	int socket_fd = -1;
+	SSL_CTX *ssl_context = create_ssl_context();
+
+	if (ssl_context) {
+		if ((r = io_create_raw_client_connection(domain, port, &socket_fd)) == E_OK) {
+			*ssl_ctx = SSL_new(ssl_context);
+
+			if (*ssl_ctx) {
+				SSL_set_fd(*ssl_ctx, socket_fd);
+				if (SSL_connect(*ssl_ctx) == 1)
+					r = E_OK;
+				else {
+					SSL_free(*ssl_ctx);
+					close(socket_fd);
+				}
+			} else
+				close(socket_fd);
+		}
+	}
+
+	return r;
+}
+
+void io_close_ssl_client_connection(SSL *ssl) {
+	if (ssl) {
+		int socket_fd = SSL_get_fd(ssl);
+
+		SSL_free(ssl);
+		close(socket_fd);
+	}
 }
 
 /**

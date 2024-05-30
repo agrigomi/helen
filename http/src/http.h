@@ -360,6 +360,9 @@ return number of bytes  */
 int io_wait_input(int timeout);
 int io_verify_input(void);
 int io_get_stdin_fd(void);
+_err_t io_create_raw_client_connection(_cstr_t domain, int port, int *socket_fd);
+_err_t io_create_ssl_client_connection(_cstr_t domain, int port, SSL **ssl_ctx);
+void io_close_ssl_client_connection(SSL *ssl);
 /**
 Read line from input stream
 return line size (without \r\n) */

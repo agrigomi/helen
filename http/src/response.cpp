@@ -1,7 +1,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <netdb.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -882,23 +881,6 @@ static _err_t proxy_raw_client_connection(_cstr_t domain, int port, _cstr_t _wri
 	return r;
 }
 
-static SSL_CTX *_g_ssl_ctx_ = NULL;
-
-static SSL_CTX *create_ssl_context(void) {
-	SSL_CTX *r = _g_ssl_ctx_;
-
-	if (!r) {
-		const SSL_METHOD *method;
-
-		OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
-		SSL_load_error_strings();   /* Bring in and register error messages */
-		method = TLSv1_2_client_method();  /* Create new client-method instance */
-
-		r =  _g_ssl_ctx_ = SSL_CTX_new(method);
-	}
-
-	return r;
-}
 
 static _err_t proxy_ssl_client_connection(_cstr_t domain, int port, _cstr_t _write = NULL, bool response = false) {
 	_err_t r = E_FAIL;
