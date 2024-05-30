@@ -809,8 +809,8 @@ static _err_t proxy_raw_client_connection(_cstr_t domain, int port, _cstr_t _wri
 				if (_write) {
 					write(sock, (void *)_write, strlen(_write));
 					// read ...
-					if (wait_input(sock, 10)) {
-						int t = 10;
+					if (wait_input(sock, 30)) {
+						int t = 100;
 
 						while(t--) {
 							if (verify_input(sock)) {
@@ -820,7 +820,7 @@ static _err_t proxy_raw_client_connection(_cstr_t domain, int port, _cstr_t _wri
 								} else
 									break;
 
-								t = 10;
+								t = 100;
 							} else
 								usleep(10000);
 						}
@@ -936,8 +936,8 @@ static _err_t proxy_ssl_client_connection(_cstr_t domain, int port, _cstr_t _wri
 							SSL_write(ssl, (void *)_write, strlen(_write));
 
 							// read ...
-							if (wait_input(sd, 10)) {
-								int t = 10;
+							if (wait_input(sd, 30)) {
+								int t = 100;
 
 								while(t--) {
 									if (verify_input(sd)) {
@@ -947,7 +947,7 @@ static _err_t proxy_ssl_client_connection(_cstr_t domain, int port, _cstr_t _wri
 										} else
 											break;
 
-										t = 10;
+										t = 100;
 									} else
 										usleep(10000);
 								}
