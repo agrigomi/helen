@@ -104,7 +104,7 @@ PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_http_OBJECTS = src/main.$(OBJEXT) src/cfg.$(OBJEXT) \
 	src/io.$(OBJEXT) src/request.$(OBJEXT) src/response.$(OBJEXT) \
-	src/url-codec.$(OBJEXT) src/mime.$(OBJEXT)
+	src/proxy.$(OBJEXT) src/url-codec.$(OBJEXT) src/mime.$(OBJEXT)
 http_OBJECTS = $(am_http_OBJECTS)
 http_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -124,8 +124,8 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = src/$(DEPDIR)/cfg.Po src/$(DEPDIR)/io.Po \
 	src/$(DEPDIR)/main.Po src/$(DEPDIR)/mime.Po \
-	src/$(DEPDIR)/request.Po src/$(DEPDIR)/response.Po \
-	src/$(DEPDIR)/url-codec.Po
+	src/$(DEPDIR)/proxy.Po src/$(DEPDIR)/request.Po \
+	src/$(DEPDIR)/response.Po src/$(DEPDIR)/url-codec.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -296,6 +296,7 @@ http_SOURCES = src/main.cpp \
 		src/io.cpp \
 		src/request.cpp \
 		src/response.cpp \
+		src/proxy.cpp \
 		src/url-codec.cpp \
 		src/mime.cpp
 
@@ -387,6 +388,7 @@ src/request.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/response.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
+src/proxy.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/url-codec.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/mime.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
@@ -406,6 +408,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/io.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/mime.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/proxy.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/request.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/response.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/url-codec.Po@am__quote@ # am--include-marker
@@ -588,6 +591,7 @@ distclean: distclean-am
 	-rm -f src/$(DEPDIR)/io.Po
 	-rm -f src/$(DEPDIR)/main.Po
 	-rm -f src/$(DEPDIR)/mime.Po
+	-rm -f src/$(DEPDIR)/proxy.Po
 	-rm -f src/$(DEPDIR)/request.Po
 	-rm -f src/$(DEPDIR)/response.Po
 	-rm -f src/$(DEPDIR)/url-codec.Po
@@ -640,6 +644,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f src/$(DEPDIR)/io.Po
 	-rm -f src/$(DEPDIR)/main.Po
 	-rm -f src/$(DEPDIR)/mime.Po
+	-rm -f src/$(DEPDIR)/proxy.Po
 	-rm -f src/$(DEPDIR)/request.Po
 	-rm -f src/$(DEPDIR)/response.Po
 	-rm -f src/$(DEPDIR)/url-codec.Po

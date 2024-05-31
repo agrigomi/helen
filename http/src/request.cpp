@@ -59,11 +59,11 @@ void req_decode_url(_cstr_t url) {
 		} else {
 			*(urn - 3) = ':'; //restore
 			urn = s;
-			setenv(REQ_SCHEME, "file", 1);
+			setenv(REQ_SCHEME, SCHEME_FILE, 1);
 		}
 	} else {
 		s = urn = scheme;
-		setenv(REQ_SCHEME, "file", 1);
+		setenv(REQ_SCHEME, SCHEME_FILE, 1);
 		setenv(REQ_URN, urn, 1);
 	}
 
@@ -135,6 +135,8 @@ _err_t req_receive(int timeout, int *req_len) {
 	char line[2048];
 	int rl = 0; // request length
 
+	*req_len = 0;
+
 	if (io_wait_input(timeout) > 0) {
 		// read request line
 		if ((rl = io_read_line(line, sizeof(line))) > 0) {
@@ -144,9 +146,9 @@ _err_t req_receive(int timeout, int *req_len) {
 				_cstr_t scheme = getenv(REQ_SCHEME);
 
 				if (!scheme)
-					scheme = "file";
+					scheme = SCHEME_FILE;
 
-				if (strcmp(scheme, "file") == 0) {
+				if (strcmp(scheme, SCHEME_FILE) == 0) {
 					int hl = 0; // header line length
 
 					// read header lines
@@ -155,9 +157,21 @@ _err_t req_receive(int timeout, int *req_len) {
 						set_env_var(line, ":");
 					}
 
+					*req_len = rl;
 					setenv(RES_ENV_SERVER, SERVER_NAME, 1);
 					setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
-				} else {
+				} else if (strcmp(scheme, SCHEME_HTTP) == 0 && argv_check(OPT_PROXY))
+					r = proxy_http();
+				else if (strcmp(scheme, SCHEME_HTTPS) == 0 && argv_check(OPT_PROXY))
+					r = proxy_https();
+				else {
+					while (io_read_line(line, sizeof(line)) > 0) {
+						TRACE("%s\n", line);
+					}
+
+					r = send_error_response(NULL, HTTPRC_SERVICE_UNAVAILABLE);
+				}
+					/*
 					if (argv_check(OPT_PROXY)) {
 						// proxy connect to URL
 						_cstr_t method = getenv(REQ_METHOD);
@@ -185,6 +199,7 @@ _err_t req_receive(int timeout, int *req_len) {
 						r = E_DONE;
 					}
 				}
+				*/
 			} else {
 				TRACE("http[%d] Invalid request\n", getpid());
 				send_error_response(NULL, HTTPRC_BAD_REQUEST);
@@ -197,8 +212,6 @@ _err_t req_receive(int timeout, int *req_len) {
 		} else {
 			TRACE("http[%d] Disconnect (remote close)\n", getpid());
 		}
-
-		*req_len = rl;
 	} else {
 		send_error_response(NULL, HTTPRC_REQUEST_TIMEOUT);
 		TRACE("http[%d] Request timed out\n", getpid());

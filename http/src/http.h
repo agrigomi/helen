@@ -24,6 +24,11 @@
 #define SERVER_NAME	"Helen"
 #define ALLOW_METHOD	"GET, POST, HEAD"
 
+#define SCHEME_FILE	"file"
+#define SCHEME_HTTP	"http"
+#define SCHEME_HTTPS	"https"
+
+
 // Common environment variables
 #define DOC_ROOT		"DOC_ROOT"
 
@@ -387,6 +392,12 @@ void req_decode_url(_cstr_t url);
 _err_t res_processing(void);
 _err_t send_error_response(_vhost_t *p_vhost, int rc);
 _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri, _cstr_t proto);
+
+// proxy
+_err_t proxy_http(void);
+_err_t proxy_https(void);
+_err_t proxy_raw_connect(_cstr_t domain, int port);
+_err_t proxy_ssl_connect(_cstr_t domain, int port);
 
 // Mime Types
 _err_t mime_open(void);

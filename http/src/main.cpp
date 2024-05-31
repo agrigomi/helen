@@ -23,7 +23,7 @@ static _argv_t args[] = {
 	{ OPT_SSL_CERT,		OF_LONG | OF_VALUE,			NULL,				"SSL certificate file (PEM only)" },
 	{ OPT_SSL_KEY,		OF_LONG | OF_VALUE,			NULL,				"SSL private key file (PEM only)" },
 	{ OPT_SSL_METHOD,	OF_LONG | OF_VALUE,			NULL,				"SSL server method (SSLv23, TLSv1_2, DTLS, TLS)" },
-	{ OPT_PROXY,		OF_LONG,				NULL,				"Enable proxy (method CONNECT)" },
+	{ OPT_PROXY,		OF_LONG,				NULL,				"Enable proxy" },
 	//...
 	{ NULL,			0,					NULL,				NULL }
 };
