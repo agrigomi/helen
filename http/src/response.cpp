@@ -86,7 +86,6 @@ static const char *methods[] = { "GET", "HEAD", "POST",
 #define METHOD_PATCH	8
 
 static char _g_resp_buffer_[256 * 1024];
-static char _g_req_buffer_[256 * 1024];
 
 typedef struct {
 	unsigned long begin; // start offset in content
@@ -390,14 +389,17 @@ static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input
 				int nb_in = 0;
 				_proc_t *p = (_proc_t *)udata;
 				unsigned int sum_in = 0;
+				int sz_req_buffer = 4 * 1024;
+				_str_t req_buffer = (_str_t)malloc(sz_req_buffer);
 
-				while ((nb_in = io_read(_g_req_buffer_, sizeof(_g_req_buffer_))) > 0) {
-					if (proc_write(p, _g_req_buffer_, nb_in) <= 0)
+				while ((nb_in = io_read(req_buffer, sz_req_buffer)) > 0) {
+					if (proc_write(p, req_buffer, nb_in) <= 0)
 						break;
 					sum_in += nb_in;
 				}
 
 				proc_break(p);
+				free(req_buffer);
 				TRACE("http[%d] in: %u\n", getpid(), sum_in);
 				return NULL;
 			}, &proc);
