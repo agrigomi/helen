@@ -12,7 +12,6 @@ void set_env_var(char *vstr, const char *div) {
 	char *rest = NULL;
 	char *token = NULL;
 
-	TRACE("%s\n", vstr);
 	if ((token = strtok_r(vstr, div, &rest))) {
 		if (div[0] == ':') {
 			char lb[256] = "REQ_";
