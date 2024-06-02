@@ -153,7 +153,14 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 				}
 			}
 		} else {
-			TRACE("http[%d] Failed to parse '%s'\n", getpid(), json_fname);
+			TRACE("http[%d] Error parsing '%s'\n", getpid(), json_fname);
+			char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
+			int i = 0;
+
+			fprintf(stderr, "ERROR: (offset: %lu) ", p_jcxt->err_pos);
+			for(; i < 10 && *(pc + p_jcxt->err_pos + i); i++)
+				fprintf(stderr, "%c", *(pc + p_jcxt->err_pos + i));
+			fprintf(stderr, "\n");
 		}
 
 		json_destroy_context(p_jcxt);
@@ -372,6 +379,15 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 					r = E_OK;
 				}
 			}
+		} else {
+			TRACE("http[%d] Error parsing '%s'\n", getpid(), json_fname);
+			char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
+			int i = 0;
+
+			fprintf(stderr, "ERROR: (offset: %lu) ", p_jcxt->err_pos);
+			for(; i < 10 && *(pc + p_jcxt->err_pos + i); i++)
+				fprintf(stderr, "%c", *(pc + p_jcxt->err_pos + i));
+			fprintf(stderr, "\n");
 		}
 
 		json_destroy_context(p_jcxt);
