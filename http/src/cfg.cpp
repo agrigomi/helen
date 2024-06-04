@@ -464,7 +464,7 @@ _mapping_stat_cmp_:
 			}
 
 			touch(lock_path);
-			TRACE("http[%d] Compile mapping\n", getpid());
+			TRACE("http[%d] Compile mapping '%s'\n", getpid(), src_path);
 			r = compile_mapping(src_path, dat_path, &hf_cxt);
 			unlink(lock_path);
 		} else
