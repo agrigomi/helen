@@ -2,8 +2,10 @@
 #define __HTTP_H__
 
 #include <string.h>
+#include <vector>
 #include "config.h"
 #include "api_ssl.h"
+#include "sha1.h"
 #include "err.h"
 
 // command line options
@@ -128,6 +130,7 @@
 #define MAX_PATH	1024
 #define MAX_HOST_NAME	256
 #define MAX_BUFFER_LEN	2048
+#define MAX_BOUNDARY	(SHA1HashSize * 2) + 1
 
 struct __attribute__((packed)) vhost {
 	char	host[MAX_HOST_NAME];
@@ -319,6 +322,45 @@ typedef struct __attribute__((packed)) {
 		return r;
 	}
 } _mapping_t;
+
+#define BUFFER_TYPE_HEAP	1
+#define BUFFER_TYPE_STATIC	2
+
+typedef struct {
+	bool enabled;
+	int size;
+	_str_t buffer;
+	int buffer_size;
+	_u8 buffer_type;
+	//...
+} _resp_header_t;
+
+typedef struct {
+	int size;
+	_u8 encoding;
+	_str_t buffer;
+	int buffer_size;
+	_u8 buffer_type;
+} _resp_content_t;
+
+typedef struct {
+	unsigned long begin; // start offset in content
+	unsigned long end; // size in bytes
+	_char_t	header[512]; // range header
+} _range_t;
+
+typedef std::vector<_range_t> _v_range_t;
+
+typedef struct {
+	_resp_header_t	header;
+	_resp_content_t	content;
+	_char_t		file[MAX_PATH]; // resolved (real) path
+	_vhost_t	*p_vhost;
+	_v_range_t	*pv_ranges;
+	_char_t		boundary[MAX_BOUNDARY];
+	_mapping_t	*p_mapping;
+	//...
+} _response_t;
 
 // CFG
 

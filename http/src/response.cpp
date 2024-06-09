@@ -87,19 +87,9 @@ static const char *methods[] = { "GET", "HEAD", "POST",
 
 static char _g_resp_buffer_[256 * 1024];
 
-typedef struct {
-	unsigned long begin; // start offset in content
-	unsigned long end; // size in bytes
-	char	header[512]; // range header
-} _range_t;
-
-typedef std::vector<_range_t> _v_range_t;
-
 #define RCT_NONE	0
 #define RCT_STATIC	1
 #define RCT_MAPPING	2
-
-#define MAX_BOUNDARY	(SHA1HashSize * 2) + 1
 
 typedef struct {
 	_cstr_t		s_method;
