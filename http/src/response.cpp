@@ -53,33 +53,6 @@ typedef struct {
 	_cstr_t 	(*vcb)(_resp_t *);
 } _hdr_t;
 
-static void split_by_space(_cstr_t str, _u32 str_size, _str_t dst_arr[], _u32 arr_size) {
-	_str_t p_str = (_str_t)malloc(str_size + 1);
-
-	if (p_str) {
-		_str_t rest = NULL;
-		_str_t token;
-		_u32 i = 0, l = 0;
-
-		memset(p_str, 0, str_size + 1);
-		strncpy(p_str, str, str_size);
-
-		for (token = strtok_r(p_str, " ", &rest); token != NULL; token = strtok_r(NULL, " ", &rest)) {
-			l = strlen(token) + 1;
-			if ((dst_arr[i] = (_str_t)malloc(l))) {
-				strcpy(dst_arr[i], token);
-				i++;
-				if (i >= arr_size)
-					break;
-			} else {
-				TRACEfl("Unable to allocate memory !\n");
-			}
-		}
-
-		free(p_str);
-	}
-}
-
 static char _g_vhdr_[4096];
 
 static _hdr_t _g_hdef_[] = {
@@ -271,72 +244,25 @@ _eoh_:
 	return r;
 }
 
-static _err_t exec(_cstr_t argv[], int __attribute__((unused)) tmout, bool input = false, _cstr_t _write = NULL) {
-	_err_t r = E_FAIL;
-	_proc_t proc;
-	pthread_t pt;
-	int nb_out = 0;
-	unsigned int sum_out = 0;
-
-	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
-
-	if (proc_exec_v(&proc, argv[0], argv) == 0) {
-		if (_write)
-			proc_write(&proc, (void *)_write, strlen(_write));
-
-		if (input) {
-			pthread_create(&pt, NULL, [] (void *udata) -> void * {
-				int nb_in = 0;
-				_proc_t *p = (_proc_t *)udata;
-				unsigned int sum_in = 0;
-				int sz_req_buffer = 4 * 1024;
-				_str_t req_buffer = (_str_t)malloc(sz_req_buffer);
-
-				while ((nb_in = io_read(req_buffer, sz_req_buffer)) > 0) {
-					if (proc_write(p, req_buffer, nb_in) <= 0)
-						break;
-					sum_in += nb_in;
-				}
-
-				proc_break(p);
-				free(req_buffer);
-				TRACE("http[%d] in: %u\n", getpid(), sum_in);
-				return NULL;
-			}, &proc);
-		}
-
-		while ((nb_out = proc_read(&proc, _g_resp_buffer_, sizeof(_g_resp_buffer_))) > 0) {
-			io_write(_g_resp_buffer_, nb_out);
-			sum_out += nb_out;
-		}
-
-		proc_break(&proc);
-		TRACE("http[%d] out: %u\n", getpid(), sum_out);
-
-		r = E_DONE;
-	}
-
-	return r;
-}
-
 static _err_t send_exec(_cstr_t cmd, bool input = false) {
-	_err_t r = E_FAIL;
-	_str_t argv[256];
-	int i = 0;
-	int timeout = atoi(argv_value(OPT_TIMEOUT));
+	return resp_exec(cmd,
+		/* out */
+		[] (unsigned char *buf, unsigned int sz,
+				void __attribute__((unused)) *udata) -> int {
+			return io_write((_cstr_t)buf, sz);
+		},
+		/* in */
+		[] (unsigned char *buf, unsigned int sz,
+				void __attribute__((unused)) *udata) -> int {
+			int r = 0;
+			int nb = io_verify_input();
 
-	memset(argv, 0, sizeof(argv));
-	split_by_space(cmd, strlen(cmd), argv, 256);
+			if (nb)
+				r = io_read((_str_t)buf, sz);
 
-	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
-	r = exec((_cstr_t *)argv, timeout, input);
-
-	while (argv[i]) {
-		free(argv[i]);
-		i++;
-	}
-
-	return r;
+			return r;
+		},
+		NULL);
 }
 
 static _err_t send_file_content(_resp_t *p) {

@@ -16,23 +16,18 @@ _err_t resp_exec_v(_cstr_t argv[],
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
 	if ((r = proc_exec_v(&proc, argv[0], argv)) == E_OK) {
-		while ((r = proc_status(&proc)) == -1) {
+		while (true) {
 			int nin = (in) ? in(bin, sizeof(bin), udata) : 0;
+			int nout = 0;
 
 			if (nin)
 				proc_write(&proc, bin, nin);
 
-			/* Verify first for available output data,
-			   because we don't want to block for reading */
-			int nout = verify_input(proc.PREAD_FD);
-
-			if (nout) {
-				nout = proc_read(&proc, bout, sizeof(bout));
+			while ((nout = proc_read(&proc, bout, sizeof(bout))) > 0)
 				out(bout, nout, udata);
-			}
 
-			if (!nin && !nout)
-				usleep(10000);
+			if ((r = proc_status(&proc)) != -1)
+				break;
 		}
 	}
 
