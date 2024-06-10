@@ -19,72 +19,6 @@
 #include "sha1.h"
 #include "argv.h"
 
-static std::map<int, _cstr_t> _g_resp_text_ = {
-	{ HTTPRC_CONTINUE,		"Continue" },
-	{ HTTPRC_SWITCHING_PROTOCOL,	"Switching Protocols" },
-	{ HTTPRC_OK,			"OK" },
-	{ HTTPRC_CREATED,		"Created" },
-	{ HTTPRC_ACCEPTED,		"Accepted" },
-	{ HTTPRC_NON_AUTH,		"Non-Authoritative Information" },
-	{ HTTPRC_NO_CONTENT,		"No Content" },
-	{ HTTPRC_RESET_CONTENT,		"Reset Content" },
-	{ HTTPRC_PART_CONTENT,		"Partial Content" },
-	{ HTTPRC_MULTICHOICES,		"Multiple Choices" },
-	{ HTTPRC_MOVED_PERMANENTLY,	"Moved Permanently" },
-	{ HTTPRC_FOUND,			"Found" },
-	{ HTTPRC_SEE_OTHER,		"See Other" },
-	{ HTTPRC_NOT_MODIFIED,		"Not Modified" },
-	{ HTTPRC_USE_PROXY,		"Use proxy" },
-	{ HTTPRC_TEMP_REDIRECT,		"Temporary redirect" },
-	{ HTTPRC_BAD_REQUEST,		"Bad Request" },
-	{ HTTPRC_UNAUTHORIZED,		"Unauthorized" },
-	{ HTTPRC_PAYMENT_REQUIRED,	"Payment Required" },
-	{ HTTPRC_FORBIDDEN,		"Forbidden" },
-	{ HTTPRC_NOT_FOUND,		"Not Found" },
-	{ HTTPRC_METHOD_NOT_ALLOWED,	"Method Not Allowed" },
-	{ HTTPRC_NOT_ACCEPTABLE,	"Not Acceptable" },
-	{ HTTPRC_PROXY_AUTH_REQUIRED,	"Proxy Authentication Required" },
-	{ HTTPRC_REQUEST_TIMEOUT,	"Request Time-out" },
-	{ HTTPRC_CONFLICT,		"Conflict" },
-	{ HTTPRC_GONE,			"Gone" },
-	{ HTTPRC_LENGTH_REQUIRED,	"Length Required" },
-	{ HTTPRC_PRECONDITION_FAILED,	"Precondition Failed" },
-	{ HTTPRC_REQ_ENTITY_TOO_LARGE,	"Request Entity Too Large" },
-	{ HTTPRC_REQ_URI_TOO_LARGE,	"Request-URI Too Large" },
-	{ HTTPRC_UNSUPPORTED_MEDIA_TYPE,"Unsupported Media Type" },
-	{ HTTPRC_RANGE_NOT_SATISFIABLE,	"Range Not Satisfiable" },
-	{ HTTPRC_EXPECTATION_FAILED,	"Expectation Failed" },
-	{ HTTPRC_UPGRADE_REQUIRED,	"Upgrade required" },
-	{ HTTPRC_INTERNAL_SERVER_ERROR,	"Internal Server Error" },
-	{ HTTPRC_NOT_IMPLEMENTED,	"Not Implemented" },
-	{ HTTPRC_BAD_GATEWAY,		"Bad Gateway" },
-	{ HTTPRC_SERVICE_UNAVAILABLE,	"Service Unavailable" },
-	{ HTTPRC_GATEWAY_TIMEOUT,	"Gateway Time-out" },
-	{ HTTPRC_VERSION_NOT_SUPPORTED,	"HTTP Version not supported" },
-};
-
-static std::map<int, _cstr_t> _g_resp_content_ = {
-	{ HTTPRC_NOT_FOUND,		"<!DOCTYPE html><html><head></head><body><h1>Not found #404</h1></body></html>" },
-	{ HTTPRC_INTERNAL_SERVER_ERROR,	"<!DOCTYPE html><html><head></head><body><h1>Internal server error #500</h1></body></html>" },
-	{ HTTPRC_FORBIDDEN,		"<!DOCTYPE html><html><head></head><body><h1>Forbidden path #403</h1></body></html>" },
-	{ HTTPRC_NOT_IMPLEMENTED,	"<!DOCTYPE html><html><head></head><body><h1>Not implemented #501</h1></body></html>" },
-	{ HTTPRC_RANGE_NOT_SATISFIABLE,	"<!DOCTYPE html><html><head></head><body><h1>Range Not Satisfiable #416</h1></body></html>" }
-};
-
-static const char *methods[] = { "GET", "HEAD", "POST",
-				"PUT", "DELETE", "CONNECT",
-				"OPTIONS", "TRACE", "PATCH",
-				NULL };
-#define METHOD_GET	0
-#define METHOD_HEAD	1
-#define METHOD_POST	2
-#define METHOD_PUT	3
-#define METHOD_DELETE	4
-#define METHOD_CONNECT	5
-#define METHOD_OPTIONS	6
-#define METHOD_TRACE	7
-#define METHOD_PATCH	8
-
 static char _g_resp_buffer_[256 * 1024];
 
 #define RCT_NONE	0
@@ -119,17 +53,6 @@ typedef struct {
 	_cstr_t 	(*vcb)(_resp_t *);
 } _hdr_t;
 
-static int resolve_method(_cstr_t method) {
-	int n = 0;
-
-	for (; methods[n]; n++) {
-		if (strcasecmp(method, methods[n]) == 0)
-			break;
-	}
-
-	return n;
-}
-
 static void split_by_space(_cstr_t str, _u32 str_size, _str_t dst_arr[], _u32 arr_size) {
 	_str_t p_str = (_str_t)malloc(str_size + 1);
 
@@ -155,19 +78,6 @@ static void split_by_space(_cstr_t str, _u32 str_size, _str_t dst_arr[], _u32 ar
 
 		free(p_str);
 	}
-}
-
-static _cstr_t file_extension(_cstr_t path) {
-	_cstr_t r = NULL;
-	size_t l = strlen(path);
-
-	while (l && path[l] != '.')
-		l--;
-
-	if (l)
-		r = &path[l];
-
-	return r;
 }
 
 static char _g_vhdr_[4096];
@@ -317,7 +227,7 @@ static _hdr_t _g_hdef_[] = {
 static _err_t send_header(_resp_t *p) {
 	_err_t r = E_OK;
 	_cstr_t protocol = (p->protocol) ? p->protocol : "HTTP/1.1";
-	_cstr_t text = _g_resp_text_[p->rc];
+	_cstr_t text = rt_static_content(p->rc);
 	char *header_append = NULL;
 	int i = 0, n = 0;
 
@@ -504,105 +414,12 @@ static void switch_to_err(_resp_t *p, int rc) {
 	if (rc >= HTTPRC_BAD_REQUEST) {
 		p->rc = rc;
 
-		TRACE("http[%d] #%d %s '%s'\n", getpid(), p->rc, _g_resp_text_[p->rc], p->uri);
+		TRACE("http[%d] #%d %s '%s'\n", getpid(), p->rc, rt_resp_text(rc), p->uri);
 		if ((p->p_mapping = cfg_get_err_mapping(p->p_vhost, p->rc)))
 			p->rc_type = RCT_MAPPING;
-		else if ((p->static_text = _g_resp_content_[p->rc]))
+		else if ((p->static_text = rt_static_content(p->rc)))
 			p->rc_type = RCT_STATIC;
 	}
-}
-
-static _v_range_t _gv_ranges_; // ranges vector
-static _range_t _g_range_; // range element
-
-static _err_t parse_range(_resp_t *p, _cstr_t range) {
-	_err_t r = E_FAIL;
-	_cstr_t if_range = getenv(REQ_IF_RANGE);
-
-	_gv_ranges_.clear();
-	strncpy(_g_vhdr_, range, sizeof(_g_vhdr_));
-
-	str_split(_g_vhdr_, "=", [] (int idx, char *str, void *udata) -> int {
-		int r = -1;
-		_resp_t *p = (_resp_t *)udata;
-
-		if (idx == 0) {
-			// Range units
-			if (strncasecmp(str, "bytes", 5) == 0)
-				r = 0;
-		} else if (idx == 1) {
-			// ranges
-			str_split(str, ",", [] (int __attribute__((unused)) idx, char *str,
-					void *udata) -> int {
-				int r = 0;
-				_resp_t *p = (_resp_t *)udata;
-
-				memset(&_g_range_, 0, sizeof(_range_t));
-
-				str_split(str, "-", [] (int idx, char *str,
-						void __attribute__((unused)) *udata) -> int {
-					if (idx == 0)
-						// range start
-						_g_range_.begin = atol(str);
-					else if (idx == 1)
-						// range end
-						_g_range_.end = atol(str);
-
-					return 0;
-				}, p);
-
-				if (!_g_range_.end)
-					// to the end of file
-					_g_range_.end = p->st.st_size - 1;
-
-				// _g_range_ shoult contains a range metrics (offset ans size)
-				if ((_g_range_.end >= _g_range_.begin) &&
-						_g_range_.begin + (_g_range_.end - _g_range_.begin) <= (unsigned long)p->st.st_size) {
-					int i = 0;
-
-					/////// range header //////////
-
-					// boundary
-					i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
-							"\r\n--%s\r\n", p->boundary);
-					// content type
-					if (p->path) {
-						mime_open();
-
-						_cstr_t mt = mime_resolve(p->path);
-
-						if (mt)
-							i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
-									RES_CONTENT_TYPE ": %s\r\n", mt);
-					}
-
-					// content range + EOH
-					i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
-							RES_CONTENT_RANGE ": Bytes %lu-%lu/%lu\r\n\r\n",
-							_g_range_.begin, _g_range_.end, p->st.st_size);
-
-					//////////////////////////////
-
-					_gv_ranges_.push_back(_g_range_);
-				} else
-					// invalid range
-					r = -1;
-
-				return r;
-			}, p);
-
-			r = 0;
-		}
-
-		return r;
-	}, p);
-
-	if (_gv_ranges_.size()) {
-		p->pv_ranges = &_gv_ranges_;
-		r = E_OK;
-	}
-
-	return r;
 }
 
 static void generate_boundary(_resp_t *p) {
@@ -693,7 +510,7 @@ _send_file_:
 				if (range) {
 					generate_boundary(p);
 
-					if (parse_range(p, range) == E_OK)
+					if ((p->pv_ranges = range_parse(p->path, p->boundary)))
 						p->rc = HTTPRC_PART_CONTENT;
 					else {
 						p->b_st = false;
@@ -739,7 +556,7 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 		resp.rc = rc;
 		resp.p_vhost = p_vhost;
 		resp.s_method = getenv(REQ_METHOD);
-		resp.i_method = (resp.s_method) ? resolve_method(resp.s_method) : 0;
+		resp.i_method = (resp.s_method) ? rt_resolve_method(resp.s_method) : 0;
 		resp.uri = getenv(REQ_PATH);
 		resp.protocol = getenv(REQ_PROTOCOL);
 		resp.proto_upgrade = getenv(REQ_UPGRADE);
@@ -749,7 +566,7 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 		if (p_err_map) {
 			resp.rc_type = RCT_MAPPING;
 			resp.p_mapping = p_err_map;
-		} else if ((content = _g_resp_content_[rc])) {
+		} else if ((content = rt_static_content(rc))) {
 			resp.rc_type = RCT_STATIC;
 			resp.static_text = content;
 		}
@@ -834,7 +651,7 @@ _err_t res_processing(void) {
 			resp.uri = resp.url;
 
 		if (resp.s_method && resp.uri && resp.protocol) {
-			resp.i_method = (resp.s_method) ? resolve_method(resp.s_method) : 0;
+			resp.i_method = (resp.s_method) ? rt_resolve_method(resp.s_method) : 0;
 
 			if (resp.i_method == METHOD_GET || resp.i_method == METHOD_POST || resp.i_method == METHOD_HEAD) {
 				if ((resp.p_mapping = cfg_get_url_mapping(p_vhost->host, resp.s_method, resp.uri, resp.protocol))) {

@@ -126,6 +126,16 @@
 #define HTTPRC_GATEWAY_TIMEOUT		504 // Gateway Time-out
 #define HTTPRC_VERSION_NOT_SUPPORTED	505 // HTTP Version not supported
 
+#define METHOD_GET	0
+#define METHOD_HEAD	1
+#define METHOD_POST	2
+#define METHOD_PUT	3
+#define METHOD_DELETE	4
+#define METHOD_CONNECT	5
+#define METHOD_OPTIONS	6
+#define METHOD_TRACE	7
+#define METHOD_PATCH	8
+
 
 #define MAX_PATH	1024
 #define MAX_HOST_NAME	256
@@ -429,6 +439,16 @@ int io_fwrite(const char *fmt, ...);
 void set_env_var(char *vstr, const char *div);
 _err_t req_receive(int timeout, int *req_len);
 void req_decode_url(_cstr_t url);
+
+// resp. tools
+_cstr_t rt_file_extension(_cstr_t path);
+int rt_resolve_method(_cstr_t method);
+_cstr_t rt_resp_text(int rc);
+_cstr_t rt_static_content(int rc);
+
+// response ranges
+_v_range_t *range_parse(_cstr_t path, _cstr_t boundary);
+void range_generate_boundary(_cstr_t path, _str_t b, int sz = MAX_BOUNDARY);
 
 // Response
 _err_t res_processing(void);

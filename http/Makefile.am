@@ -10,6 +10,8 @@ http_SOURCES = src/main.cpp \
 		src/cfg.cpp \
 		src/io.cpp \
 		src/request.cpp \
+		src/resp_tools.cpp \
+		src/resp_range.cpp \
 		src/response.cpp \
 		src/proxy.cpp \
 		src/url-codec.cpp \

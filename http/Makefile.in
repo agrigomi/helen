@@ -103,8 +103,10 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(includedir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_http_OBJECTS = src/main.$(OBJEXT) src/cfg.$(OBJEXT) \
-	src/io.$(OBJEXT) src/request.$(OBJEXT) src/response.$(OBJEXT) \
-	src/proxy.$(OBJEXT) src/url-codec.$(OBJEXT) src/mime.$(OBJEXT)
+	src/io.$(OBJEXT) src/request.$(OBJEXT) \
+	src/resp_tools.$(OBJEXT) src/resp_range.$(OBJEXT) \
+	src/response.$(OBJEXT) src/proxy.$(OBJEXT) \
+	src/url-codec.$(OBJEXT) src/mime.$(OBJEXT)
 http_OBJECTS = $(am_http_OBJECTS)
 http_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -125,6 +127,7 @@ am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = src/$(DEPDIR)/cfg.Po src/$(DEPDIR)/io.Po \
 	src/$(DEPDIR)/main.Po src/$(DEPDIR)/mime.Po \
 	src/$(DEPDIR)/proxy.Po src/$(DEPDIR)/request.Po \
+	src/$(DEPDIR)/resp_range.Po src/$(DEPDIR)/resp_tools.Po \
 	src/$(DEPDIR)/response.Po src/$(DEPDIR)/url-codec.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
@@ -295,6 +298,8 @@ http_SOURCES = src/main.cpp \
 		src/cfg.cpp \
 		src/io.cpp \
 		src/request.cpp \
+		src/resp_tools.cpp \
+		src/resp_range.cpp \
 		src/response.cpp \
 		src/proxy.cpp \
 		src/url-codec.cpp \
@@ -386,6 +391,10 @@ src/cfg.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/io.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/request.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
+src/resp_tools.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+src/resp_range.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 src/response.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/proxy.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
@@ -410,6 +419,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/mime.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/proxy.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/request.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/resp_range.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/resp_tools.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/response.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/url-codec.Po@am__quote@ # am--include-marker
 
@@ -593,6 +604,8 @@ distclean: distclean-am
 	-rm -f src/$(DEPDIR)/mime.Po
 	-rm -f src/$(DEPDIR)/proxy.Po
 	-rm -f src/$(DEPDIR)/request.Po
+	-rm -f src/$(DEPDIR)/resp_range.Po
+	-rm -f src/$(DEPDIR)/resp_tools.Po
 	-rm -f src/$(DEPDIR)/response.Po
 	-rm -f src/$(DEPDIR)/url-codec.Po
 	-rm -f Makefile
@@ -646,6 +659,8 @@ maintainer-clean: maintainer-clean-am
 	-rm -f src/$(DEPDIR)/mime.Po
 	-rm -f src/$(DEPDIR)/proxy.Po
 	-rm -f src/$(DEPDIR)/request.Po
+	-rm -f src/$(DEPDIR)/resp_range.Po
+	-rm -f src/$(DEPDIR)/resp_tools.Po
 	-rm -f src/$(DEPDIR)/response.Po
 	-rm -f src/$(DEPDIR)/url-codec.Po
 	-rm -f Makefile
