@@ -12,6 +12,7 @@ http_SOURCES = src/main.cpp \
 		src/request.cpp \
 		src/resp_tools.cpp \
 		src/resp_range.cpp \
+		src/resp_exec.cpp \
 		src/response.cpp \
 		src/proxy.cpp \
 		src/url-codec.cpp \

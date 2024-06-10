@@ -450,6 +450,16 @@ _cstr_t rt_static_content(int rc);
 _v_range_t *range_parse(_cstr_t path, _cstr_t boundary);
 void range_generate_boundary(_cstr_t path, _str_t b, int sz = MAX_BOUNDARY);
 
+// response exec
+_err_t resp_exec_v(_cstr_t argv[],
+		int (*out)(unsigned char *buf, unsigned int sz, void *udata),
+		int (*in)(unsigned char *buf, unsigned int sz, void *udata),
+		void *udata);
+_err_t resp_exec(_cstr_t cmd,
+		int (*out)(unsigned char *buf, unsigned int sz, void *udata),
+		int (*in)(unsigned char *buf, unsigned int sz, void *udata),
+		void *udata);
+
 // Response
 _err_t res_processing(void);
 _err_t send_error_response(_vhost_t *p_vhost, int rc);

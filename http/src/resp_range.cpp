@@ -28,17 +28,22 @@ void range_generate_boundary(_cstr_t path, _str_t b, int sz) {
 typedef struct {
 	_cstr_t path;
 	_cstr_t boundary;
+	struct stat st;
 } _rdata_t;
 
 _v_range_t *range_parse(_cstr_t path, _cstr_t boundary) {
 	_v_range_t *r = NULL;
 	_cstr_t range = getenv(REQ_RANGE);
 	_char_t vhdr[256];
-	_rdata_t rdata = { path, boundary };
+	_rdata_t rdata;
 
 	_gv_ranges_.clear();
 
 	if (range) {
+		rdata.path = path;
+		rdata.boundary = boundary;
+		stat(path, &rdata.st);
+
 		strncpy(vhdr, range, sizeof(vhdr));
 
 		str_split(vhdr, "=", [] (int idx, char *str, void *udata) -> int {
@@ -70,17 +75,13 @@ _v_range_t *range_parse(_cstr_t path, _cstr_t boundary) {
 						return 0;
 					}, p);
 
-					struct stat st;
-
-					stat(p->path, &st);
-
 					if (!_g_range_.end)
 						// to the end of file
-						_g_range_.end = st.st_size - 1;
+						_g_range_.end = p->st.st_size - 1;
 
 					// _g_range_ shoult contains a range metrics (offset ans size)
 					if ((_g_range_.end >= _g_range_.begin) &&
-							_g_range_.begin + (_g_range_.end - _g_range_.begin) <= (unsigned long)st.st_size) {
+							_g_range_.begin + (_g_range_.end - _g_range_.begin) <= (unsigned long)p->st.st_size) {
 						int i = 0;
 
 						/////// range header //////////
@@ -100,7 +101,7 @@ _v_range_t *range_parse(_cstr_t path, _cstr_t boundary) {
 						// content range + EOH
 						i += snprintf(_g_range_.header + i, sizeof(_g_range_.header) - i,
 								RES_CONTENT_RANGE ": Bytes %lu-%lu/%lu\r\n\r\n",
-								_g_range_.begin, _g_range_.end, st.st_size);
+								_g_range_.begin, _g_range_.end, p->st.st_size);
 
 						//////////////////////////////
 
