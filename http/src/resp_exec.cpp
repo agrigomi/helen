@@ -16,19 +16,17 @@ _err_t resp_exec_v(_cstr_t argv[],
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
 	if ((r = proc_exec_v(&proc, argv[0], argv)) == E_OK) {
-		while (true) {
+		do {
 			int nin = (in) ? in(bin, sizeof(bin), udata) : 0;
 			int nout = 0;
 
 			if (nin)
 				proc_write(&proc, bin, nin);
 
-			while ((nout = proc_read(&proc, bout, sizeof(bout))) > 0)
+			while ((nout = proc_read_tus(&proc, bout, sizeof(bout), 100000)) > 0)
 				out(bout, nout, udata);
 
-			if ((r = proc_status(&proc)) != -1)
-				break;
-		}
+		} while ((r = proc_status(&proc)) == -1);
 	}
 
 	return r;

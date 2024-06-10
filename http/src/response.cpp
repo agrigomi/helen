@@ -200,7 +200,7 @@ static _hdr_t _g_hdef_[] = {
 static _err_t send_header(_resp_t *p) {
 	_err_t r = E_OK;
 	_cstr_t protocol = (p->protocol) ? p->protocol : "HTTP/1.1";
-	_cstr_t text = rt_static_content(p->rc);
+	_cstr_t text = rt_resp_text(p->rc);
 	char *header_append = NULL;
 	int i = 0, n = 0;
 
