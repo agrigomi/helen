@@ -262,7 +262,7 @@ static _err_t send_exec(_cstr_t cmd, bool input = false) {
 
 			return r;
 		},
-		NULL);
+		NULL) == E_OK ? E_DONE : -1;
 }
 
 static _err_t send_file_content(_resp_t *p) {

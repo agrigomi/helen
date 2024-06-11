@@ -20,7 +20,7 @@ _err_t resp_exec_v(_cstr_t argv[],
 			int nin = (in) ? in(bin, sizeof(bin), udata) : 0;
 			int nout = 0;
 
-			if (nin)
+			if (nin > 0)
 				proc_write(&proc, bin, nin);
 
 			while ((nout = proc_read_tus(&proc, bout, sizeof(bout), 100000)) > 0)
