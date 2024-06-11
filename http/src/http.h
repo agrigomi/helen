@@ -445,6 +445,7 @@ _cstr_t rt_file_extension(_cstr_t path);
 int rt_resolve_method(_cstr_t method);
 _cstr_t rt_resp_text(int rc);
 _cstr_t rt_static_content(int rc);
+_cstr_t rt_file_ext(_cstr_t path);
 
 // response ranges
 _v_range_t *range_parse(_cstr_t path, _cstr_t boundary);
@@ -475,7 +476,6 @@ _err_t proxy_ssl_connect(_cstr_t domain, int port);
 _err_t mime_open(void);
 void mime_close(void);
 _cstr_t mime_resolve(_cstr_t path);
-
 
 
 #endif

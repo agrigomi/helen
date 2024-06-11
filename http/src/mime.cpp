@@ -142,13 +142,10 @@ _cstr_t mime_resolve(_cstr_t path) {
 	_cstr_t r = NULL;
 
 	if (_g_hf_open_) {
-		size_t l = strlen(path);
 		unsigned int sz;
+		_cstr_t ext = rt_file_ext(path);
 
-		while (l && path[l] != '.')
-			l--;
-
-		r = (_cstr_t)hf_get(&_g_hf_cxt_, (void *)&path[l], strlen(&path[l]), &sz);
+		r = (_cstr_t)hf_get(&_g_hf_cxt_, (void *)ext, strlen(ext), &sz);
 	}
 
 	return r;

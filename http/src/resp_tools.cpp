@@ -91,4 +91,11 @@ int rt_resolve_method(_cstr_t method) {
 	return n;
 }
 
+_cstr_t rt_file_ext(_cstr_t path) {
+	size_t l = strlen(path);
 
+	while (l && path[l] != '.')
+		l--;
+
+	return path + l;
+}
