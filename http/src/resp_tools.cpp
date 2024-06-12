@@ -1,6 +1,7 @@
 #include <string.h>
 #include <map>
 #include "http.h"
+#include "zlib.h"
 
 static std::map<int, _cstr_t> _g_resp_text_ = {
 	{ HTTPRC_CONTINUE,		"Continue" },

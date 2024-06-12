@@ -12,6 +12,9 @@ AC_CHECK_LIB([ssl],
               echo "Error: Could not find SSL."
               exit 1
              ])
+AC_CHECK_HEADER([zlib.h], [], [AC_MSG_FAILURE([could not find zlib header])])
+AC_SEARCH_LIBS([inflate], [z], [], [
+    AC_MSG_ERROR([libz library was not found])])
 AC_DEFINE([_DEBUG_], [], [For debugging])
 AC_DEFINE([_TRACE_], [], [For enable tracing])
 AC_DEFINE([OPENSSL_API_COMPAT], [0x10000000L], [SSL API version])
