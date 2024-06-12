@@ -75,13 +75,20 @@
 #define RES_CONTENT_LENGTH	"Content-Length"
 #define RES_CONTENT_TYPE	"Content-Type"
 #define RES_CONTENT_ENCODING	"Content-Encoding"
+#define RES_CONTENT_LANGUAGE	"Content-Language"
+#define RES_CONTENT_DISPOSITION	"Content-Disposition"
 #define RES_CONTENT_RANGE	"Content-Range"
 #define RES_DATE		"Date"
 #define RES_LAST_MODIFIED	"Last-Modified"
+#define RES_TRANSFER_ENCODING	"Transfer-Encoding"
 #define RES_CONNECTION		"Connection"
 #define RES_EXPIRES		"Expires"
 #define RES_UPGRADE		"Upgrade"
 #define RES_SERVER		"Server"
+#define RES_CACHE_CONTROL	"Cache-Control"
+#define RES_SET_COOKIE		"Set-Cookie"
+#define RES_LOCATION		"Location"
+#define RES_XFRAME_OPTIONS	"X-Frame-Options"
 
 // HTTP response code
 #define HTTPRC_CONTINUE			100 // Continue
@@ -434,7 +441,6 @@ int io_write(const char *buffer, int size);
 formatted output
 return >0 for number of sent bytes <=0 means fail */
 int io_fwrite(const char *fmt, ...);
-
 // Request
 void set_env_var(char *vstr, const char *div);
 _err_t req_receive(int timeout, int *req_len);
@@ -465,6 +471,14 @@ _err_t resp_exec(_cstr_t cmd,
 _err_t res_processing(void);
 _err_t send_error_response(_vhost_t *p_vhost, int rc);
 _err_t do_connect(_cstr_t method, _cstr_t scheme, _cstr_t domain, _cstr_t port, _cstr_t uri, _cstr_t proto);
+
+// header
+void hdr_init(void);
+void hdr_set(_cstr_t var, _cstr_t val);
+void hdr_set(_cstr_t var, int val);
+void hdr_clear(void);
+/* Returns size of header in bytes */
+int hdr_export(_str_t hb, int sz);
 
 // proxy
 _err_t proxy_http(void);
