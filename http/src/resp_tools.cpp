@@ -1,5 +1,6 @@
 #include <string.h>
 #include <map>
+#include "zlib.h"
 #include "http.h"
 #include "zlib.h"
 
@@ -60,19 +61,6 @@ static const char *methods[] = { "GET", "HEAD", "POST",
 				"OPTIONS", "TRACE", "PATCH",
 				NULL };
 
-_cstr_t rt_file_extension(_cstr_t path) {
-	_cstr_t r = NULL;
-	size_t l = strlen(path);
-
-	while (l && path[l] != '.')
-		l--;
-
-	if (l)
-		r = &path[l];
-
-	return r;
-}
-
 _cstr_t rt_resp_text(int rc) {
 	return _g_resp_text_[rc];
 }
@@ -100,3 +88,11 @@ _cstr_t rt_file_ext(_cstr_t path) {
 
 	return path + l;
 }
+
+_err_t rt_gzip_buffer(const unsigned char *src, long unsigned int sz_src,
+		unsigned char *dst, long unsigned int *psz_dst) {
+	return compress(dst, psz_dst, src, sz_src);
+}
+
+
+

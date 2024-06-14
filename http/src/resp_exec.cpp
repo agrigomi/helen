@@ -22,6 +22,8 @@ _err_t resp_exec_v(_cstr_t argv[],
 
 			if (nin > 0)
 				proc_write(&proc, bin, nin);
+			else if (nin < 0)
+				proc_break(&proc);
 
 			while ((nout = proc_read_tus(&proc, bout, sizeof(bout), 100000)) > 0)
 				out(bout, nout, udata);

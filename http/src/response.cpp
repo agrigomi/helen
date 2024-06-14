@@ -257,8 +257,10 @@ static _err_t send_exec(_cstr_t cmd, bool input = false) {
 			int r = 0;
 			int nb = io_verify_input();
 
-			if (nb)
+			if (nb > 0)
 				r = io_read((_str_t)buf, sz);
+			else if (nb < 0)
+				r = nb;
 
 			return r;
 		},

@@ -214,18 +214,23 @@ int io_get_stdin_fd(void) {
 int verify_input(int fd) {
 	int r = 0;
 
-	ioctl(fd, FIONREAD, &r);
+	if (ioctl(fd, FIONREAD, &r) < 0)
+		r = -1;
 
 	return r;
 }
 
 int io_verify_input(void) {
 	int r = 0;
+	int _r = -1;
 
 	if (_g_ssl_in_)
-		ioctl(SSL_get_fd(_g_ssl_in_), FIONREAD, &r);
+		_r = ioctl(SSL_get_fd(_g_ssl_in_), FIONREAD, &r);
 	else
-		ioctl(STDIN_FILENO, FIONREAD, &r);
+		_r = ioctl(STDIN_FILENO, FIONREAD, &r);
+
+	if (_r < 0)
+		r = _r;
 
 	return r;
 }

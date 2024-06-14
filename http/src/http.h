@@ -340,26 +340,6 @@ typedef struct __attribute__((packed)) {
 	}
 } _mapping_t;
 
-#define BUFFER_TYPE_HEAP	1
-#define BUFFER_TYPE_STATIC	2
-
-typedef struct {
-	bool enabled;
-	int size;
-	_str_t buffer;
-	int buffer_size;
-	_u8 buffer_type;
-	//...
-} _resp_header_t;
-
-typedef struct {
-	int size;
-	_u8 encoding;
-	_str_t buffer;
-	int buffer_size;
-	_u8 buffer_type;
-} _resp_content_t;
-
 typedef struct {
 	unsigned long begin; // start offset in content
 	unsigned long end; // size in bytes
@@ -367,17 +347,6 @@ typedef struct {
 } _range_t;
 
 typedef std::vector<_range_t> _v_range_t;
-
-typedef struct {
-	_resp_header_t	header;
-	_resp_content_t	content;
-	_char_t		file[MAX_PATH]; // resolved (real) path
-	_vhost_t	*p_vhost;
-	_v_range_t	*pv_ranges;
-	_char_t		boundary[MAX_BOUNDARY];
-	_mapping_t	*p_mapping;
-	//...
-} _response_t;
 
 // CFG
 
@@ -447,11 +416,12 @@ _err_t req_receive(int timeout, int *req_len);
 void req_decode_url(_cstr_t url);
 
 // resp. tools
-_cstr_t rt_file_extension(_cstr_t path);
 int rt_resolve_method(_cstr_t method);
 _cstr_t rt_resp_text(int rc);
 _cstr_t rt_static_content(int rc);
 _cstr_t rt_file_ext(_cstr_t path);
+_err_t rt_gzip_buffer(const unsigned char *src, long unsigned int sz_src,
+		unsigned char *dst, long unsigned int *psz_dst);
 
 // response ranges
 _v_range_t *range_parse(_cstr_t path, _cstr_t boundary);
