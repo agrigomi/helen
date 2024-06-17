@@ -57,10 +57,8 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 			_cstr_t content = rt_static_content(rc);
 			unsigned int sz_content = (content) ? strlen(content) : 0;
 
-			if (content) {
+			if (content)
 				hdr_set(RES_CONTENT_TYPE, "text/html");
-				hdr_set(RES_CONTENT_LENGTH, sz_content);
-			}
 
 			r = send_response_buffer(rc, content, sz_content);
 		}
