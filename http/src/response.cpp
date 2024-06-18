@@ -136,8 +136,10 @@ _err_t res_processing(void) {
 					switch (imethod) {
 						case METHOD_GET:
 						case METHOD_POST:
+							//...
 							break;
 						case METHOD_HEAD:
+							//...
 							break;
 						case METHOD_CONNECT:
 							if (argv_check(OPT_PROXY))

@@ -310,7 +310,18 @@ static void fill_ext_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *compression = json_select(p_jcxt, "compression", pjo);
 	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
 
-	//...
+	p->type = MAPPING_TYPE_EXT;
+
+	p->ext.off_ident = p->ext.buffer_len;
+	p->ext.buffer_len += jv_string(ident, p->ext.buffer + p->ext.buffer_len,
+					sizeof(p->ext.buffer) - p->ext.buffer_len) + 1;
+	p->ext.off_compression = p->ext.buffer_len;
+	p->ext.buffer_len += jv_string(compression, p->ext.buffer + p->ext.buffer_len,
+					sizeof(p->ext.buffer) - p->ext.buffer_len) + 1;
+	p->ext.off_header_append = p->ext.buffer_len;
+	if (header_append && header_append->jvt == JSON_ARRAY)
+		p->ext.buffer_len += fill_header_append(header_append, p->ext.buffer + p->ext.buffer_len,
+					sizeof(p->ext.buffer) - p->ext.buffer_len);
 }
 
 static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf_context_t *p_hfcxt) {
@@ -378,6 +389,30 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 								fill_err_rec(p_jcxt, &(pjv->object), &rec);
 								l = snprintf(key, sizeof(key), RC_PREFIX "%d", rec.err.code);
 								hf_add(p_hfcxt, key, l, &rec, rec._size());
+							}
+
+							i++;
+						}
+					}
+
+					_json_value_t *pjv_ext = json_select(p_jcxt, "ext", &(pjv_mapping->object));
+
+					if (pjv_ext && pjv_ext->jvt == JSON_ARRAY) {
+						_json_value_t *pjv = NULL;
+
+						i = 0;
+						while ((pjv = json_array_element(&(pjv_ext->array), i))) {
+							if (pjv->jvt == JSON_OBJECT) {
+								char *key = NULL;
+
+								memset(&rec, 0, sizeof(_mapping_t));
+								fill_ext_rec(p_jcxt, &(pjv->object), &rec);
+								key = rec.ext._ident();
+								if (key) {
+									unsigned int l = strlen(key);
+
+									hf_add(p_hfcxt, key, l, &rec, rec._size());
+								}
 							}
 
 							i++;
