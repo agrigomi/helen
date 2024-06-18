@@ -162,6 +162,7 @@ typedef struct vhost _vhost_t;
 
 #define MAPPING_TYPE_URL	1
 #define MAPPING_TYPE_ERR	2
+#define MAPPING_TYPE_EXT	3
 
 struct __attribute__((packed)) mapping_url {
 	bool header;			// respond header by parent process
@@ -240,14 +241,40 @@ struct __attribute__((packed)) mapping_err {
 	}
 };
 
+struct __attribute__((packed)) mapping_ext {
+	short off_ident;
+	short off_header_append;
+	short off_compression;	
+	short buffer_len;
+	char buffer[MAX_BUFFER_LEN];
+
+	unsigned int _size(void) {
+		return sizeof(struct mapping_ext) - sizeof(buffer) + buffer_len;
+	}
+
+	char *_ident(void) {
+		return buffer + off_ident;
+	}
+
+	char *_header_append(void) {
+		return buffer + off_header_append;
+	}
+
+	char *_compression(void) {
+		return buffer + off_compression;
+	}
+};
+
 typedef struct mapping_url _mapping_url_t;
 typedef struct mapping_err _mapping_err_t;
+typedef struct mapping_ext _mapping_ext_t;
 
 typedef struct __attribute__((packed)) {
 	unsigned char type;
 	union {
 		_mapping_url_t	url;
 		_mapping_err_t	err;
+		_mapping_ext_t	ext;
 	};
 
 	unsigned int _size(void) {
@@ -259,6 +286,9 @@ typedef struct __attribute__((packed)) {
 				break;
 			case MAPPING_TYPE_ERR:
 				r += err._size();
+				break;
+			case MAPPING_TYPE_EXT:
+				r += ext._size();
 				break;
 		}
 
@@ -288,6 +318,9 @@ typedef struct __attribute__((packed)) {
 				break;
 			case MAPPING_TYPE_ERR:
 				r = err._header_append();
+				break;
+			case MAPPING_TYPE_EXT:
+				r = ext._header_append();
 				break;
 		}
 

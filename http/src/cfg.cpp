@@ -305,6 +305,14 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	}
 }
 
+static void fill_ext_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
+	_json_value_t *ident = json_select(p_jcxt, "ident", pjo);
+	_json_value_t *compression = json_select(p_jcxt, "compression", pjo);
+	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
+
+	//...
+}
+
 static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf_context_t *p_hfcxt) {
 	_err_t r = E_FAIL;
 	int fd = -1;
