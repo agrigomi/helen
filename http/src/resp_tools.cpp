@@ -1,8 +1,8 @@
 #include <string.h>
 #include <map>
-#include "zlib.h"
+#include <zlib.h>
 #include "http.h"
-#include "zlib.h"
+#include "str.h"
 
 static std::map<int, _cstr_t> _g_resp_text_ = {
 	{ HTTPRC_CONTINUE,		"Continue" },
@@ -94,5 +94,44 @@ _err_t rt_deflate_buffer(const unsigned char *src, long unsigned int sz_src,
 	return compress(dst, psz_dst, src, sz_src);
 }
 
+unsigned int rt_parse_encoding(_cstr_t str_alg) {
+	unsigned int r = 0;
+	typedef struct {
+		_cstr_t 	name;
+		unsigned int	bit;
+	}_enc_t;
+	static _enc_t enc[] = {
+		{ "br",		ENCODING_BR },
+		{ "gzip",	ENCODING_GZIP },
+		{ "deflate",	ENCODING_DEFLATE },
+		{ NULL,		0 }
+	};
+	int n = 0;
+	_char_t lb[256];
+	char *rest = NULL;
+	char *token = NULL;
+
+	strncpy(lb, str_alg, sizeof(lb));
+
+	if ((token = strtok_r(lb, ",", &rest))) {
+		_char_t str[64] = "";
+
+		do {
+			strncpy(str, token, sizeof(str));
+			str_trim(str);
+			n = 0;
+
+			while (enc[n].name) {
+				if (strcasecmp(enc[n].name, str) == 0) {
+					r |= enc[n].bit;
+					break;
+				}
+				n++;
+			}
+		} while ((token = strtok_r(NULL, ",", &rest)));
+	}
+
+	return r;
+}
 
 

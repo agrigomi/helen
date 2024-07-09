@@ -23,7 +23,7 @@ static _err_t send_exec(_cstr_t cmd, bool input = false) {
 
 			return r;
 		},
-		NULL) == E_OK ? E_DONE : -1;
+		NULL);
 }
 
 static _cstr_t resolve_path(_cstr_t path, char *resolved) {

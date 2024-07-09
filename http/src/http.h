@@ -144,6 +144,11 @@
 #define METHOD_PATCH	8
 
 
+// Encoding
+#define	ENCODING_BR		(1 << 0)
+#define	ENCODING_GZIP		(1 << 1)
+#define ENCODING_DEFLATE	(1 << 2)
+
 #define MAX_PATH	1024
 #define MAX_HOST_NAME	256
 #define MAX_BUFFER_LEN	2048
@@ -244,7 +249,7 @@ struct __attribute__((packed)) mapping_err {
 struct __attribute__((packed)) mapping_ext {
 	short off_ident;
 	short off_header_append;
-	short off_compression;	
+	short off_compression;
 	short buffer_len;
 	char buffer[MAX_BUFFER_LEN];
 
@@ -455,6 +460,7 @@ _cstr_t rt_static_content(int rc);
 _cstr_t rt_file_ext(_cstr_t path);
 _err_t rt_deflate_buffer(const unsigned char *src, long unsigned int sz_src,
 		unsigned char *dst, long unsigned int *psz_dst);
+unsigned int rt_parse_encoding(_cstr_t str_alg);
 
 // response ranges
 _v_range_t *range_parse(_cstr_t path, _cstr_t boundary);
