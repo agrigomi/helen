@@ -39,8 +39,21 @@ static _cstr_t resolve_path(_cstr_t path, char *resolved) {
 
 static _err_t send_response_buffer(int rc, _cstr_t content, unsigned int sz) {
 	_err_t r = E_FAIL;
+	_char_t hdr[2048];
+	_cstr_t proto = getenv(REQ_PROTOCOL);
+	_cstr_t rc_text = rt_resp_text(rc);
+	int sz_hdr = snprintf(hdr, sizeof(hdr), "%s %d %s\r\n", proto, rc, rc_text);
 
-	//...
+	if (sz <= COMPRESSION_TRESHOLD) {
+		hdr_set(RES_CONTENT_LENGTH, sz);
+		sz_hdr += hdr_export(hdr + sz_hdr, sizeof(hdr) - sz_hdr);
+		// end of header
+		sz_hdr += snprintf(hdr + sz_hdr, sizeof(hdr) - sz_hdr, "\r\n");
+		io_write(hdr, sz_hdr);
+		io_write(content, sz);
+	} else {
+		//...
+	}
 
 	return r;
 }

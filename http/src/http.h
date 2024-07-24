@@ -154,6 +154,8 @@
 #define MAX_BUFFER_LEN	2048
 #define MAX_BOUNDARY	(SHA1HashSize * 2) + 1
 
+#define COMPRESSION_TRESHOLD	1024
+
 struct __attribute__((packed)) vhost {
 	char	host[MAX_HOST_NAME];
 	char	root[MAX_PATH];
