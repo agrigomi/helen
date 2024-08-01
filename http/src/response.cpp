@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "trace.h"
 #include "str.h"
 #include "argv.h"
@@ -45,14 +46,47 @@ static _err_t send_response_buffer(int rc, _cstr_t content, unsigned int sz) {
 	int sz_hdr = snprintf(hdr, sizeof(hdr), "%s %d %s\r\n", proto, rc, rc_text);
 
 	if (sz <= COMPRESSION_TRESHOLD) {
+_no_compression_:
 		hdr_set(RES_CONTENT_LENGTH, sz);
+		// export header
 		sz_hdr += hdr_export(hdr + sz_hdr, sizeof(hdr) - sz_hdr);
 		// end of header
 		sz_hdr += snprintf(hdr + sz_hdr, sizeof(hdr) - sz_hdr, "\r\n");
+		// send header
 		io_write(hdr, sz_hdr);
+		// send content
 		io_write(content, sz);
+		r = E_OK;
 	} else {
-		//...
+		unsigned char *p_gzip_buffer = (unsigned char *)malloc(sz);
+		long unsigned int sz_dst = sz;
+		char *p_type = NULL;
+
+		if (p_gzip_buffer) {
+			// do compression
+			if ((r = rt_compress_buffer((const unsigned char *)content, sz, p_gzip_buffer, &sz_dst, &p_type)) == E_OK) {
+				// set header options
+				hdr_set(RES_CONTENT_LENGTH, sz_dst);
+				hdr_set(RES_CONTENT_ENCODING, p_type);
+				// export header
+				sz_hdr += hdr_export(hdr + sz_hdr, sizeof(hdr) - sz_hdr);
+				// end of header
+				sz_hdr += snprintf(hdr + sz_hdr, sizeof(hdr) - sz_hdr, "\r\n");
+				// send header
+				io_write(hdr, sz_hdr);
+				// send content
+				io_write((char *)p_gzip_buffer, sz_dst);
+				// release gzip buffer
+				free(p_gzip_buffer);
+			} else {
+				// release gzip buffer
+				free(p_gzip_buffer);
+				goto _no_compression_;
+			}
+		} else {
+			LOG("http[%d] Failed to allocate buffer (%d bytes) for compression\n", getpid(), sz);
+			goto _no_compression_;
+		}
 	}
 
 	return r;

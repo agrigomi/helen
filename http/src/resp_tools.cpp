@@ -3,6 +3,7 @@
 #include <zlib.h>
 #include "http.h"
 #include "str.h"
+#include "trace.h"
 
 static std::map<int, _cstr_t> _g_resp_text_ = {
 	{ HTTPRC_CONTINUE,		"Continue" },
@@ -94,6 +95,39 @@ _err_t rt_deflate_buffer(const unsigned char *src, long unsigned int sz_src,
 	return compress(dst, psz_dst, src, sz_src);
 }
 
+_err_t rt_gzip_buffer(const unsigned char *src, long unsigned int sz_src,
+		unsigned char *dst, long unsigned int *psz_dst) {
+	_err_t r = E_FAIL;
+	z_stream zs;
+	zs.zalloc = Z_NULL;
+	zs.zfree = Z_NULL;
+	zs.opaque = Z_NULL;
+	zs.avail_in = sz_src;
+	zs.next_in = (unsigned char *)src;
+	zs.avail_out = *psz_dst;
+	zs.next_out = dst;
+
+	// hard to believe they don't have a macro for gzip encoding, "Add 16" is the best thing zlib can do:
+	// "Add 16 to windowBits to write a simple gzip header and trailer around the compressed data instead of a zlib wrapper"
+	if (deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 | 16, 8, Z_DEFAULT_STRATEGY) == Z_OK) {
+		deflate(&zs, Z_FINISH);
+		deflateEnd(&zs);
+		*psz_dst = zs.total_out;
+		r = E_OK;
+	}
+
+	return r;
+}
+
+_err_t rt_compress_buffer(const unsigned char *src, long unsigned int sz_src,
+		unsigned char *dst, long unsigned int *psz_dst, char **pp_type) {
+	_err_t r = E_FAIL;
+
+	// ???
+
+	return r;
+}
+
 unsigned int rt_parse_encoding(_cstr_t str_alg) {
 	unsigned int r = 0;
 	typedef struct {
@@ -123,6 +157,7 @@ unsigned int rt_parse_encoding(_cstr_t str_alg) {
 
 			while (enc[n].name) {
 				if (strcasecmp(enc[n].name, str) == 0) {
+					TRACE("http[%d] Use encoding '%s'\n", getpid(), str);
 					r |= enc[n].bit;
 					break;
 				}

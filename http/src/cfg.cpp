@@ -153,7 +153,7 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 				}
 			}
 		} else {
-			TRACE("http[%d] Error parsing '%s'\n", getpid(), json_fname);
+			LOG("http[%d] Error parsing '%s'\n", getpid(), json_fname);
 			char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
 			int i = 0;
 
@@ -468,7 +468,7 @@ _vhost_stat_cmp_:
 		}
 
 		touch(lock_path);
-		TRACE("http[%d] Compile virtual hosts\n", getpid());
+		LOG("http[%d] Compile virtual hosts\n", getpid());
 		r = compile_vhosts(src_path, dat_path);
 		unlink(lock_path);
 	} else {
@@ -507,7 +507,7 @@ _mapping_stat_cmp_:
 			}
 
 			touch(lock_path);
-			TRACE("http[%d] Compile mapping '%s'\n", getpid(), src_path);
+			LOG("http[%d] Compile mapping '%s'\n", getpid(), src_path);
 			r = compile_mapping(src_path, dat_path, &hf_cxt);
 			unlink(lock_path);
 		} else

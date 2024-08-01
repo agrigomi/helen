@@ -21,7 +21,8 @@ void hdr_init(void) {
 }
 
 void hdr_set(_cstr_t var, _cstr_t val) {
-	_g_hdr_map_[var] = val;
+	if (val)
+		_g_hdr_map_[var] = val;
 }
 
 void hdr_set(_cstr_t var, int val) {

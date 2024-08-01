@@ -462,6 +462,10 @@ _cstr_t rt_static_content(int rc);
 _cstr_t rt_file_ext(_cstr_t path);
 _err_t rt_deflate_buffer(const unsigned char *src, long unsigned int sz_src,
 		unsigned char *dst, long unsigned int *psz_dst);
+_err_t rt_gzip_buffer(const unsigned char *src, long unsigned int sz_src,
+		unsigned char *dst, long unsigned int *psz_dst);
+_err_t rt_compress_buffer(const unsigned char *src, long unsigned int sz_src,
+		unsigned char *dst, long unsigned int *psz_dst, char **pp_type);
 unsigned int rt_parse_encoding(_cstr_t str_alg);
 
 // response ranges
