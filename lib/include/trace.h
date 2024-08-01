@@ -22,6 +22,8 @@
 #define TRACE1(msg, val)
 #endif // _TRACE_
 
+#define LOG(...)	fprintf(stderr, __VA_ARGS__)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
