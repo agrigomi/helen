@@ -13,7 +13,8 @@ nobase_include_HEADERS = include/context.h \
 			include/hfile.h \
 			include/api_ssl.h \
 			include/str.h \
-			include/fcfg.h
+			include/fcfg.h \
+			include/lock.h
 libtools_a_SOURCES = src/context.c \
 			src/json.c \
 			src/argv.c \
@@ -24,6 +25,7 @@ libtools_a_SOURCES = src/context.c \
 			src/hfile.c \
 			src/ssl.c \
 			src/str.c \
-			src/fcfg.cpp
+			src/fcfg.cpp \
+			src/lock.c
 CFLAGS += -Wall -Wextra -Iinclude
 CXXFLAGS += -Wall -Wextra -Iinclude

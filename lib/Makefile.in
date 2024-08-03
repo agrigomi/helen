@@ -111,7 +111,8 @@ am__dirstamp = $(am__leading_dot)dirstamp
 am_libtools_a_OBJECTS = src/context.$(OBJEXT) src/json.$(OBJEXT) \
 	src/argv.$(OBJEXT) src/sig.$(OBJEXT) src/respawn.$(OBJEXT) \
 	src/trace.$(OBJEXT) src/sha1.$(OBJEXT) src/hfile.$(OBJEXT) \
-	src/ssl.$(OBJEXT) src/str.$(OBJEXT) src/fcfg.$(OBJEXT)
+	src/ssl.$(OBJEXT) src/str.$(OBJEXT) src/fcfg.$(OBJEXT) \
+	src/lock.$(OBJEXT)
 libtools_a_OBJECTS = $(am_libtools_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -130,9 +131,9 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = src/$(DEPDIR)/argv.Po src/$(DEPDIR)/context.Po \
 	src/$(DEPDIR)/fcfg.Po src/$(DEPDIR)/hfile.Po \
-	src/$(DEPDIR)/json.Po src/$(DEPDIR)/respawn.Po \
-	src/$(DEPDIR)/sha1.Po src/$(DEPDIR)/sig.Po \
-	src/$(DEPDIR)/ssl.Po src/$(DEPDIR)/str.Po \
+	src/$(DEPDIR)/json.Po src/$(DEPDIR)/lock.Po \
+	src/$(DEPDIR)/respawn.Po src/$(DEPDIR)/sha1.Po \
+	src/$(DEPDIR)/sig.Po src/$(DEPDIR)/ssl.Po src/$(DEPDIR)/str.Po \
 	src/$(DEPDIR)/trace.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -324,7 +325,8 @@ nobase_include_HEADERS = include/context.h \
 			include/hfile.h \
 			include/api_ssl.h \
 			include/str.h \
-			include/fcfg.h
+			include/fcfg.h \
+			include/lock.h
 
 libtools_a_SOURCES = src/context.c \
 			src/json.c \
@@ -336,7 +338,8 @@ libtools_a_SOURCES = src/context.c \
 			src/hfile.c \
 			src/ssl.c \
 			src/str.c \
-			src/fcfg.cpp
+			src/fcfg.cpp \
+			src/lock.c
 
 all: all-am
 
@@ -393,6 +396,7 @@ src/hfile.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/ssl.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/str.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/fcfg.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/lock.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 
 libtools.a: $(libtools_a_OBJECTS) $(libtools_a_DEPENDENCIES) $(EXTRA_libtools_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libtools.a
@@ -411,6 +415,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/fcfg.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/hfile.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/json.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/lock.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/respawn.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/sha1.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/sig.Po@am__quote@ # am--include-marker
@@ -613,6 +618,7 @@ distclean: distclean-am
 	-rm -f src/$(DEPDIR)/fcfg.Po
 	-rm -f src/$(DEPDIR)/hfile.Po
 	-rm -f src/$(DEPDIR)/json.Po
+	-rm -f src/$(DEPDIR)/lock.Po
 	-rm -f src/$(DEPDIR)/respawn.Po
 	-rm -f src/$(DEPDIR)/sha1.Po
 	-rm -f src/$(DEPDIR)/sig.Po
@@ -669,6 +675,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f src/$(DEPDIR)/fcfg.Po
 	-rm -f src/$(DEPDIR)/hfile.Po
 	-rm -f src/$(DEPDIR)/json.Po
+	-rm -f src/$(DEPDIR)/lock.Po
 	-rm -f src/$(DEPDIR)/respawn.Po
 	-rm -f src/$(DEPDIR)/sha1.Po
 	-rm -f src/$(DEPDIR)/sig.Po
