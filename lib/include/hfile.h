@@ -65,7 +65,7 @@ sz_key	- size of record identifier
 data	- pointer to record content
 sz_data	- size of record content
 returns pointer to record content in case of success, or NULL */
-void *hf_add(_hf_context_t *, void *key, int sz_key, void *data, unsigned int sz_data);
+void *hf_add(_hf_context_t *, const void *key, int sz_key, void *data, unsigned int sz_data);
 
 /**
 Search for record in hash file
@@ -73,7 +73,7 @@ key	- record identifier
 sz_key	- size of record identifier
 sz_data	- [out] size of record content
 returns pointer to record or NULL  */
-void *hf_get(_hf_context_t *, void *key, int sz_key, unsigned int *sz_data);
+void *hf_get(_hf_context_t *, const void *key, int sz_key, unsigned int *sz_data);
 
 /**
 Append empty block to hash file
