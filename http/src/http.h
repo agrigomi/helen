@@ -415,6 +415,9 @@ _mapping_t *cfg_get_err_mapping(_vhost_t *, short rc);
 /**
 Get mapping record by vhost name and response code */
 _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc);
+/**
+Get mapping record for fie extension by vhost and <.ext>>  */
+_mapping_t *cfg_get_ext_mapping(_cstr_t host, _cstr_t ext);
 
 // IO
 

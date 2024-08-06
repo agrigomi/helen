@@ -645,3 +645,22 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc) {
 
 	return r;
 }
+
+/**
+Get mapping record for fie extension by vhost and <.ext>>  */
+_mapping_t *cfg_get_ext_mapping(_cstr_t host, _cstr_t ext) {
+	_mapping_t *r = NULL;
+	_vhost_mapping_t::iterator it = _g_mapping_.find(host);
+
+	if (it != _g_mapping_.end()) {
+		_hf_context_t *phf_cxt = &(*it).second;
+
+		if (phf_cxt) {
+			unsigned int sz;
+
+			r = (_mapping_t *)hf_get(phf_cxt, ext, strlen(ext), &sz);
+		}
+	}
+
+	return r;
+}
