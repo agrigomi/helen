@@ -143,6 +143,8 @@
 #define METHOD_TRACE	7
 #define METHOD_PATCH	8
 
+#define ENCODING_CONTINUE	0
+#define ENCODING_FINISHED	1
 
 // Encoding
 #define	ENCODING_BR		(1 << 0)
@@ -469,6 +471,19 @@ _err_t rt_gzip_buffer(const unsigned char *src, long unsigned int sz_src,
 		unsigned char *dst, long unsigned int *psz_dst);
 _err_t rt_compress_buffer(const unsigned char *src, long unsigned int sz_src,
 		unsigned char *dst, long unsigned int *psz_dst, char **pp_type);
+_err_t rt_deflate_stream(int out_fd, /* output file FD */
+			int (*)(unsigned char *data, unsigned int sz, void *udata), /* data callback */
+			void *udata, /* user data */
+			unsigned int **pp_size /* final size */);
+_err_t rt_gzip_stream(int out_fd, /* output file FD */
+			int (*)(unsigned char *data, unsigned int sz, void *udata), /* data callback */
+			void *udata, /* user data */
+			unsigned int **pp_size /* final size */);
+_err_t rt_compress_stream(int out_fd, /* output file FD */
+			int (*)(unsigned char *data, unsigned int sz, void *udata), /* data callback */
+			void *udata, /* user data */
+			unsigned int **pp_size, /* final size */
+			char **pp_type /* compression type ('gzip' or 'deflate' or ...) */);
 unsigned int rt_parse_encoding(_cstr_t str_alg);
 
 // response ranges
