@@ -7,5 +7,6 @@ typedef int _err_t;
 #define E_OK		0
 #define E_FAIL		-1
 #define E_RESOLVE	-2
+#define E_MEMORY	-3
 
 #endif
