@@ -129,35 +129,99 @@ _err_t rt_compress_buffer(const unsigned char *src, long unsigned int sz_src,
 }
 
 _err_t rt_deflate_stream(int out_fd, /* output file FD */
-			int (*pcb)(unsigned char *data, unsigned int sz, void *udata), /* data callback */
+			unsigned char *buffer, /* data buffer */
+			unsigned int sz, /* size of data buffer */
+			int (*pcb)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
 			void *udata, /* user data */
-			unsigned int **pp_size /* final size */) {
-	_err_t r = E_FAIL;
+			unsigned int *p_size /* final size */) {
+	_err_t r = E_OK;
+	z_stream zs;
+	zs.zalloc = Z_NULL;
+	zs.zfree = Z_NULL;
+	zs.opaque = Z_NULL;
+	zs.avail_in = sz;
+	zs.next_in = buffer;
 
-	// ???
+	*p_size = 0;
+
+	if ((zs.next_out = (unsigned char *)malloc(sz))) {
+		/* Initialize ZLLIB context */
+		if (deflateInit(&zs, Z_DEFAULT_COMPRESSION) == Z_OK) {
+			int flag = ENCODING_CONTINUE;
+
+			do {
+				zs.avail_out = sz;
+
+				/* get data chunk */
+				flag = pcb(zs.next_in, &zs.avail_out, udata);
+
+				/* start chunk compression */
+				if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
+					r = E_FAIL;
+					break;
+				}
+
+				/* write to output file */
+				write(out_fd, zs.next_out, zs.avail_out);
+			} while (flag != ENCODING_FINISHED);
+
+			deflateEnd(&zs);
+			*p_size += zs.total_out;
+		} else
+			r = E_FAIL;
+
+		free(zs.next_out);
+	} else
+		r = E_MEMORY;
 
 	return r;
 }
 
 _err_t rt_gzip_stream(int out_fd, /* output file FD */
-			int (*pcb)(unsigned char *data, unsigned int sz, void *udata), /* data callback */
+			unsigned char *buffer, /* data buffer */
+			unsigned int sz, /* size of data buffer */
+			int (*pcb)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
 			void *udata, /* user data */
-			unsigned int **pp_size /* final size */) {
-	_err_t r = E_FAIL;
+			unsigned int *p_size /* final size */) {
+	_err_t r = E_OK;
+	z_stream zs;
+	zs.zalloc = Z_NULL;
+	zs.zfree = Z_NULL;
+	zs.opaque = Z_NULL;
+	zs.avail_in = sz;
+	zs.next_in = buffer;
 
-	// ???
+	*p_size = 0;
 
-	return r;
-}
+	if ((zs.next_out = (unsigned char *)malloc(sz))) {
+		/* Initialize ZLLIB context */
+		if (deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 | 16, 8, Z_DEFAULT_STRATEGY) == Z_OK) {
+			int flag = ENCODING_CONTINUE;
 
-_err_t rt_compress_stream(int out_fd, /* output file FD */
-			int (*pcb)(unsigned char *data, unsigned int sz, void *udata), /* data callback */
-			void *udata, /* user data */
-			unsigned int **pp_size, /* final size */
-			char **pp_type /* compression type ('gzip' or 'deflate' or ...) */) {
-	_err_t r = E_FAIL;
+			do {
+				zs.avail_out = sz;
 
-	// ???
+				/* get data chunk */
+				flag = pcb(zs.next_in, &zs.avail_out, udata);
+
+				/* start chunk compression */
+				if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
+					r = E_FAIL;
+					break;
+				}
+
+				/* write to output file */
+				write(out_fd, zs.next_out, zs.avail_out);
+			} while (flag != ENCODING_FINISHED);
+
+			deflateEnd(&zs);
+			*p_size += zs.total_out;
+		} else
+			r = E_FAIL;
+
+		free(zs.next_out);
+	} else
+		r = E_MEMORY;
 
 	return r;
 }
