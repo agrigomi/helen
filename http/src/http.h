@@ -9,26 +9,27 @@
 #include "err.h"
 
 // command line options
-#define OPT_HELP	"help"
-#define OPT_SHELP	"h"
-#define OPT_VER		"v"
-#define OPT_DIR		"dir"
-#define OPT_LISTEN	"l"
-#define OPT_PORT	"p"
-#define OPT_EXEC	"x"
-#define OPT_INTERFACE	"if"
-#define OPT_TIMEOUT	"timeout"
-#define OPT_SSL_CERT	"ssl-cert"
-#define OPT_SSL_KEY	"ssl-key"
-#define OPT_SSL_METHOD	"ssl-method"
-#define OPT_PROXY	"proxy"
+#define OPT_HELP		"help"
+#define OPT_SHELP		"h"
+#define OPT_VER			"v"
+#define OPT_DIR			"dir"
+#define OPT_LISTEN		"l"
+#define OPT_PORT		"p"
+#define OPT_EXEC		"x"
+#define OPT_INTERFACE		"if"
+#define OPT_TIMEOUT		"timeout"
+#define OPT_SSL_CERT		"ssl-cert"
+#define OPT_SSL_KEY		"ssl-key"
+#define OPT_SSL_METHOD		"ssl-method"
+#define OPT_PROXY		"proxy"
+#define OPT_CACHE		"cache"
 
-#define SERVER_NAME	"Helen"
-#define ALLOW_METHOD	"GET, POST, HEAD"
+#define SERVER_NAME		"Helen"
+#define ALLOW_METHOD		"GET, POST, HEAD"
 
-#define SCHEME_FILE	"file"
-#define SCHEME_HTTP	"http"
-#define SCHEME_HTTPS	"https"
+#define SCHEME_FILE		"file"
+#define SCHEME_HTTP		"http"
+#define SCHEME_HTTPS		"https"
 
 
 // Common environment variables
@@ -133,30 +134,31 @@
 #define HTTPRC_GATEWAY_TIMEOUT		504 // Gateway Time-out
 #define HTTPRC_VERSION_NOT_SUPPORTED	505 // HTTP Version not supported
 
-#define METHOD_GET	0
-#define METHOD_HEAD	1
-#define METHOD_POST	2
-#define METHOD_PUT	3
-#define METHOD_DELETE	4
-#define METHOD_CONNECT	5
-#define METHOD_OPTIONS	6
-#define METHOD_TRACE	7
-#define METHOD_PATCH	8
+#define METHOD_GET		0
+#define METHOD_HEAD		1
+#define METHOD_POST		2
+#define METHOD_PUT		3
+#define METHOD_DELETE		4
+#define METHOD_CONNECT		5
+#define METHOD_OPTIONS		6
+#define METHOD_TRACE		7
+#define METHOD_PATCH		8
 
+// Encoding
 #define ENCODING_CONTINUE	0
 #define ENCODING_FINISHED	1
 
-// Encoding
 #define	ENCODING_BR		(1 << 0)
 #define	ENCODING_GZIP		(1 << 1)
 #define ENCODING_DEFLATE	(1 << 2)
 
 #define SUPPORTED_ENCODING	(ENCODING_GZIP | ENCODING_DEFLATE)
 
-#define MAX_PATH	1024
-#define MAX_HOST_NAME	256
-#define MAX_BUFFER_LEN	2048
-#define MAX_BOUNDARY	(SHA1HashSize * 2) + 1
+// Limits
+#define MAX_PATH		1024
+#define MAX_HOST_NAME		256
+#define MAX_BUFFER_LEN		2048
+#define MAX_BOUNDARY		(SHA1HashSize * 2) + 1
 
 #define COMPRESSION_TRESHOLD	1024
 
@@ -485,7 +487,10 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 			int (*)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
 			void *udata, /* user data */
 			unsigned int *p_size /* final size */);
+/* returns encoding bit mask */
 unsigned int rt_parse_encoding(_cstr_t str_alg);
+/* returns encoding identifier */
+_cstr_t rt_encoding_bit_to_name(int *encoding_bit);
 
 // response ranges
 _v_range_t *range_parse(_cstr_t path, _cstr_t boundary);
@@ -525,6 +530,8 @@ _err_t mime_open(void);
 void mime_close(void);
 _cstr_t mime_resolve(_cstr_t path);
 
+// CACHE
+_err_t cache_init(_cstr_t path);
 
 #endif
 

@@ -17,5 +17,6 @@ http_SOURCES = src/main.cpp \
 		src/response.cpp \
 		src/proxy.cpp \
 		src/url-codec.cpp \
-		src/mime.cpp
+		src/mime.cpp \
+		src/resp_cache.cpp
 

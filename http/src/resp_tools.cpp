@@ -226,18 +226,20 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 	return r;
 }
 
+typedef struct {
+	_cstr_t 	name;
+	unsigned int	bit;
+}_enc_t;
+
+static _enc_t _g_enc_[] = {
+	{ "br",		ENCODING_BR },
+	{ "gzip",	ENCODING_GZIP },
+	{ "deflate",	ENCODING_DEFLATE },
+	{ NULL,		0 }
+};
+
 unsigned int rt_parse_encoding(_cstr_t str_alg) {
 	unsigned int r = 0;
-	typedef struct {
-		_cstr_t 	name;
-		unsigned int	bit;
-	}_enc_t;
-	static _enc_t enc[] = {
-		{ "br",		ENCODING_BR },
-		{ "gzip",	ENCODING_GZIP },
-		{ "deflate",	ENCODING_DEFLATE },
-		{ NULL,		0 }
-	};
 	int n = 0;
 	_char_t lb[256];
 	char *rest = NULL;
@@ -253,10 +255,10 @@ unsigned int rt_parse_encoding(_cstr_t str_alg) {
 			str_trim(str);
 			n = 0;
 
-			while (enc[n].name) {
-				if (strcasecmp(enc[n].name, str) == 0) {
+			while (_g_enc_[n].name) {
+				if (strcasecmp(_g_enc_[n].name, str) == 0) {
 					TRACE("http[%d] Use encoding '%s'\n", getpid(), str);
-					r |= enc[n].bit;
+					r |= _g_enc_[n].bit;
 					break;
 				}
 				n++;
@@ -267,4 +269,19 @@ unsigned int rt_parse_encoding(_cstr_t str_alg) {
 	return r;
 }
 
+_cstr_t rt_encoding_bit_to_name(int *encoding_bit) {
+	_cstr_t r = NULL;
+	int n = 0;
 
+	while (_g_enc_[n].name) {
+		if (*encoding_bit & _g_enc_[n].bit) {
+			r = _g_enc_[n].name;
+			*encoding_bit = _g_enc_[n].bit;
+			break;
+		}
+
+		n++;
+	}
+
+	return r;
+}
