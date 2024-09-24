@@ -531,7 +531,7 @@ void mime_close(void);
 _cstr_t mime_resolve(_cstr_t path);
 
 // CACHE
-_err_t cache_init(_cstr_t path);
+void cache_init(_cstr_t path);
 
 #endif
 

@@ -24,7 +24,7 @@ static _argv_t args[] = {
 	{ OPT_SSL_KEY,		OF_LONG | OF_VALUE,			NULL,				"SSL private key file (PEM only)" },
 	{ OPT_SSL_METHOD,	OF_LONG | OF_VALUE,			NULL,				"SSL server method (SSLv23, TLSv1_2, DTLS, TLS)" },
 	{ OPT_PROXY,		OF_LONG,				NULL,				"Enable proxy" },
-	{ OPT_CACHE,		OF_LONG | OF_VALUE,			(_str_t)"/tmp/http_cache",	"Cache location (--" OPT_CACHE "=<path>)" },
+	{ OPT_CACHE,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)"/tmp/http_cache",	"Cache location (--" OPT_CACHE "=<path>)" },
 	//...
 	{ NULL,			0,					NULL,				NULL }
 };
