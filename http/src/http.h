@@ -532,6 +532,9 @@ _cstr_t mime_resolve(_cstr_t path);
 
 // CACHE
 void cache_init(_cstr_t path);
-
+/* returns file descriptor for success or -1 for fail */
+int cache_open(_cstr_t path/* in */,
+		_cstr_t **encoding/* in/out Can be NULL */
+		);
 #endif
 
