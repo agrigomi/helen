@@ -1,6 +1,11 @@
 #include <sys/file.h>
 #include "lock.h"
 
+
+int lock_fd(int fd) {
+	return flock(fd, LOCK_EX);
+}
+
 int lock(const char *fname) {
 	int r = open(fname, O_CREAT);
 
