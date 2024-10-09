@@ -158,6 +158,7 @@
 #define MAX_PATH		1024
 #define MAX_HOST_NAME		256
 #define MAX_BUFFER_LEN		2048
+#define MAX_COMPRESSION_CHUNK	4096
 #define MAX_BOUNDARY		(SHA1HashSize * 2) + 1
 
 #define COMPRESSION_TRESHOLD	1024
@@ -487,10 +488,20 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 			int (*)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
 			void *udata, /* user data */
 			unsigned int *p_size /* final size */);
+_err_t rt_compress_stream(unsigned int encoding, /* encoding bitmask */
+			int out_fd, /* output file FD */
+			unsigned char *buffer, /* data buffer */
+			unsigned int sz, /* size of data buffer */
+			int (*pcb)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
+			void *udata, /* user data */
+			unsigned int *p_size /* final size */);
 /* returns encoding bit mask */
 unsigned int rt_parse_encoding(_cstr_t str_alg);
 /* returns encoding identifier */
-_cstr_t rt_encoding_bit_to_name(int *encoding_bit);
+_cstr_t rt_encoding_bit_to_name(unsigned int *encoding_bit);
+/* returns encoding bitmask */
+unsigned int rt_select_encoding(_cstr_t ext /* file extension */);
+void rt_sha1_string(_cstr_t data, _str_t out, int sz_out);
 
 // response ranges
 _v_range_t *range_parse(_cstr_t path, _cstr_t boundary);
@@ -534,7 +545,9 @@ _cstr_t mime_resolve(_cstr_t path);
 void cache_init(_cstr_t path);
 /* returns file descriptor for success or -1 for fail */
 int cache_open(_cstr_t path/* in */,
-		_cstr_t **encoding/* in/out Can be NULL */
+		struct stat *p_stat,
+		_cstr_t *encoding/* in/out Can be NULL */
 		);
+
 #endif
 

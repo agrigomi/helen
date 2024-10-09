@@ -122,8 +122,14 @@ _err_t rt_gzip_buffer(const unsigned char *src, long unsigned int sz_src,
 _err_t rt_compress_buffer(const unsigned char *src, long unsigned int sz_src,
 		unsigned char *dst, long unsigned int *psz_dst, char **pp_type) {
 	_err_t r = E_FAIL;
+	unsigned int enc = rt_select_encoding(NULL);
 
-	// ???
+	if (enc & ENCODING_GZIP)
+		r = rt_gzip_buffer(src, sz_src, dst, psz_dst);
+	else if(enc & ENCODING_DEFLATE)
+		r = rt_deflate_buffer(src, sz_src, dst, psz_dst);
+
+	*pp_type = (char *)rt_encoding_bit_to_name(&enc);
 
 	return r;
 }
@@ -142,7 +148,8 @@ _err_t rt_deflate_stream(int out_fd, /* output file FD */
 	zs.avail_in = sz;
 	zs.next_in = buffer;
 
-	*p_size = 0;
+	if (p_size)
+		*p_size = 0;
 
 	if ((zs.next_out = (unsigned char *)malloc(sz))) {
 		/* Initialize ZLLIB context */
@@ -155,18 +162,22 @@ _err_t rt_deflate_stream(int out_fd, /* output file FD */
 				/* get data chunk */
 				flag = pcb(zs.next_in, &zs.avail_out, udata);
 
-				/* start chunk compression */
-				if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
-					r = E_FAIL;
+				if (zs.avail_out > 0) {
+					/* start chunk compression */
+					if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
+						r = E_FAIL;
+						break;
+					}
+				} else
 					break;
-				}
 
 				/* write to output file */
 				write(out_fd, zs.next_out, zs.avail_out);
 			} while (flag != ENCODING_FINISHED);
 
 			deflateEnd(&zs);
-			*p_size += zs.total_out;
+			if (p_size)
+				*p_size += zs.total_out;
 		} else
 			r = E_FAIL;
 
@@ -191,7 +202,8 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 	zs.avail_in = sz;
 	zs.next_in = buffer;
 
-	*p_size = 0;
+	if (p_size)
+		*p_size = 0;
 
 	if ((zs.next_out = (unsigned char *)malloc(sz))) {
 		/* Initialize ZLLIB context */
@@ -204,24 +216,45 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 				/* get data chunk */
 				flag = pcb(zs.next_in, &zs.avail_out, udata);
 
-				/* start chunk compression */
-				if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
-					r = E_FAIL;
+				if (zs.avail_out > 0) {
+					/* start chunk compression */
+					if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
+						r = E_FAIL;
+						break;
+					}
+				} else
 					break;
-				}
 
 				/* write to output file */
 				write(out_fd, zs.next_out, zs.avail_out);
 			} while (flag != ENCODING_FINISHED);
 
 			deflateEnd(&zs);
-			*p_size += zs.total_out;
+			if (p_size)
+				*p_size += zs.total_out;
 		} else
 			r = E_FAIL;
 
 		free(zs.next_out);
 	} else
 		r = E_MEMORY;
+
+	return r;
+}
+
+_err_t rt_compress_stream(unsigned int encoding, /* encoding bitmask */
+			int out_fd, /* output file FD */
+			unsigned char *buffer, /* data buffer */
+			unsigned int sz, /* size of data buffer */
+			int (*pcb)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
+			void *udata, /* user data */
+			unsigned int *p_size /* final size */) {
+	int r = E_FAIL;
+
+	if (encoding & ENCODING_GZIP)
+		r = rt_gzip_stream(out_fd, buffer, sz, pcb, udata, p_size);
+	else if (encoding & ENCODING_DEFLATE)
+		r = rt_deflate_stream(out_fd, buffer, sz, pcb, udata, p_size);
 
 	return r;
 }
@@ -240,36 +273,39 @@ static _enc_t _g_enc_[] = {
 
 unsigned int rt_parse_encoding(_cstr_t str_alg) {
 	unsigned int r = 0;
-	int n = 0;
-	_char_t lb[256];
-	char *rest = NULL;
-	char *token = NULL;
 
-	strncpy(lb, str_alg, sizeof(lb));
+	if (str_alg) {
+		int n = 0;
+		_char_t lb[256];
+		char *rest = NULL;
+		char *token = NULL;
 
-	if ((token = strtok_r(lb, ",", &rest))) {
-		_char_t str[64] = "";
+		strncpy(lb, str_alg, sizeof(lb));
 
-		do {
-			strncpy(str, token, sizeof(str));
-			str_trim(str);
-			n = 0;
+		if ((token = strtok_r(lb, ",", &rest))) {
+			_char_t str[64] = "";
 
-			while (_g_enc_[n].name) {
-				if (strcasecmp(_g_enc_[n].name, str) == 0) {
-					TRACE("http[%d] Use encoding '%s'\n", getpid(), str);
-					r |= _g_enc_[n].bit;
-					break;
+			do {
+				strncpy(str, token, sizeof(str));
+				str_trim(str);
+				n = 0;
+
+				while (_g_enc_[n].name) {
+					if (strcasecmp(_g_enc_[n].name, str) == 0) {
+						TRACE("http[%d] Use encoding '%s'\n", getpid(), str);
+						r |= _g_enc_[n].bit;
+						break;
+					}
+					n++;
 				}
-				n++;
-			}
-		} while ((token = strtok_r(NULL, ",", &rest)));
+			} while ((token = strtok_r(NULL, ",", &rest)));
+		}
 	}
 
 	return r;
 }
 
-_cstr_t rt_encoding_bit_to_name(int *encoding_bit) {
+_cstr_t rt_encoding_bit_to_name(unsigned int *encoding_bit) {
 	_cstr_t r = NULL;
 	int n = 0;
 
@@ -284,4 +320,35 @@ _cstr_t rt_encoding_bit_to_name(int *encoding_bit) {
 	}
 
 	return r;
+}
+
+unsigned int rt_select_encoding(_cstr_t ext /* file extension */) {
+	_cstr_t acc_enc = getenv(REQ_ACCEPT_ENCODING);
+	unsigned int r = rt_parse_encoding(acc_enc);
+
+	if (ext) {
+		_cstr_t host = getenv(REQ_HOST);
+		_mapping_t *p_ext_map = cfg_get_ext_mapping(host, ext);
+
+		if (p_ext_map)
+			r &= rt_parse_encoding(p_ext_map->ext._compression());
+	}
+
+	return r & SUPPORTED_ENCODING;
+}
+
+void rt_sha1_string(_cstr_t data, _str_t out, int sz_out) {
+	SHA1Context sha1_cxt;
+	unsigned char sha1_result[SHA1HashSize];
+	static const char *hex = "0123456789abcdef";
+	int i = 0, j = 0;;
+
+	SHA1Reset(&sha1_cxt);
+	SHA1Input(&sha1_cxt, (unsigned char *)data, strlen(data));
+	SHA1Result(&sha1_cxt, sha1_result);
+
+	for (; i < SHA1HashSize && j < sz_out; i++, j += 2) {
+		out[j] = hex[(sha1_result[i] >> 4) & 0x0f];
+		out[j + 1] = hex[sha1_result[i] & 0x0f];
+	}
 }
