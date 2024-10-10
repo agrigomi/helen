@@ -74,11 +74,11 @@ int cache_open(_cstr_t path/* in */,
 		) {
 	int r = -1;
 	unsigned int enc = rt_select_encoding(rt_file_ext(path));
-	_cstr_t enc_name = rt_encoding_bit_to_name(&enc);
 	struct stat o_stat, c_stat;
 
 	if (enc) {
 		if (stat(path, &o_stat) > 0) {
+			_cstr_t enc_name = rt_encoding_bit_to_name(&enc);
 			_char_t cache_path[MAX_PATH];
 			_char_t sha1_fname[SHA1HashSize * 2 + 1];
 
@@ -88,20 +88,22 @@ int cache_open(_cstr_t path/* in */,
 
 			if (stat(cache_path, &c_stat) == 0) {
 				// cache file exists (compare time)
-				//...
-			} else {
+				if (o_stat.st_mtime > c_stat.st_mtime)
+					cache_update(path, cache_path, enc);
+			} else
 				// cache file don't exists
-				if (cache_update(path, cache_path, enc) == E_OK) {
-					if (stat(cache_path, p_stat) == 0)
-						r = open(cache_path, O_RDONLY);
-				}
-			}
+				cache_update(path, cache_path, enc);
 
-			*encoding = enc_name;
+			if (stat(cache_path, p_stat) == 0) {
+				r = open(cache_path, O_RDONLY);
+				*encoding = enc_name;
+			}
 		}
 	} else {
-		if (stat(path, p_stat) == 0)
+		if (stat(path, p_stat) == 0) {
 			r = open(path, O_RDONLY);
+			*encoding = NULL;
+		}
 	}
 
 	return r;

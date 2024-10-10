@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <sys/stat.h>
 #include "trace.h"
 #include "str.h"
 #include "argv.h"
@@ -38,22 +39,27 @@ static _cstr_t resolve_path(_cstr_t path, char *resolved) {
 	return r;
 }
 
-static _err_t send_response_buffer(int rc, _cstr_t content, unsigned int sz) {
-	_err_t r = E_FAIL;
+static void send_header(int rc) {
 	_char_t hdr[2048];
 	_cstr_t proto = getenv(REQ_PROTOCOL);
 	_cstr_t rc_text = rt_resp_text(rc);
 	int sz_hdr = snprintf(hdr, sizeof(hdr), "%s %d %s\r\n", proto, rc, rc_text);
 
+	// export header
+	sz_hdr += hdr_export(hdr + sz_hdr, sizeof(hdr) - sz_hdr);
+	// end of header
+	sz_hdr += snprintf(hdr + sz_hdr, sizeof(hdr) - sz_hdr, "\r\n");
+	// send header
+	io_write(hdr, sz_hdr);
+}
+
+static _err_t send_response_buffer(int rc, _cstr_t content, unsigned int sz) {
+	_err_t r = E_FAIL;
+
 	if (sz <= COMPRESSION_TRESHOLD) {
 _no_compression_:
 		hdr_set(RES_CONTENT_LENGTH, sz);
-		// export header
-		sz_hdr += hdr_export(hdr + sz_hdr, sizeof(hdr) - sz_hdr);
-		// end of header
-		sz_hdr += snprintf(hdr + sz_hdr, sizeof(hdr) - sz_hdr, "\r\n");
-		// send header
-		io_write(hdr, sz_hdr);
+		send_header(rc);
 		// send content
 		io_write(content, sz);
 		r = E_OK;
@@ -68,12 +74,8 @@ _no_compression_:
 				// set header options
 				hdr_set(RES_CONTENT_LENGTH, sz_dst);
 				hdr_set(RES_CONTENT_ENCODING, p_type);
-				// export header
-				sz_hdr += hdr_export(hdr + sz_hdr, sizeof(hdr) - sz_hdr);
-				// end of header
-				sz_hdr += snprintf(hdr + sz_hdr, sizeof(hdr) - sz_hdr, "\r\n");
-				// send header
-				io_write(hdr, sz_hdr);
+
+				send_header(rc);
 				// send content
 				io_write((char *)p_gzip_buffer, sz_dst);
 				// release gzip buffer
@@ -87,6 +89,52 @@ _no_compression_:
 			LOG("http[%d] Failed to allocate buffer (%d bytes) for compression\n", getpid(), sz);
 			goto _no_compression_;
 		}
+	}
+
+	return r;
+}
+
+static _err_t send_file_response(_cstr_t path, int rc) {
+	_err_t r = E_FAIL;
+	_cstr_t encoding = NULL;
+	struct stat st;
+	int fd = cache_open(path, &st, &encoding);
+
+	if (fd > 0) {
+		_char_t buffer[8192];
+		unsigned int file_offset = 0;
+		_char_t date[128];
+		tm *_tm = gmtime(&(st.st_mtime));
+
+		hdr_set(RES_CONTENT_LENGTH, st.st_size);
+
+		if (encoding)
+			hdr_set(RES_CONTENT_ENCODING, encoding);
+
+		// set last-modified
+		strftime(date, sizeof(date),
+			 "%a, %d %b %Y %H:%M:%S GMT", _tm);
+		hdr_set(RES_LAST_MODIFIED, date);
+
+		// set connection
+		hdr_set(RES_CONNECTION, getenv(REQ_CONNECTION));
+
+		// set content-type
+		mime_open();
+		hdr_set(RES_CONTENT_TYPE, mime_resolve(path));
+
+		// ...
+
+		send_header(rc);
+
+		// send file content
+		while (file_offset < st.st_size) {
+			unsigned int n = read(fd, buffer, sizeof(buffer));
+			io_write(buffer, n);
+			file_offset += n;
+		}
+
+		r = E_OK;
 	}
 
 	return r;
@@ -164,6 +212,7 @@ _err_t res_processing(void) {
 		if(!path)
 			path = url;
 
+		hdr_init();
 		cfg_load_mapping(p_vhost);
 		_mapping_t *mapping = cfg_get_url_mapping(host, method, path, proto);
 
