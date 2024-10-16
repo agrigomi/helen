@@ -328,7 +328,8 @@ unsigned int rt_select_encoding(_cstr_t ext /* file extension */) {
 
 	if (ext) {
 		_cstr_t host = getenv(REQ_HOST);
-		_mapping_t *p_ext_map = cfg_get_ext_mapping(host, ext);
+		_vhost_t *p_host = cfg_get_vhost(host);
+		_mapping_t *p_ext_map = cfg_get_ext_mapping(p_host->host, ext);
 
 		if (p_ext_map)
 			r &= rt_parse_encoding(p_ext_map->ext._compression());

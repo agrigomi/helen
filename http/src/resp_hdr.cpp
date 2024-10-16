@@ -2,6 +2,7 @@
 #include <map>
 #include <string>
 #include "http.h"
+#include "trace.h"
 
 static std::map<std::string, std::string> _g_hdr_map_;
 

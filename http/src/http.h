@@ -6,6 +6,7 @@
 #include "config.h"
 #include "api_ssl.h"
 #include "sha1.h"
+#include "respawn.h"
 #include "err.h"
 
 // command line options
@@ -219,6 +220,10 @@ struct __attribute__((packed)) mapping_url {
 	bool _input(void) {
 		return input;
 	}
+
+	bool _header(void) {
+		return header;
+	}
 };
 
 #define PREFIX_RESP_CODE	"RC_"
@@ -252,6 +257,10 @@ struct __attribute__((packed)) mapping_err {
 
 	bool _input(void) {
 		return input;
+	}
+
+	bool _header(void) {
+		return header;
 	}
 };
 
@@ -380,6 +389,21 @@ typedef struct __attribute__((packed)) {
 				break;
 			case MAPPING_TYPE_ERR:
 				r = err._input();
+				break;
+		}
+
+		return r;
+	}
+
+	bool _header(void) {
+		bool r = false;
+
+		switch (type) {
+			case MAPPING_TYPE_URL:
+				r = url._header();
+				break;
+			case MAPPING_TYPE_ERR:
+				r = err._header();
 				break;
 		}
 
@@ -516,6 +540,7 @@ _err_t resp_exec(_cstr_t cmd,
 		int (*out)(unsigned char *buf, unsigned int sz, void *udata),
 		int (*in)(unsigned char *buf, unsigned int sz, void *udata),
 		void *udata);
+_err_t resp_exec(_cstr_t cmd, _proc_t *proc);
 
 // Response
 _err_t res_processing(void);

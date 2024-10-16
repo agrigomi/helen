@@ -2,27 +2,12 @@
 #include <sys/stat.h>
 #include "str.h"
 #include "http.h"
-#include "sha1.h"
 
 static _v_range_t _gv_ranges_; // ranges vector
 static _range_t _g_range_; // range element
 
 void range_generate_boundary(_cstr_t path, _str_t b, int sz) {
-	SHA1Context sha1_cxt;
-	unsigned char sha1_result[SHA1HashSize];
-	int i = 0, j = 0;
-	static const char *hex = "0123456789abcdef";
-
-	SHA1Reset(&sha1_cxt);
-	memset(sha1_result, 0, sizeof(sha1_result));
-
-	SHA1Input(&sha1_cxt, (unsigned char *)path, strlen(path));
-	SHA1Result(&sha1_cxt, sha1_result);
-
-	for (; i < SHA1HashSize && j < sz; i++, j += 2) {
-		b[j] = hex[(sha1_result[i] >> 4) & 0x0f];
-		b[j + 1] = hex[sha1_result[i] & 0x0f];
-	}
+	rt_sha1_string(path, b, sz);
 }
 
 typedef struct {

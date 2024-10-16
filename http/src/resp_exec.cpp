@@ -1,6 +1,5 @@
 #include <unistd.h>
 #include "http.h"
-#include "respawn.h"
 #include "trace.h"
 #include "argv.h"
 
@@ -74,6 +73,26 @@ _err_t resp_exec(_cstr_t cmd,
 
 	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
 	r = resp_exec_v((_cstr_t *)argv, out, in, udata);
+
+	while (argv[i]) {
+		free(argv[i]);
+		i++;
+	}
+
+	return r;
+}
+
+_err_t resp_exec(_cstr_t cmd, _proc_t *proc) {
+	_err_t r = E_FAIL;
+	_str_t argv[256];
+	int i = 0;
+
+	memset(argv, 0, sizeof(argv));
+	split_by_space(cmd, strlen(cmd), argv, 256);
+
+	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
+	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
+	r = proc_exec_v(proc, argv[0], argv);
 
 	while (argv[i]) {
 		free(argv[i]);

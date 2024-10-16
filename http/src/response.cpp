@@ -1,45 +1,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
-#include "trace.h"
+#include <fcntl.h>
 #include "str.h"
 #include "argv.h"
 #include "http.h"
+#include "trace.h"
 
-static _err_t send_exec(_cstr_t cmd, bool input = false) {
-	return resp_exec(cmd,
-		/* out */
-		[] (unsigned char *buf, unsigned int sz,
-				void __attribute__((unused)) *udata) -> int {
-			return io_write((_cstr_t)buf, sz);
-		},
-		/* in */
-		[] (unsigned char *buf, unsigned int sz,
-				void __attribute__((unused)) *udata) -> int {
-			int r = 0;
-			int nb = io_verify_input();
-
-			if (nb > 0)
-				r = io_read((_str_t)buf, sz);
-			else if (nb < 0)
-				r = nb;
-
-			return r;
-		},
-		NULL);
-}
-
-static _cstr_t resolve_path(_cstr_t path, char *resolved) {
-	_cstr_t r = NULL;
-
-	if (strstr(path, ".."))
-		r = realpath(path, resolved);
-	else
-		r = path;
-
-	return r;
-}
-
-static void send_header(int rc) {
+static void send_header(int rc, _cstr_t header_append = NULL) {
 	_char_t hdr[2048];
 	_cstr_t proto = getenv(REQ_PROTOCOL);
 	_cstr_t rc_text = rt_resp_text(rc);
@@ -47,8 +14,14 @@ static void send_header(int rc) {
 
 	// export header
 	sz_hdr += hdr_export(hdr + sz_hdr, sizeof(hdr) - sz_hdr);
+
+	// add header_append
+	if (header_append && strlen(header_append))
+		sz_hdr += str_resolve(header_append, hdr + sz_hdr, sizeof(hdr) - sz_hdr);
+
 	// end of header
 	sz_hdr += snprintf(hdr + sz_hdr, sizeof(hdr) - sz_hdr, "\r\n");
+
 	// send header
 	io_write(hdr, sz_hdr);
 }
@@ -94,11 +67,18 @@ _no_compression_:
 	return r;
 }
 
-static _err_t send_file_response(_cstr_t path, int rc) {
+static _err_t send_file_response(_cstr_t path, int rc, bool use_cache = true, _cstr_t encoding = NULL, _cstr_t header_append = NULL) {
 	_err_t r = E_FAIL;
-	_cstr_t encoding = NULL;
+	_cstr_t _encoding = encoding;
 	struct stat st;
-	int fd = cache_open(path, &st, &encoding);
+	int fd = -1;
+
+	if (use_cache)
+		fd = cache_open(path, &st, &_encoding);
+	else {
+		if (stat(path, &st) == 0)
+			fd = open(path, O_RDONLY);
+	}
 
 	if (fd > 0) {
 		_char_t buffer[8192];
@@ -108,8 +88,8 @@ static _err_t send_file_response(_cstr_t path, int rc) {
 
 		hdr_set(RES_CONTENT_LENGTH, st.st_size);
 
-		if (encoding)
-			hdr_set(RES_CONTENT_ENCODING, encoding);
+		if (_encoding)
+			hdr_set(RES_CONTENT_ENCODING, _encoding);
 
 		// set last-modified
 		strftime(date, sizeof(date),
@@ -125,7 +105,9 @@ static _err_t send_file_response(_cstr_t path, int rc) {
 
 		// ...
 
-		send_header(rc);
+		send_header(rc, header_append);
+
+		TRACE("http[%d]: Sending response '%s' encoding: %s\n", getpid(), path, _encoding);
 
 		// send file content
 		while (file_offset < st.st_size) {
@@ -134,7 +116,124 @@ static _err_t send_file_response(_cstr_t path, int rc) {
 			file_offset += n;
 		}
 
+		close(fd);
 		r = E_OK;
+	}
+
+	return r;
+}
+
+static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
+			bool header = true, _cstr_t header_append = NULL) {
+	_char_t tmp_fname[256];
+	_err_t r = E_FAIL;
+	_proc_t proc;
+
+	if (header) {
+		int tmp_fd = -1;
+		unsigned int encoding = rt_select_encoding(NULL);
+
+		snprintf(tmp_fname, sizeof(tmp_fname), "/tmp/proc-%d.out", getpid());
+
+		if ((tmp_fd = open(tmp_fname, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) > 0) {
+			if (resp_exec(cmd, &proc) == E_OK) {
+				_uchar_t buffer[MAX_COMPRESSION_CHUNK];
+				int nin = 0;
+
+				if (input) {
+					while ((nin = io_verify_input()) > 0) {
+						nin = io_read((_str_t)buffer, sizeof(buffer));
+
+						proc_write(&proc, buffer, nin);
+					}
+				}
+
+				if (encoding) {
+					// use compression
+					rt_compress_stream(encoding, tmp_fd, buffer, sizeof(buffer),
+							[] (unsigned char *data, unsigned int *psz, void *udata) -> int {
+								int r = ENCODING_CONTINUE;
+								_proc_t *proc = (_proc_t *)udata;
+								unsigned int sz = read(proc->PREAD_FD, data, *psz);
+
+								if (sz < *psz)
+									r = ENCODING_FINISHED;
+
+								*psz = sz;
+
+								return r;
+							}, &proc, NULL);
+				} else {
+					// no compression
+					while ((nin = proc_read(&proc, buffer, sizeof(buffer))) > 0)
+						write (tmp_fd, buffer, nin);
+				}
+			}
+
+			close(tmp_fd);
+			r = send_file_response(tmp_fname, rc,
+						false, // do not use cache
+						(encoding) ? rt_encoding_bit_to_name(&encoding) : NULL, // encoding name
+						header_append
+						);
+			unlink(tmp_fname);
+		}
+	} else {
+		r = resp_exec(cmd,
+			/* out */
+			[] (unsigned char *buf, unsigned int sz,
+					void __attribute__((unused)) *udata) -> int {
+				return io_write((_cstr_t)buf, sz);
+			},
+			/* in */
+			[] (unsigned char *buf, unsigned int sz,
+					void __attribute__((unused)) *udata) -> int {
+				int r = 0;
+				int nb = io_verify_input();
+
+				if (nb > 0)
+					r = io_read((_str_t)buf, sz);
+				else if (nb < 0)
+					r = nb;
+
+				return r;
+			},
+			NULL) == E_OK ? E_DONE : -1;
+	}
+
+	return r;
+}
+
+static _cstr_t resolve_path(_cstr_t path, char *resolved) {
+	_cstr_t r = NULL;
+
+	if (strstr(path, ".."))
+		r = realpath(path, resolved);
+	else
+		r = path;
+
+	return r;
+}
+
+static _err_t send_mapping_response(_mapping_t *p_mapping, int rc) {
+	_err_t r = E_FAIL;
+	int _rc = rc;
+
+	if (p_mapping->type == MAPPING_TYPE_URL) {
+		if (p_mapping->url.resp_code)
+			// Use response code from mapping
+			_rc = p_mapping->url.resp_code;
+	}
+
+	if (p_mapping->_exec()) {
+		_cstr_t proc = p_mapping->_proc();
+		bool input = p_mapping->_input();
+		_cstr_t header_append = p_mapping->_header_append();
+		_char_t resolved_cmd[MAX_PATH] = "";
+		bool header = p_mapping->_header();
+
+		str_resolve(proc, resolved_cmd, sizeof(resolved_cmd));
+		r = send_exec(resolved_cmd, _rc, input, header, header_append);
 	}
 
 	return r;
@@ -146,9 +245,9 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 	if (rc >= HTTPRC_BAD_REQUEST) {
 		_mapping_t *mapping = (p_vhost) ? cfg_get_err_mapping(p_vhost->host, rc) : NULL;
 
-		if (mapping) {
-			//...
-		} else {
+		if (mapping)
+			r = send_mapping_response(mapping, rc);
+		else {
 			_cstr_t content = rt_static_content(rc);
 			unsigned int sz_content = (content) ? strlen(content) : 0;
 
@@ -204,22 +303,22 @@ _err_t res_processing(void) {
 	_cstr_t method = getenv(REQ_METHOD);
 	int imethod = (method) ? rt_resolve_method(method) : 0;
 
-	if (p_vhost && imethod) {
+	if (p_vhost) {
 		_cstr_t proto = getenv(REQ_PROTOCOL);
 		_cstr_t url = getenv(REQ_URL);
 		_cstr_t path = getenv(REQ_PATH);
 
-		if(!path)
+		if (!path)
 			path = url;
 
 		hdr_init();
 		cfg_load_mapping(p_vhost);
-		_mapping_t *mapping = cfg_get_url_mapping(host, method, path, proto);
+		_mapping_t *mapping = cfg_get_url_mapping(p_vhost->host, method, path, proto);
 
 		if (mapping) {
 			// process mapping
 			setenv(DOC_ROOT, p_vhost->root, 1);
-			//...
+			r = send_mapping_response(mapping, HTTPRC_OK);
 		} else {
 			char doc_path[MAX_PATH+1];
 			char resolved_path[PATH_MAX];
@@ -232,7 +331,8 @@ _err_t res_processing(void) {
 					switch (imethod) {
 						case METHOD_GET:
 						case METHOD_POST:
-							//...
+							if ((r = send_file_response(rpath, HTTPRC_OK)) != E_OK)
+								r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
 							break;
 						case METHOD_HEAD:
 							//...
@@ -252,8 +352,10 @@ _err_t res_processing(void) {
 			} else
 				r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
 		}
-	} else
+	} else {
+		TRACE("http[%d] Bad request method: '%s' [%d]; host: %s\n", getpid(), method, imethod, (p_vhost) ? p_vhost->host : NULL);
 		r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
+	}
 
 	return r;
 }
