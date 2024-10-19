@@ -142,6 +142,8 @@ _err_t rt_deflate_stream(int out_fd, /* output file FD */
 			unsigned int *p_size /* final size */) {
 	_err_t r = E_OK;
 	z_stream zs;
+	unsigned char *out;
+
 	zs.zalloc = Z_NULL;
 	zs.zfree = Z_NULL;
 	zs.opaque = Z_NULL;
@@ -151,18 +153,19 @@ _err_t rt_deflate_stream(int out_fd, /* output file FD */
 	if (p_size)
 		*p_size = 0;
 
-	if ((zs.next_out = (unsigned char *)malloc(sz))) {
+	if ((out = (unsigned char *)malloc(sz))) {
 		/* Initialize ZLLIB context */
 		if (deflateInit(&zs, Z_DEFAULT_COMPRESSION) == Z_OK) {
 			int flag = ENCODING_CONTINUE;
 
 			do {
 				zs.avail_out = sz;
+				zs.next_out = out;
 
 				/* get data chunk */
-				flag = pcb(zs.next_in, &zs.avail_out, udata);
+				flag = pcb(zs.next_in, &zs.avail_in, udata);
 
-				if (zs.avail_out > 0) {
+				if (zs.avail_in > 0) {
 					/* start chunk compression */
 					if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
 						r = E_FAIL;
@@ -181,7 +184,7 @@ _err_t rt_deflate_stream(int out_fd, /* output file FD */
 		} else
 			r = E_FAIL;
 
-		free(zs.next_out);
+		free(out);
 	} else
 		r = E_MEMORY;
 
@@ -196,6 +199,8 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 			unsigned int *p_size /* final size */) {
 	_err_t r = E_OK;
 	z_stream zs;
+	unsigned char *out;
+
 	zs.zalloc = Z_NULL;
 	zs.zfree = Z_NULL;
 	zs.opaque = Z_NULL;
@@ -205,20 +210,22 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 	if (p_size)
 		*p_size = 0;
 
-	if ((zs.next_out = (unsigned char *)malloc(sz))) {
+	if ((out = (unsigned char *)malloc(sz))) {
 		/* Initialize ZLLIB context */
 		if (deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 | 16, 8, Z_DEFAULT_STRATEGY) == Z_OK) {
 			int flag = ENCODING_CONTINUE;
 
 			do {
 				zs.avail_out = sz;
+				zs.next_out = out;
 
 				/* get data chunk */
-				flag = pcb(zs.next_in, &zs.avail_out, udata);
+				flag = pcb(zs.next_in, &zs.avail_in, udata);
 
-				if (zs.avail_out > 0) {
+				if (zs.avail_in > 0) {
 					/* start chunk compression */
 					if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
+						TRACE("http[%d] Failed to gzip chunk\n", getpid());
 						r = E_FAIL;
 						break;
 					}
@@ -232,10 +239,12 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 			deflateEnd(&zs);
 			if (p_size)
 				*p_size += zs.total_out;
-		} else
+		} else {
+			TRACE("http[%d] Failed to init Zlib\n", getpid());
 			r = E_FAIL;
+		}
 
-		free(zs.next_out);
+		free(out);
 	} else
 		r = E_MEMORY;
 
@@ -325,6 +334,7 @@ _cstr_t rt_encoding_bit_to_name(unsigned int *encoding_bit) {
 unsigned int rt_select_encoding(_cstr_t ext /* file extension */) {
 	_cstr_t acc_enc = getenv(REQ_ACCEPT_ENCODING);
 	unsigned int r = rt_parse_encoding(acc_enc);
+	unsigned int ext_mask = 0;
 
 	if (ext) {
 		_cstr_t host = getenv(REQ_HOST);
@@ -332,10 +342,10 @@ unsigned int rt_select_encoding(_cstr_t ext /* file extension */) {
 		_mapping_t *p_ext_map = cfg_get_ext_mapping(p_host->host, ext);
 
 		if (p_ext_map)
-			r &= rt_parse_encoding(p_ext_map->ext._compression());
+			ext_mask = rt_parse_encoding(p_ext_map->ext._compression());
 	}
 
-	return r & SUPPORTED_ENCODING;
+	return r & ext_mask & SUPPORTED_ENCODING;
 }
 
 void rt_sha1_string(_cstr_t data, _str_t out, int sz_out) {

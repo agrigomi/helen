@@ -211,6 +211,7 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
 	_json_value_t *response_code = json_select(p_jcxt, "response-code", pjo);
 	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
+	_json_value_t *ext = json_select(p_jcxt, "ext", pjo);
 
 	p->type = MAPPING_TYPE_URL;
 	jv_string(method, p->url.method, sizeof(p->url.method));
@@ -259,6 +260,14 @@ static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 		p->url.buffer_len += jv_string(pjv, p->url.buffer + p->url.buffer_len,
 				sizeof(p->url.buffer) - p->url.buffer_len) + 1;
 	}
+
+	// add ext
+	p->url.off_ext = p->url.buffer_len;
+	if (ext && ext->jvt == JSON_STRING &&
+			(sizeof(p->url.buffer) - p->url.buffer_len) > (size_t)(ext->string.size)) {
+		p->url.buffer_len += jv_string(ext, p->url.buffer + p->url.buffer_len,
+				sizeof(p->url.buffer) - p->url.buffer_len) + 1;
+	}
 }
 
 static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
@@ -269,6 +278,7 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
 	_json_value_t *response = json_select(p_jcxt, "response", pjo);
 	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
+	_json_value_t *ext = json_select(p_jcxt, "ext", pjo);
 	char str_code[32] = "";
 
 	p->type = MAPPING_TYPE_ERR;
@@ -301,6 +311,14 @@ static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	if (pjv && pjv->jvt == JSON_STRING &&
 			(sizeof(p->err.buffer) - p->err.buffer_len) > (size_t)(pjv->string.size)) {
 		p->err.buffer_len += jv_string(pjv, p->err.buffer + p->err.buffer_len,
+				sizeof(p->err.buffer) - p->err.buffer_len) + 1;
+	}
+
+	// add ext
+	p->err.off_ext = p->err.buffer_len;
+	if (ext && ext->jvt == JSON_STRING &&
+			(sizeof(p->err.buffer) - p->err.buffer_len) > (size_t)(pjv->string.size)) {
+		p->err.buffer_len += jv_string(ext, p->err.buffer + p->err.buffer_len,
 				sizeof(p->err.buffer) - p->err.buffer_len) + 1;
 	}
 }

@@ -190,6 +190,7 @@ struct __attribute__((packed)) mapping_url {
 	short off_url;			// offset to URL
 	short off_header_append;	// offset to rest of header
 	short off_proc;			// offset to response command or file
+	short off_ext;			// extension offset
 	short buffer_len;		// size of data in buffer
 	char buffer[MAX_BUFFER_LEN];
 
@@ -211,6 +212,10 @@ struct __attribute__((packed)) mapping_url {
 
 	char *_proc(void) {
 		return buffer + off_proc;
+	}
+
+	char *_ext(void) {
+		return buffer + off_ext;
 	}
 
 	bool _exec(void) {
@@ -236,6 +241,7 @@ struct __attribute__((packed)) mapping_err {
 	bool input;			// use input
 	short off_header_append;	// offset to rest of header
 	short off_proc;			// offset to response command or file
+	short off_ext;			// extension offset
 	short buffer_len;		// size of data in buffer
 	char buffer[MAX_BUFFER_LEN];
 
@@ -249,6 +255,10 @@ struct __attribute__((packed)) mapping_err {
 
 	char *_proc(void) {
 		return buffer + off_proc;
+	}
+
+	char *_ext(void) {
+		return buffer + off_ext;
 	}
 
 	bool _exec(void) {
@@ -374,6 +384,21 @@ typedef struct __attribute__((packed)) {
 				break;
 			case MAPPING_TYPE_ERR:
 				r = err._exec();
+				break;
+		}
+
+		return r;
+	}
+
+	char *_ext(void) {
+		char *r = NULL;
+
+		switch (type) {
+			case MAPPING_TYPE_URL:
+				r = url._ext();
+				break;
+			case MAPPING_TYPE_ERR:
+				r = err._ext();
 				break;
 		}
 

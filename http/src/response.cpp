@@ -124,14 +124,14 @@ static _err_t send_file_response(_cstr_t path, int rc, bool use_cache = true, _c
 }
 
 static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
-			bool header = true, _cstr_t header_append = NULL) {
+			bool header = true, _cstr_t header_append = NULL, _cstr_t ext = NULL) {
 	_char_t tmp_fname[256];
 	_err_t r = E_FAIL;
 	_proc_t proc;
 
 	if (header) {
 		int tmp_fd = -1;
-		unsigned int encoding = rt_select_encoding(NULL);
+		unsigned int encoding = rt_select_encoding(ext);
 
 		snprintf(tmp_fname, sizeof(tmp_fname), "/tmp/proc-%d.out", getpid());
 
@@ -225,15 +225,25 @@ static _err_t send_mapping_response(_mapping_t *p_mapping, int rc) {
 			_rc = p_mapping->url.resp_code;
 	}
 
-	if (p_mapping->_exec()) {
-		_cstr_t proc = p_mapping->_proc();
-		bool input = p_mapping->_input();
-		_cstr_t header_append = p_mapping->_header_append();
-		_char_t resolved_cmd[MAX_PATH] = "";
-		bool header = p_mapping->_header();
+	_cstr_t proc = p_mapping->_proc();
+	bool input = p_mapping->_input();
+	_cstr_t header_append = p_mapping->_header_append();
+	_char_t resolved_cmd[MAX_PATH] = "";
+	bool header = p_mapping->_header();
+	_cstr_t ext = p_mapping->_ext();
 
-		str_resolve(proc, resolved_cmd, sizeof(resolved_cmd));
-		r = send_exec(resolved_cmd, _rc, input, header, header_append);
+	str_resolve(proc, resolved_cmd, sizeof(resolved_cmd));
+
+	if (p_mapping->_exec()) {
+		TRACE("http[%d] Resolve '%s' --> '%s'\n", getpid(), proc, resolved_cmd);
+		r = send_exec(resolved_cmd, _rc, input, header, header_append, ext);
+	} else {
+		struct stat st;
+
+		if (stat(resolved_cmd, &st) == 0)
+			r = send_file_response(resolved_cmd, _rc, true, NULL, header_append);
+		else
+			r = send_response_buffer(_rc, resolved_cmd, strlen(resolved_cmd));
 	}
 
 	return r;
@@ -315,11 +325,12 @@ _err_t res_processing(void) {
 		cfg_load_mapping(p_vhost);
 		_mapping_t *mapping = cfg_get_url_mapping(p_vhost->host, method, path, proto);
 
-		if (mapping) {
+		setenv(DOC_ROOT, p_vhost->root, 1);
+
+		if (mapping)
 			// process mapping
-			setenv(DOC_ROOT, p_vhost->root, 1);
 			r = send_mapping_response(mapping, HTTPRC_OK);
-		} else {
+		else {
 			char doc_path[MAX_PATH+1];
 			char resolved_path[PATH_MAX];
 			_cstr_t rpath = NULL;
