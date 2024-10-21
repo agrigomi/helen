@@ -133,7 +133,7 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 		int tmp_fd = -1;
 		unsigned int encoding = rt_select_encoding(ext);
 
-		snprintf(tmp_fname, sizeof(tmp_fname), "/tmp/proc-%d.out", getpid());
+		snprintf(tmp_fname, sizeof(tmp_fname), "/tmp/http-%d.out", getpid());
 
 		if ((tmp_fd = open(tmp_fname, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) > 0) {
 			if (resp_exec(cmd, &proc) == E_OK) {

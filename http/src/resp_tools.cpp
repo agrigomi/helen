@@ -294,7 +294,6 @@ unsigned int rt_parse_encoding(_cstr_t str_alg) {
 
 				while (_g_enc_[n].name) {
 					if (strcasecmp(_g_enc_[n].name, str) == 0) {
-						TRACE("http[%d] Use encoding '%s'\n", getpid(), str);
 						r |= _g_enc_[n].bit;
 						break;
 					}

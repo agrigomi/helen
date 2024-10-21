@@ -49,7 +49,7 @@ _err_t proxy_http(void) {
 			int t = 100;
 			size_t in = 0;
 
-			while(t--) {
+			while (t--) {
 				if (verify_input(sfd)) {
 					if ((in = read(sfd, respb, sz_respb)) > 0) {
 						if (io_write(respb, in) <= 0)
@@ -104,7 +104,7 @@ _err_t proxy_https(void) {
 			int t = 100;
 			size_t in = 0;
 
-			while(t--) {
+			while (t--) {
 				if (verify_input(SSL_get_fd(ssl))) {
 					if ((in = SSL_read(ssl, respb, sz_respb)) > 0) {
 						if (io_write(respb, in) <= 0)
