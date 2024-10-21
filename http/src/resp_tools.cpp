@@ -165,13 +165,10 @@ _err_t rt_deflate_stream(int out_fd, /* output file FD */
 				/* get data chunk */
 				flag = pcb(zs.next_in, &zs.avail_in, udata);
 
-				if (zs.avail_in > 0) {
+				if (zs.avail_in > 0)
 					/* start chunk compression */
-					if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
-						r = E_FAIL;
-						break;
-					}
-				} else
+					deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH);
+				else
 					break;
 
 				/* write to output file */
@@ -222,14 +219,10 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 				/* get data chunk */
 				flag = pcb(zs.next_in, &zs.avail_in, udata);
 
-				if (zs.avail_in > 0) {
+				if (zs.avail_in > 0)
 					/* start chunk compression */
-					if (deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH) != Z_OK) {
-						TRACE("http[%d] Failed to gzip chunk\n", getpid());
-						r = E_FAIL;
-						break;
-					}
-				} else
+					deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH);
+				else
 					break;
 
 				/* write to output file */
