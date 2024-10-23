@@ -173,7 +173,7 @@ _err_t rt_deflate_stream(int out_fd, /* output file FD */
 
 				/* write to output file */
 				write(out_fd, zs.next_out, zs.avail_out);
-			} while (flag != ENCODING_FINISHED);
+			} while (flag == ENCODING_CONTINUE);
 
 			deflateEnd(&zs);
 			if (p_size)
@@ -219,15 +219,17 @@ _err_t rt_gzip_stream(int out_fd, /* output file FD */
 				/* get data chunk */
 				flag = pcb(zs.next_in, &zs.avail_in, udata);
 
-				if (zs.avail_in > 0)
+				if (zs.avail_in > 0) {
 					/* start chunk compression */
-					deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH);
-				else
+					int zr = deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH);
+
+					TRACE("http[%d] Deflate result %d\n", getpid(), zr);
+				} else
 					break;
 
 				/* write to output file */
 				write(out_fd, zs.next_out, zs.avail_out);
-			} while (flag != ENCODING_FINISHED);
+			} while (flag == ENCODING_CONTINUE);
 
 			deflateEnd(&zs);
 			if (p_size)

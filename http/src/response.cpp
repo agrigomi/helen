@@ -67,7 +67,9 @@ _no_compression_:
 	return r;
 }
 
-static _err_t send_file_response(_cstr_t path, int rc, bool use_cache = true, _cstr_t encoding = NULL, _cstr_t header_append = NULL) {
+static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL,
+			bool use_cache = true, _cstr_t encoding = NULL,
+			_cstr_t header_append = NULL) {
 	_err_t r = E_FAIL;
 	_cstr_t _encoding = encoding;
 	struct stat st;
@@ -76,8 +78,12 @@ static _err_t send_file_response(_cstr_t path, int rc, bool use_cache = true, _c
 	if (use_cache)
 		fd = cache_open(path, &st, &_encoding);
 	else {
-		if (stat(path, &st) == 0)
-			fd = open(path, O_RDONLY);
+		if (pstat)
+			memcpy(&st, pstat, sizeof(struct stat));
+		else
+			stat(path, &st);
+
+		fd = open(path, O_RDONLY);
 	}
 
 	if (fd > 0) {
@@ -171,7 +177,7 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 			}
 
 			close(tmp_fd);
-			r = send_file_response(tmp_fname, rc,
+			r = send_file_response(tmp_fname, rc, NULL,
 						false, // do not use cache
 						(encoding) ? rt_encoding_bit_to_name(&encoding) : NULL, // encoding name
 						header_append
@@ -199,6 +205,31 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 				return r;
 			},
 			NULL) == E_OK ? E_DONE : -1;
+	}
+
+	return r;
+}
+
+static _err_t send_file(_cstr_t path, int rc, struct stat *pstat = NULL) {
+	_err_t r = E_FAIL;
+	struct stat st;
+
+	if (pstat)
+		memcpy(&st, pstat, sizeof(struct stat));
+	else
+		stat(path, &st);
+
+	if (!S_ISDIR(st.st_mode)) {
+		if ((st.st_mode & S_IXUSR) && argv_check(OPT_EXEC))
+			// executable file request
+			r = send_exec(path, rc, /* allow input */ true, /* no header */ false);
+		else
+			// regular file response
+			r = send_file_response(path, rc, &st, /* use cache */ true,
+						/* encoding */ NULL, /* no header append */ NULL);
+	} else {
+		TRACE("http[%d] Directory request '%s'\n", getpid(), path);
+		//...
 	}
 
 	return r;
@@ -241,7 +272,7 @@ static _err_t send_mapping_response(_mapping_t *p_mapping, int rc) {
 		struct stat st;
 
 		if (stat(resolved_cmd, &st) == 0)
-			r = send_file_response(resolved_cmd, _rc, true, NULL, header_append);
+			r = send_file_response(resolved_cmd, _rc, &st, true, NULL, header_append);
 		else
 			r = send_response_buffer(_rc, resolved_cmd, strlen(resolved_cmd));
 	}
@@ -342,7 +373,7 @@ _err_t res_processing(void) {
 					switch (imethod) {
 						case METHOD_GET:
 						case METHOD_POST:
-							if ((r = send_file_response(rpath, HTTPRC_OK)) != E_OK)
+							if ((r = send_file(rpath, HTTPRC_OK)) != E_OK)
 								r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
 							break;
 						case METHOD_HEAD:

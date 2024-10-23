@@ -54,7 +54,6 @@ static _err_t cache_update(_cstr_t path, _cstr_t cache_path, unsigned int encodi
 
 						if (sz < *psz)
 							r = ENCODING_FINISHED;
-
 						*psz = sz;
 
 						return r;
