@@ -39,28 +39,18 @@ static _err_t cache_update(_cstr_t path, _cstr_t cache_path, unsigned int encodi
 
 	if (sfd > 0) {
 		int cfd = open(cache_path, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+		_cstr_t str_enc = NULL;
 
 		if (cfd > 0) {
-			unsigned char buffer[MAX_COMPRESSION_CHUNK];
-
 			lock_fd(cfd);
 
-			r = rt_compress_stream(encoding, cfd,
-					buffer, sizeof(buffer),
-					[] (unsigned char *data, unsigned int *psz, void *udata) -> int {
-						int r = ENCODING_CONTINUE;
-						int fd = *(int *)udata;
-						unsigned int sz = read(fd, data, *psz);
-
-						if (sz < *psz)
-							r = ENCODING_FINISHED;
-						*psz = sz;
-
-						return r;
-					}, &sfd, NULL);
+			r = rt_compress_stream(encoding, sfd, cfd, &str_enc);
 
 			unlock(cfd);
 			close(cfd);
+
+			if (r != E_OK)
+				unlink(cache_path);
 		}
 
 		close(sfd);
@@ -89,7 +79,6 @@ int cache_open(_cstr_t path/* in */,
 				rt_sha1_string(path, sha1_fname, sizeof(sha1_fname));
 				snprintf(cache_path, sizeof(cache_path), "%s/%s/%s", _g_cache_path_, enc_name, sha1_fname);
 
-				TRACE("http[%d] Cache path: '%s'\n", getpid(), cache_path);
 				if (stat(cache_path, &c_stat) == 0) {
 					// cache file exists (compare time)
 					if (o_stat.st_mtime > c_stat.st_mtime)
@@ -99,10 +88,14 @@ int cache_open(_cstr_t path/* in */,
 					cache_update(path, cache_path, enc);
 
 				if (stat(cache_path, p_stat) == 0) {
+					TRACE("http[%d] Use cache file '%s'\n", getpid(), cache_path);
 					r = open(cache_path, O_RDONLY);
 					*encoding = enc_name;
-				}
+				} else
+					// no cache file
+					goto _skip_compression_;
 			} else {
+_skip_compression_:
 				// less than compression threshold
 				if ((r = open(path, O_RDONLY)) > 0) {
 					memcpy(p_stat, &o_stat, sizeof(struct stat));

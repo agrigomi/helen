@@ -153,13 +153,17 @@
 #define	ENCODING_GZIP		(1 << 1)
 #define ENCODING_DEFLATE	(1 << 2)
 
+#define STR_ENCODING_BR		"br"
+#define STR_ENCODING_GZIP	"gzip"
+#define STR_ENCODING_DEFLATE	"deflate"
+
 #define SUPPORTED_ENCODING	(ENCODING_GZIP | ENCODING_DEFLATE)
 
 // Limits
 #define MAX_PATH		1024
 #define MAX_HOST_NAME		256
 #define MAX_BUFFER_LEN		2048
-#define MAX_COMPRESSION_CHUNK	4096
+#define MAX_COMPRESSION_CHUNK	16384
 #define MAX_BOUNDARY		(SHA1HashSize * 2) + 1
 
 #define COMPRESSION_TRESHOLD	1024
@@ -525,25 +529,10 @@ _err_t rt_gzip_buffer(const unsigned char *src, long unsigned int sz_src,
 		unsigned char *dst, long unsigned int *psz_dst);
 _err_t rt_compress_buffer(const unsigned char *src, long unsigned int sz_src,
 		unsigned char *dst, long unsigned int *psz_dst, char **pp_type);
-_err_t rt_deflate_stream(int out_fd, /* output file FD */
-			unsigned char *buffer, /* data buffer */
-			unsigned int sz, /* size of data buffer */
-			int (*)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
-			void *udata, /* user data */
-			unsigned int *p_size /* final size */);
-_err_t rt_gzip_stream(int out_fd, /* output file FD */
-			unsigned char *buffer, /* data buffer */
-			unsigned int sz, /* size of data buffer */
-			int (*)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
-			void *udata, /* user data */
-			unsigned int *p_size /* final size */);
-_err_t rt_compress_stream(unsigned int encoding, /* encoding bitmask */
-			int out_fd, /* output file FD */
-			unsigned char *buffer, /* data buffer */
-			unsigned int sz, /* size of data buffer */
-			int (*pcb)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
-			void *udata, /* user data */
-			unsigned int *p_size /* final size */);
+_err_t rt_deflate_stream(int fd_in, int fd_out);
+_err_t rt_gzip_stream(int fd_in, int fd_out);
+_err_t rt_compress_stream(int encoding, int fd_in, int fd_out, _cstr_t *str_encoding);
+
 /* returns encoding bit mask */
 unsigned int rt_parse_encoding(_cstr_t str_alg);
 /* returns encoding identifier */

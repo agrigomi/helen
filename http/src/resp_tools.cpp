@@ -134,131 +134,84 @@ _err_t rt_compress_buffer(const unsigned char *src, long unsigned int sz_src,
 	return r;
 }
 
-_err_t rt_deflate_stream(int out_fd, /* output file FD */
-			unsigned char *buffer, /* data buffer */
-			unsigned int sz, /* size of data buffer */
-			int (*pcb)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
-			void *udata, /* user data */
-			unsigned int *p_size /* final size */) {
+static _err_t do_z_deflate(z_stream *p_strm, int fd_in, int fd_out) {
 	_err_t r = E_OK;
-	z_stream zs;
-	unsigned char *out;
+	_uchar_t inb[MAX_COMPRESSION_CHUNK];
+	_uchar_t outb[MAX_COMPRESSION_CHUNK];
+	int flush = Z_NO_FLUSH;
 
-	zs.zalloc = Z_NULL;
-	zs.zfree = Z_NULL;
-	zs.opaque = Z_NULL;
-	zs.avail_in = sz;
-	zs.next_in = buffer;
+	do {
+		if ((p_strm->avail_in = read(fd_in, inb, sizeof(inb))) < MAX_COMPRESSION_CHUNK)
+			flush = Z_FINISH;
 
-	if (p_size)
-		*p_size = 0;
+		p_strm->next_in = inb;
 
-	if ((out = (unsigned char *)malloc(sz))) {
-		/* Initialize ZLLIB context */
-		if (deflateInit(&zs, Z_DEFAULT_COMPRESSION) == Z_OK) {
-			int flag = ENCODING_CONTINUE;
+		do {
+			p_strm->avail_out = MAX_COMPRESSION_CHUNK;
+			p_strm->next_out = outb;
 
-			do {
-				zs.avail_out = sz;
-				zs.next_out = out;
+			int zr = deflate(p_strm, flush);
 
-				/* get data chunk */
-				flag = pcb(zs.next_in, &zs.avail_in, udata);
+			if (zr == Z_STREAM_ERROR || zr == Z_ERRNO) {
+				deflateEnd(p_strm);
+				r = E_FAIL;
+				return r;
+			}
 
-				if (zs.avail_in > 0)
-					/* start chunk compression */
-					deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH);
-				else
-					break;
+			if (p_strm->avail_out <= MAX_COMPRESSION_CHUNK)
+				write(fd_out, outb, MAX_COMPRESSION_CHUNK - p_strm->avail_out);
+			else {
+				flush = Z_FINISH;
+				break;
+			}
+		} while (p_strm->avail_out == 0);
+	} while (flush != Z_FINISH);
 
-				/* write to output file */
-				write(out_fd, zs.next_out, zs.avail_out);
-			} while (flag == ENCODING_CONTINUE);
-
-			deflateEnd(&zs);
-			if (p_size)
-				*p_size += zs.total_out;
-		} else
-			r = E_FAIL;
-
-		free(out);
-	} else
-		r = E_MEMORY;
+	deflateEnd(p_strm);
 
 	return r;
 }
 
-_err_t rt_gzip_stream(int out_fd, /* output file FD */
-			unsigned char *buffer, /* data buffer */
-			unsigned int sz, /* size of data buffer */
-			int (*pcb)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
-			void *udata, /* user data */
-			unsigned int *p_size /* final size */) {
-	_err_t r = E_OK;
-	z_stream zs;
-	unsigned char *out;
+_err_t rt_deflate_stream(int fd_in, int fd_out) {
+	_err_t r = E_FAIL;
+	z_stream strm;
 
-	zs.zalloc = Z_NULL;
-	zs.zfree = Z_NULL;
-	zs.opaque = Z_NULL;
-	zs.avail_in = sz;
-	zs.next_in = buffer;
+	/* allocate deflate state */
+	strm.zalloc = Z_NULL;
+	strm.zfree = Z_NULL;
+	strm.opaque = Z_NULL;
 
-	if (p_size)
-		*p_size = 0;
-
-	if ((out = (unsigned char *)malloc(sz))) {
-		/* Initialize ZLLIB context */
-		if (deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 | 16, 8, Z_DEFAULT_STRATEGY) == Z_OK) {
-			int flag = ENCODING_CONTINUE;
-
-			do {
-				zs.avail_out = sz;
-				zs.next_out = out;
-
-				/* get data chunk */
-				flag = pcb(zs.next_in, &zs.avail_in, udata);
-
-				if (zs.avail_in > 0) {
-					/* start chunk compression */
-					int zr = deflate(&zs, (flag == ENCODING_CONTINUE) ? Z_NO_FLUSH : Z_FINISH);
-
-					TRACE("http[%d] Deflate result %d\n", getpid(), zr);
-				} else
-					break;
-
-				/* write to output file */
-				write(out_fd, zs.next_out, zs.avail_out);
-			} while (flag == ENCODING_CONTINUE);
-
-			deflateEnd(&zs);
-			if (p_size)
-				*p_size += zs.total_out;
-		} else {
-			TRACE("http[%d] Failed to init Zlib\n", getpid());
-			r = E_FAIL;
-		}
-
-		free(out);
-	} else
-		r = E_MEMORY;
+	if (deflateInit(&strm, Z_DEFAULT_COMPRESSION) == Z_OK)
+		r = do_z_deflate(&strm, fd_in, fd_out);
 
 	return r;
 }
 
-_err_t rt_compress_stream(unsigned int encoding, /* encoding bitmask */
-			int out_fd, /* output file FD */
-			unsigned char *buffer, /* data buffer */
-			unsigned int sz, /* size of data buffer */
-			int (*pcb)(unsigned char *data, unsigned int *psz, void *udata), /* data callback */
-			void *udata, /* user data */
-			unsigned int *p_size /* final size */) {
+_err_t rt_gzip_stream(int fd_in, int fd_out) {
+	_err_t r = E_FAIL;
+	z_stream strm;
+
+	/* allocate deflate state */
+	strm.zalloc = Z_NULL;
+	strm.zfree = Z_NULL;
+	strm.opaque = Z_NULL;
+
+	if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 | 16, 8, Z_DEFAULT_STRATEGY) == Z_OK)
+		r = do_z_deflate(&strm, fd_in, fd_out);
+
+	return r;
+}
+
+_err_t rt_compress_stream(int encoding, int fd_in, int fd_out, _cstr_t *str_encoding) {
 	int r = E_FAIL;
 
-	if (encoding & ENCODING_GZIP)
-		r = rt_gzip_stream(out_fd, buffer, sz, pcb, udata, p_size);
-	else if (encoding & ENCODING_DEFLATE)
-		r = rt_deflate_stream(out_fd, buffer, sz, pcb, udata, p_size);
+	if (encoding & ENCODING_GZIP) {
+		if ((r = rt_gzip_stream(fd_in, fd_out)) == E_OK)
+			*str_encoding = STR_ENCODING_GZIP;
+	} else if (encoding & ENCODING_DEFLATE) {
+		if ((r = rt_deflate_stream(fd_in, fd_out)) == E_OK)
+			*str_encoding = STR_ENCODING_DEFLATE;
+	}
 
 	return r;
 }
@@ -269,10 +222,10 @@ typedef struct {
 }_enc_t;
 
 static _enc_t _g_enc_[] = {
-	{ "br",		ENCODING_BR },
-	{ "gzip",	ENCODING_GZIP },
-	{ "deflate",	ENCODING_DEFLATE },
-	{ NULL,		0 }
+	{ STR_ENCODING_BR,		ENCODING_BR },
+	{ STR_ENCODING_GZIP,		ENCODING_GZIP },
+	{ STR_ENCODING_DEFLATE,		ENCODING_DEFLATE },
+	{ NULL,				0 }
 };
 
 unsigned int rt_parse_encoding(_cstr_t str_alg) {

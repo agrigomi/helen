@@ -113,8 +113,6 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 
 		send_header(rc, header_append);
 
-		TRACE("http[%d]: Sending response '%s' encoding: %s\n", getpid(), path, _encoding);
-
 		// send file content
 		while (file_offset < st.st_size) {
 			unsigned int n = read(fd, buffer, sizeof(buffer));
@@ -142,6 +140,8 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 		snprintf(tmp_fname, sizeof(tmp_fname), "/tmp/http-%d.out", getpid());
 
 		if ((tmp_fd = open(tmp_fname, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) > 0) {
+			_cstr_t str_enc = NULL; // encoding name
+
 			if (resp_exec(cmd, &proc) == E_OK) {
 				_uchar_t buffer[MAX_COMPRESSION_CHUNK];
 				int nin = 0;
@@ -154,22 +154,10 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 					}
 				}
 
-				if (encoding) {
+				if (encoding)
 					// use compression
-					rt_compress_stream(encoding, tmp_fd, buffer, sizeof(buffer),
-							[] (unsigned char *data, unsigned int *psz, void *udata) -> int {
-								int r = ENCODING_CONTINUE;
-								_proc_t *proc = (_proc_t *)udata;
-								unsigned int sz = read(proc->PREAD_FD, data, *psz);
-
-								if (sz < *psz)
-									r = ENCODING_FINISHED;
-
-								*psz = sz;
-
-								return r;
-							}, &proc, NULL);
-				} else {
+					rt_compress_stream(encoding, proc.PREAD_FD, tmp_fd, &str_enc);
+				else {
 					// no compression
 					while ((nin = proc_read(&proc, buffer, sizeof(buffer))) > 0)
 						write (tmp_fd, buffer, nin);
@@ -179,7 +167,7 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 			close(tmp_fd);
 			r = send_file_response(tmp_fname, rc, NULL,
 						false, // do not use cache
-						(encoding) ? rt_encoding_bit_to_name(&encoding) : NULL, // encoding name
+						str_enc, // encoding name
 						header_append
 						);
 			unlink(tmp_fname);
@@ -265,10 +253,9 @@ static _err_t send_mapping_response(_mapping_t *p_mapping, int rc) {
 
 	str_resolve(proc, resolved_cmd, sizeof(resolved_cmd));
 
-	if (p_mapping->_exec()) {
-		TRACE("http[%d] Resolve '%s' --> '%s'\n", getpid(), proc, resolved_cmd);
+	if (p_mapping->_exec())
 		r = send_exec(resolved_cmd, _rc, input, header, header_append, ext);
-	} else {
+	else {
 		struct stat st;
 
 		if (stat(resolved_cmd, &st) == 0)

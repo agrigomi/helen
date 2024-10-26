@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
 		}
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
-		TRACE("http SIGSEGV\n");
+		TRACE("http[%d] SIGSEGV\n", getpid());
 		dump_stack();
 		exit(0);
 	});
