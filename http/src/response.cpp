@@ -162,6 +162,8 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 					while ((nin = proc_read(&proc, buffer, sizeof(buffer))) > 0)
 						write (tmp_fd, buffer, nin);
 				}
+
+				proc_wait(&proc);
 			}
 
 			close(tmp_fd);
