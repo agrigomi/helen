@@ -16,9 +16,9 @@ typedef struct {
 	struct stat st;
 } _rdata_t;
 
-_v_range_t *range_parse(_cstr_t path, _cstr_t boundary) {
+_v_range_t *range_parse(_cstr_t req_range, _cstr_t path, _cstr_t boundary) {
 	_v_range_t *r = NULL;
-	_cstr_t range = getenv(REQ_RANGE);
+	_cstr_t range = (req_range) ? req_range : getenv(REQ_RANGE);
 	_char_t vhdr[256];
 	_rdata_t rdata;
 

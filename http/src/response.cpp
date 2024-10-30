@@ -87,7 +87,7 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 	}
 
 	if (fd > 0) {
-		_char_t buffer[8192];
+		_char_t buffer[MAX_COMPRESSION_CHUNK];
 		unsigned int file_offset = 0;
 		_char_t date[128];
 		tm *_tm = gmtime(&(st.st_mtime));
@@ -200,6 +200,109 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 	return r;
 }
 
+static _err_t send_partial_content(_cstr_t path, struct stat *p_stat, _v_range_t *pv_ranges, _cstr_t boundary) {
+	_err_t r = E_FAIL;
+	int fd = open(path, O_RDONLY);
+	int nb = 0;
+
+	if (fd > 0) {
+		_v_range_t::iterator i = pv_ranges->begin();
+		unsigned long l = 0, s = 0;
+		_char_t len[32];
+		_char_t resp_buffer[MAX_COMPRESSION_CHUNK];
+		_char_t date[128];
+		tm *_tm = gmtime(&(p_stat->st_mtime));
+
+		// set last-modified
+		strftime(date, sizeof(date),
+			 "%a, %d %b %Y %H:%M:%S GMT", _tm);
+		hdr_set(RES_LAST_MODIFIED, date);
+
+		// set connection
+		hdr_set(RES_CONNECTION, getenv(REQ_CONNECTION));
+
+		// ...
+
+		if (pv_ranges->size() > 1) { // multipart
+			// calculate content-length
+			while (i != pv_ranges->end()) {
+				l += strlen((*i).header) + ((*i).end - (*i).begin + 1);
+				i++;
+			}
+
+			l += strlen(boundary) + 6; // \r\n--<boundary>--
+			snprintf(len, sizeof(len), "%lu", l);
+			hdr_set(RES_CONTENT_LENGTH, len);
+
+			snprintf(resp_buffer, sizeof(resp_buffer), "boundary=%s", boundary);
+			hdr_set("multipart/byteranges", resp_buffer);
+
+			send_header(HTTPRC_PART_CONTENT);
+
+			// send content
+			while (i != pv_ranges->end()) {
+				_cstr_t hdr = (*i).header;
+
+				l = 0;
+				s = (*i).end - (*i).begin + 1;
+
+				if (lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
+					goto _close_file_;
+
+				TRACE("http[%d] Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
+				// send range header
+				io_write(hdr, strlen(hdr));
+
+				// send range content
+				while ((nb = read(fd, resp_buffer,
+						((s - l) < sizeof(resp_buffer)) ?
+						(s - l) : sizeof(resp_buffer))) > 0 && l < s) {
+					io_write(resp_buffer, nb);
+					l += nb;
+				}
+
+				i++;
+			}
+
+			// done
+			io_fwrite("\r\n--%s--", boundary);
+		} else { // simgle part
+			// calculate content-length
+			snprintf(len, sizeof(len), "%lu", (*i).end - (*i).begin + 1);
+			hdr_set(RES_CONTENT_LENGTH, len);
+
+			// set content-type
+			mime_open();
+			hdr_set(RES_CONTENT_TYPE, mime_resolve(path));
+
+			send_header(HTTPRC_PART_CONTENT);
+
+			// send content
+			l = 0;
+			s = (*i).end - (*i).begin + 1;
+
+			if (lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
+				goto _close_file_;
+
+			TRACE("http[%d] Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
+
+			// send range content
+			while ((nb = read(fd, resp_buffer,
+					((s - l) < sizeof(resp_buffer)) ?
+					(s - l) : sizeof(resp_buffer))) > 0 && l < s) {
+				io_write(resp_buffer, nb);
+				l += nb;
+			}
+		}
+
+		r = E_OK;
+_close_file_:
+		close(fd);
+	}
+
+	return r;
+}
+
 static _err_t send_file(_cstr_t path, int rc, struct stat *pstat = NULL) {
 	_err_t r = E_FAIL;
 	struct stat st;
@@ -213,10 +316,26 @@ static _err_t send_file(_cstr_t path, int rc, struct stat *pstat = NULL) {
 		if ((st.st_mode & S_IXUSR) && argv_check(OPT_EXEC))
 			// executable file request
 			r = send_exec(path, rc, /* allow input */ true, /* no header */ false);
-		else
+		else {
 			// regular file response
-			r = send_file_response(path, rc, &st, /* use cache */ true,
+			_cstr_t range = getenv(REQ_RANGE);
+
+			if (range) {
+				// range request
+				_v_range_t	*pv_ranges;
+				_char_t 	boundary[SHA1HashSize * 2 + 1];
+
+				// generate boubdary
+				range_generate_boundary(path, boundary, sizeof(boundary));
+
+				if ((pv_ranges = range_parse(range, path, boundary)))
+					r = send_partial_content(path, &st, pv_ranges, boundary);
+				else
+					r = send_error_response(NULL, HTTPRC_RANGE_NOT_SATISFIABLE);
+			} else
+				r = send_file_response(path, rc, &st, /* use cache */ true,
 						/* encoding */ NULL, /* no header append */ NULL);
+		}
 	} else {
 		TRACE("http[%d] Directory request '%s'\n", getpid(), path);
 		//...
@@ -226,14 +345,7 @@ static _err_t send_file(_cstr_t path, int rc, struct stat *pstat = NULL) {
 }
 
 static _cstr_t resolve_path(_cstr_t path, char *resolved) {
-	_cstr_t r = NULL;
-
-	if (strstr(path, ".."))
-		r = realpath(path, resolved);
-	else
-		r = path;
-
-	return r;
+	return realpath(path, resolved);
 }
 
 static _err_t send_mapping_response(_mapping_t *p_mapping, int rc) {
@@ -281,10 +393,14 @@ _err_t send_error_response(_vhost_t *p_vhost, int rc) {
 			_cstr_t content = rt_static_content(rc);
 			unsigned int sz_content = (content) ? strlen(content) : 0;
 
-			if (content)
+			if (content) {
 				hdr_set(RES_CONTENT_TYPE, "text/html");
-
-			r = send_response_buffer(rc, content, sz_content);
+				r = send_response_buffer(rc, content, sz_content);
+			} else {
+				hdr_set(RES_CONTENT_LENGTH, "0");
+				send_header(rc);
+				r = E_OK;
+			}
 		}
 	}
 
@@ -331,61 +447,70 @@ _err_t res_processing(void) {
 	_cstr_t host = getenv(REQ_HOST);
 	_vhost_t *p_vhost = cfg_get_vhost(host);
 	_cstr_t method = getenv(REQ_METHOD);
-	int imethod = (method) ? rt_resolve_method(method) : 0;
+	int imethod = (method) ? rt_resolve_method(method) : -1;
 
-	if (p_vhost) {
-		_cstr_t proto = getenv(REQ_PROTOCOL);
-		_cstr_t url = getenv(REQ_URL);
-		_cstr_t path = getenv(REQ_PATH);
+	if (imethod != -1) {
+		if (p_vhost) {
+			_cstr_t proto = getenv(REQ_PROTOCOL);
+			_cstr_t url = getenv(REQ_URL);
+			_cstr_t path = getenv(REQ_PATH);
 
-		if (!path)
-			path = url;
+			if (!path)
+				path = url;
 
-		hdr_init();
-		cfg_load_mapping(p_vhost);
-		_mapping_t *mapping = cfg_get_url_mapping(p_vhost->host, method, path, proto);
+			hdr_init();
+			cfg_load_mapping(p_vhost);
+			_mapping_t *mapping = cfg_get_url_mapping(p_vhost->host, method, path, proto);
 
-		setenv(DOC_ROOT, p_vhost->root, 1);
+			setenv(DOC_ROOT, p_vhost->root, 1);
 
-		if (mapping)
-			// process mapping
-			r = send_mapping_response(mapping, HTTPRC_OK);
-		else {
-			char doc_path[MAX_PATH+1];
-			char resolved_path[PATH_MAX];
-			_cstr_t rpath = NULL;
+			if (mapping)
+				// process mapping
+				r = send_mapping_response(mapping, HTTPRC_OK);
+			else {
+				char doc_path[MAX_PATH+1];
+				char resolved_path[PATH_MAX];
+				_cstr_t rpath = NULL;
 
-			snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, path);
+				snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, path);
 
-			if ((rpath = resolve_path(doc_path, resolved_path))) {
-				if (memcmp(rpath, p_vhost->root, strlen(p_vhost->root)) == 0) {
-					switch (imethod) {
-						case METHOD_GET:
-						case METHOD_POST:
-							if ((r = send_file(rpath, HTTPRC_OK)) != E_OK)
-								r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
-							break;
-						case METHOD_HEAD:
-							//...
-							break;
-						case METHOD_CONNECT:
-							if (argv_check(OPT_PROXY))
-								r = do_connect(url);
-							else
+				if ((rpath = resolve_path(doc_path, resolved_path))) {
+					if (memcmp(rpath, p_vhost->root, strlen(p_vhost->root)) == 0) {
+						switch (imethod) {
+							case METHOD_GET:
+							case METHOD_POST:
+								if ((r = send_file(rpath, HTTPRC_OK)) != E_OK)
+									r = send_error_response(p_vhost, HTTPRC_INTERNAL_SERVER_ERROR);
+								break;
+							case METHOD_HEAD:
+								//...
+								break;
+							case METHOD_CONNECT:
+								if (argv_check(OPT_PROXY))
+									r = do_connect(url);
+								else
+									r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
+								break;
+							default:
 								r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
-							break;
-						default:
-							r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
-							break;
+								break;
+						}
+					} else {
+						TRACE("http[%d] Forbidden path '%s'\n", getpid(), rpath);
+						r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
 					}
-				} else
-					r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
-			} else
-				r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
+				} else {
+					TRACE("http[%d] File not found '%s'\n", getpid(), doc_path);
+					r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
+				}
+			}
+		} else {
+			TRACE("http[%d] Bad request method: '%s' [%d]; host: %s\n", getpid(), method, imethod, (p_vhost) ? p_vhost->host : NULL);
+			r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
 		}
 	} else {
-		TRACE("http[%d] Bad request method: '%s' [%d]; host: %s\n", getpid(), method, imethod, (p_vhost) ? p_vhost->host : NULL);
-		r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
+		TRACE("http[%d] Unsupported  method '%s'\n", getpid(), method);
+		r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 	}
 
 	return r;

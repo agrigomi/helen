@@ -71,14 +71,16 @@ _cstr_t rt_static_content(int rc) {
 }
 
 int rt_resolve_method(_cstr_t method) {
-	int n = 0;
+	int r = -1, n = 0;;
 
 	for (; methods[n]; n++) {
-		if (strcasecmp(method, methods[n]) == 0)
+		if (strcasecmp(method, methods[n]) == 0) {
+			r = n;
 			break;
+		}
 	}
 
-	return n;
+	return r;
 }
 
 _cstr_t rt_file_ext(_cstr_t path) {

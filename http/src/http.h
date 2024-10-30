@@ -146,9 +146,6 @@
 #define METHOD_PATCH		8
 
 // Encoding
-#define ENCODING_CONTINUE	0
-#define ENCODING_FINISHED	1
-
 #define	ENCODING_BR		(1 << 0)
 #define	ENCODING_GZIP		(1 << 1)
 #define ENCODING_DEFLATE	(1 << 2)
@@ -542,7 +539,7 @@ unsigned int rt_select_encoding(_cstr_t ext /* file extension */);
 void rt_sha1_string(_cstr_t data, _str_t out, int sz_out);
 
 // response ranges
-_v_range_t *range_parse(_cstr_t path, _cstr_t boundary);
+_v_range_t *range_parse(_cstr_t req_range, _cstr_t path, _cstr_t boundary);
 void range_generate_boundary(_cstr_t path, _str_t b, int sz = MAX_BOUNDARY);
 
 // response exec
