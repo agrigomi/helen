@@ -24,10 +24,11 @@ _err_t resp_exec_v(_cstr_t argv[],
 			else if (nin < 0)
 				proc_break(&proc);
 
-			while ((nout = proc_read_tus(&proc, bout, sizeof(bout), 100000)) > 0)
+			if ((nout = verify_input(proc.PREAD_FD)) > 0) {
+				nout = proc_read(&proc, bout, sizeof(bout));
 				out(bout, nout, udata);
-
-		} while ((r = proc_status(&proc)) == -1);
+			}
+		} while (proc_status(&proc) == -1);
 	}
 
 	return r;

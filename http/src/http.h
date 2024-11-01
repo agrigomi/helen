@@ -91,6 +91,7 @@
 #define RES_SET_COOKIE		"Set-Cookie"
 #define RES_LOCATION		"Location"
 #define RES_XFRAME_OPTIONS	"X-Frame-Options"
+#define RES_HEADER_FILE		"RES_HEADER_FILE"
 
 // HTTP response code
 #define HTTPRC_CONTINUE			100 // Continue

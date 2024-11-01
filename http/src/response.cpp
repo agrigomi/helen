@@ -7,8 +7,9 @@
 #include "trace.h"
 
 static void send_header(int rc, _cstr_t header_append = NULL) {
-	_char_t hdr[2048];
+	_char_t hdr[4096];
 	_cstr_t proto = getenv(REQ_PROTOCOL);
+	_cstr_t hdr_fname = getenv(RES_HEADER_FILE);
 	_cstr_t rc_text = rt_resp_text(rc);
 	int sz_hdr = snprintf(hdr, sizeof(hdr), "%s %d %s\r\n", proto, rc, rc_text);
 
@@ -18,6 +19,19 @@ static void send_header(int rc, _cstr_t header_append = NULL) {
 	// add header_append
 	if (header_append && strlen(header_append))
 		sz_hdr += str_resolve(header_append, hdr + sz_hdr, sizeof(hdr) - sz_hdr);
+
+	// add header file
+	int hdr_fd = (hdr_fname) ? open(hdr_fname, O_RDONLY) : -1;
+
+	if (hdr_fd > 0) {
+		int n = read(hdr_fd, hdr + sz_hdr, sizeof(hdr) - sz_hdr - 3);
+
+		if (n > 0)
+			// have header content
+			sz_hdr += n;
+
+		close(hdr_fd);
+	}
 
 	// end of header
 	sz_hdr += snprintf(hdr + sz_hdr, sizeof(hdr) - sz_hdr, "\r\n");
@@ -69,7 +83,7 @@ _no_compression_:
 
 static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL,
 			bool use_cache = true, _cstr_t encoding = NULL,
-			_cstr_t header_append = NULL) {
+			_cstr_t header_append = NULL, _cstr_t ext = NULL) {
 	_err_t r = E_FAIL;
 	_cstr_t _encoding = encoding;
 	struct stat st;
@@ -106,8 +120,10 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 		hdr_set(RES_CONNECTION, getenv(REQ_CONNECTION));
 
 		// set content-type
-		mime_open();
-		hdr_set(RES_CONTENT_TYPE, mime_resolve(path));
+		if (ext) {
+			mime_open();
+			hdr_set(RES_CONTENT_TYPE, mime_resolve(ext));
+		}
 
 		// ...
 
@@ -129,15 +145,22 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 
 static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 			bool header = true, _cstr_t header_append = NULL, _cstr_t ext = NULL) {
-	_char_t tmp_fname[256];
+	_char_t tmp_fname[64];
+	_char_t hdr_fname[64];
 	_err_t r = E_FAIL;
 	_proc_t proc;
 
 	if (header) {
-		int tmp_fd = -1;
+		int tmp_fd = -1, hdr_fd = -1;
 		unsigned int encoding = rt_select_encoding(ext);
 
 		snprintf(tmp_fname, sizeof(tmp_fname), "/tmp/http-%d.out", getpid());
+		snprintf(hdr_fname, sizeof(hdr_fname), "/tmp/http-%d.hdr", getpid());
+
+		if ((hdr_fd = open(hdr_fname, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) > 0) {
+			setenv(RES_HEADER_FILE, hdr_fname, 1);
+			close(hdr_fd);
+		}
 
 		if ((tmp_fd = open(tmp_fname, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) > 0) {
 			_cstr_t str_enc = NULL; // encoding name
@@ -170,9 +193,11 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 			r = send_file_response(tmp_fname, rc, NULL,
 						false, // do not use cache
 						str_enc, // encoding name
-						header_append
+						header_append,
+						ext
 						);
 			unlink(tmp_fname);
+			unlink(hdr_fname);
 		}
 	} else {
 		r = resp_exec(cmd,
@@ -334,7 +359,8 @@ static _err_t send_file(_cstr_t path, int rc, struct stat *pstat = NULL) {
 					r = send_error_response(NULL, HTTPRC_RANGE_NOT_SATISFIABLE);
 			} else
 				r = send_file_response(path, rc, &st, /* use cache */ true,
-						/* encoding */ NULL, /* no header append */ NULL);
+					/* encoding */ NULL, /* no header append */ NULL,
+					/* ext */ rt_file_ext(path));
 		}
 	} else {
 		TRACE("http[%d] Directory request '%s'\n", getpid(), path);
@@ -373,7 +399,7 @@ static _err_t send_mapping_response(_mapping_t *p_mapping, int rc) {
 		struct stat st;
 
 		if (stat(resolved_cmd, &st) == 0)
-			r = send_file_response(resolved_cmd, _rc, &st, true, NULL, header_append);
+			r = send_file_response(resolved_cmd, _rc, &st, true, NULL, header_append, ext);
 		else
 			r = send_response_buffer(_rc, resolved_cmd, strlen(resolved_cmd));
 	}
@@ -433,10 +459,43 @@ static _err_t do_connect(_cstr_t url) {
 	int port = atoi(_g_proxy_dst_port_);
 
 	if (port) {
-		if (port == 443 || port == 8443)
+		if (port == 443 || port == 8443) {
+			TRACE("http[%d] Try secure connection to '%s:%d'\n", getpid(), _g_proxy_dst_host_, port);
 			r = proxy_ssl_connect(_g_proxy_dst_host_, port);
-		else
+		} else {
+			TRACE("http[%d] Try connection to '%s:%d'\n", getpid(), _g_proxy_dst_host_, port);
 			r = proxy_raw_connect(_g_proxy_dst_host_, port);
+		}
+	}
+
+	return r;
+}
+
+static _err_t process_file_request(int imethod, _vhost_t *p_vhost, _cstr_t path) {
+	_err_t r = E_FAIL;
+	char doc_path[MAX_PATH+1];
+	char resolved_path[PATH_MAX];
+	_cstr_t rpath = NULL;
+
+	snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, path);
+	if ((rpath = resolve_path(doc_path, resolved_path))) {
+		if (memcmp(rpath, p_vhost->root, strlen(p_vhost->root)) == 0) {
+			switch (imethod) {
+				case METHOD_GET:
+				case METHOD_POST:
+					r = send_file(rpath, HTTPRC_OK);
+					break;
+				case METHOD_HEAD:
+					//...
+					break;
+			}
+		} else {
+			TRACE("http[%d] Forbidden path '%s'\n", getpid(), rpath);
+			r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
+		}
+	} else {
+		TRACE("http[%d] File not found '%s'\n", getpid(), doc_path);
+		r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
 	}
 
 	return r;
@@ -468,40 +527,22 @@ _err_t res_processing(void) {
 				// process mapping
 				r = send_mapping_response(mapping, HTTPRC_OK);
 			else {
-				char doc_path[MAX_PATH+1];
-				char resolved_path[PATH_MAX];
-				_cstr_t rpath = NULL;
-
-				snprintf(doc_path, sizeof(doc_path), "%s%s", p_vhost->root, path);
-
-				if ((rpath = resolve_path(doc_path, resolved_path))) {
-					if (memcmp(rpath, p_vhost->root, strlen(p_vhost->root)) == 0) {
-						switch (imethod) {
-							case METHOD_GET:
-							case METHOD_POST:
-								if ((r = send_file(rpath, HTTPRC_OK)) != E_OK)
-									r = send_error_response(p_vhost, HTTPRC_INTERNAL_SERVER_ERROR);
-								break;
-							case METHOD_HEAD:
-								//...
-								break;
-							case METHOD_CONNECT:
-								if (argv_check(OPT_PROXY))
-									r = do_connect(url);
-								else
-									r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
-								break;
-							default:
-								r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
-								break;
-						}
-					} else {
-						TRACE("http[%d] Forbidden path '%s'\n", getpid(), rpath);
-						r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
-					}
-				} else {
-					TRACE("http[%d] File not found '%s'\n", getpid(), doc_path);
-					r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
+				switch (imethod) {
+					case METHOD_GET:
+					case METHOD_POST:
+					case METHOD_HEAD:
+						r = process_file_request(imethod, p_vhost, path);
+						break;
+					case METHOD_CONNECT:
+						if (argv_check(OPT_PROXY))
+							r = do_connect(url);
+						else
+							r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
+						break;
+					default:
+						TRACE("http[%d] Unsupported  method '%s' #%d\n", getpid(), method, imethod);
+						r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
+						break;
 				}
 			}
 		} else {
