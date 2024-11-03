@@ -8,7 +8,7 @@
 
 static void send_header(int rc, _cstr_t header_append = NULL) {
 	_char_t hdr[4096];
-	_cstr_t proto = getenv(REQ_PROTOCOL);
+	_cstr_t proto = getenv(RES_PROTOCOL);
 	_cstr_t hdr_fname = getenv(RES_HEADER_FILE);
 	_cstr_t rc_text = rt_resp_text(rc);
 	int sz_hdr = snprintf(hdr, sizeof(hdr), "%s %d %s\r\n", proto, rc, rc_text);
@@ -197,8 +197,9 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 						ext
 						);
 			unlink(tmp_fname);
-			unlink(hdr_fname);
 		}
+
+		unlink(hdr_fname);
 	} else {
 		r = resp_exec(cmd,
 			/* out */
@@ -390,8 +391,13 @@ static _err_t send_mapping_response(_mapping_t *p_mapping, int rc) {
 	_char_t resolved_cmd[MAX_PATH] = "";
 	bool header = p_mapping->_header();
 	_cstr_t ext = p_mapping->_ext();
+	_cstr_t proto = p_mapping->_protocol();
 
 	str_resolve(proc, resolved_cmd, sizeof(resolved_cmd));
+
+	if (proto && strlen(proto))
+		// changes response protocol
+		setenv(RES_PROTOCOL, proto, 1);
 
 	if (p_mapping->_exec())
 		r = send_exec(resolved_cmd, _rc, input, header, header_append, ext);
@@ -513,6 +519,10 @@ _err_t res_processing(void) {
 			_cstr_t proto = getenv(REQ_PROTOCOL);
 			_cstr_t url = getenv(REQ_URL);
 			_cstr_t path = getenv(REQ_PATH);
+
+			if (proto && strlen(proto))
+				// response protocol as requested protocol
+				setenv(RES_PROTOCOL, proto, 1);
 
 			if (!path)
 				path = url;

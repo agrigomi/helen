@@ -69,6 +69,7 @@
 // HTTP response environment variables
 #define RES_ENV_SERVER		"RES_SERVER"
 #define RES_ENV_ALLOW		"RES_ALLOW"
+#define RES_PROTOCOL		"RES_PROTOCOL"
 
 // HTTP response native variables
 #define RES_ALLOW		"Allow"
