@@ -155,9 +155,9 @@ static _err_t do_z_deflate(z_stream *p_strm, int fd_in, int fd_out) {
 			int zr = deflate(p_strm, flush);
 
 			if (zr == Z_STREAM_ERROR || zr == Z_ERRNO) {
-				deflateEnd(p_strm);
 				r = E_FAIL;
-				return r;
+				flush = Z_FINISH;
+				break;
 			}
 
 			if (p_strm->avail_out <= MAX_COMPRESSION_CHUNK)
