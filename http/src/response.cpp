@@ -262,12 +262,13 @@ static _err_t send_partial_content(_cstr_t path, struct stat *p_stat, _v_range_t
 			snprintf(len, sizeof(len), "%lu", l);
 			hdr_set(RES_CONTENT_LENGTH, len);
 
-			snprintf(resp_buffer, sizeof(resp_buffer), "boundary=%s", boundary);
-			hdr_set("multipart/byteranges", resp_buffer);
+			snprintf(resp_buffer, sizeof(resp_buffer), "multipart/byterange; boundary=%s", boundary);
+			hdr_set(RES_CONTENT_TYPE, resp_buffer);
 
 			send_header(HTTPRC_PART_CONTENT);
 
 			// send content
+			i = pv_ranges->begin();
 			while (i != pv_ranges->end()) {
 				_cstr_t hdr = (*i).header;
 
@@ -302,6 +303,10 @@ static _err_t send_partial_content(_cstr_t path, struct stat *p_stat, _v_range_t
 			// set content-type
 			mime_open();
 			hdr_set(RES_CONTENT_TYPE, mime_resolve(path));
+
+			// set content range
+			snprintf(resp_buffer, sizeof(resp_buffer), "Bytes %lu-%lu/%lu", (*i).begin, (*i).end, p_stat->st_size);
+			hdr_set(RES_CONTENT_RANGE, resp_buffer);
 
 			send_header(HTTPRC_PART_CONTENT);
 
