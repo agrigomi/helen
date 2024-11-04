@@ -129,11 +129,13 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 
 		send_header(rc, header_append);
 
-		// send file content
-		while (file_offset < st.st_size) {
-			unsigned int n = read(fd, buffer, sizeof(buffer));
-			io_write(buffer, n);
-			file_offset += n;
+		if (rt_resolve_method(getenv(REQ_METHOD)) != METHOD_HEAD) {
+			// send file content
+			while (file_offset < st.st_size) {
+				unsigned int n = read(fd, buffer, sizeof(buffer));
+				io_write(buffer, n);
+				file_offset += n;
+			}
 		}
 
 		close(fd);
@@ -292,7 +294,7 @@ static _err_t send_partial_content(_cstr_t path, struct stat *p_stat, _v_range_t
 
 			// done
 			io_fwrite("\r\n--%s--", boundary);
-		} else { // simgle part
+		} else { // single part
 			// calculate content-length
 			snprintf(len, sizeof(len), "%lu", (*i).end - (*i).begin + 1);
 			hdr_set(RES_CONTENT_LENGTH, len);
@@ -345,8 +347,9 @@ static _err_t send_file(_cstr_t path, int rc, struct stat *pstat = NULL) {
 		else {
 			// regular file response
 			_cstr_t range = getenv(REQ_RANGE);
+			int imethod = rt_resolve_method(getenv(REQ_METHOD));
 
-			if (range) {
+			if (range && imethod != METHOD_HEAD) {
 				// range request
 				_v_range_t	*pv_ranges;
 				_char_t 	boundary[SHA1HashSize * 2 + 1];
@@ -489,10 +492,8 @@ static _err_t process_file_request(int imethod, _vhost_t *p_vhost, _cstr_t path)
 			switch (imethod) {
 				case METHOD_GET:
 				case METHOD_POST:
-					r = send_file(rpath, HTTPRC_OK);
-					break;
 				case METHOD_HEAD:
-					//...
+					r = send_file(rpath, HTTPRC_OK);
 					break;
 			}
 		} else {
