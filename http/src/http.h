@@ -83,6 +83,7 @@
 #define RES_CONTENT_RANGE	"Content-Range"
 #define RES_DATE		"Date"
 #define RES_LAST_MODIFIED	"Last-Modified"
+#define RES_AGE			"Age"
 #define RES_TRANSFER_ENCODING	"Transfer-Encoding"
 #define RES_CONNECTION		"Connection"
 #define RES_EXPIRES		"Expires"

@@ -88,10 +88,13 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 	_cstr_t _encoding = encoding;
 	struct stat st;
 	int fd = -1;
+	unsigned int age = 0;
 
-	if (use_cache)
+	if (use_cache) {
 		fd = cache_open(path, &st, &_encoding);
-	else {
+		if (pstat)
+			age = st.st_mtime - pstat->st_mtime;
+	} else {
 		if (pstat)
 			memcpy(&st, pstat, sizeof(struct stat));
 		else
@@ -115,6 +118,10 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 		strftime(date, sizeof(date),
 			 "%a, %d %b %Y %H:%M:%S GMT", _tm);
 		hdr_set(RES_LAST_MODIFIED, date);
+
+		// set Age
+		snprintf(date, sizeof(date), "%u", age);
+		hdr_set(RES_AGE, date);
 
 		// set connection
 		hdr_set(RES_CONNECTION, getenv(REQ_CONNECTION));
