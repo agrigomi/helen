@@ -83,11 +83,16 @@ int cache_open(_cstr_t path/* in */,
 					// cache file exists (compare time)
 					if (o_stat.st_mtime > c_stat.st_mtime)
 						cache_update(path, cache_path, enc);
+					else {
+						memcpy(p_stat, &c_stat, sizeof(struct stat));
+						goto _skip_stat_;
+					}
 				} else
 					// cache file don't exists
 					cache_update(path, cache_path, enc);
 
 				if (stat(cache_path, p_stat) == 0) {
+_skip_stat_:
 					TRACE("http[%d] Use cache file '%s'\n", getpid(), cache_path);
 					r = open(cache_path, O_RDONLY);
 					*encoding = enc_name;
