@@ -523,6 +523,7 @@ int rt_resolve_method(_cstr_t method);
 _cstr_t rt_resp_text(int rc);
 _cstr_t rt_static_content(int rc);
 _cstr_t rt_file_ext(_cstr_t path);
+bool rt_allow_executables(void);
 _err_t rt_deflate_buffer(const unsigned char *src, long unsigned int sz_src,
 		unsigned char *dst, long unsigned int *psz_dst);
 _err_t rt_gzip_buffer(const unsigned char *src, long unsigned int sz_src,

@@ -354,7 +354,7 @@ static _err_t send_file(_cstr_t path, int rc, struct stat *pstat = NULL) {
 
 	if (!S_ISDIR(st.st_mode)) {
 		// not a directory
-		if ((st.st_mode & S_IXUSR) && argv_check(OPT_EXEC))
+		if ((st.st_mode & S_IXUSR) && rt_allow_executables())
 			// executable file request
 			r = send_exec(path, rc, /* allow input */ true, /* header */ false);
 		else {
@@ -391,18 +391,19 @@ static _err_t send_file(_cstr_t path, int rc, struct stat *pstat = NULL) {
 			r = send_file_response(fname, rc, &st, /* use cache */ true,
 				/* encoding */ NULL, /* no header append */ NULL,
 				/* ext */ ".html");
-		else {
+		else if (rt_allow_executables()) {
 			// try index executable
 			snprintf(fname, sizeof(fname), "%s/%s", path, "index");
 			if (stat(fname, &st) == 0) {
-				if ((st.st_mode & S_IXUSR) && argv_check(OPT_EXEC))
+				if ((st.st_mode & S_IXUSR))
 					r = send_exec(fname, rc, /* allow input */ true, /* header */ false);
 				else
 					// found but not a executable
 					r = send_error_response(NULL, HTTPRC_NOT_FOUND);
 			} else
 				r = send_error_response(NULL, HTTPRC_NOT_FOUND);
-		}
+		} else
+			r = send_error_response(NULL, HTTPRC_NOT_FOUND);
 	}
 
 	return r;

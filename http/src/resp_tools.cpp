@@ -3,6 +3,7 @@
 #include <zlib.h>
 #include "http.h"
 #include "str.h"
+#include "argv.h"
 #include "trace.h"
 
 static std::map<int, _cstr_t> _g_resp_text_ = {
@@ -81,6 +82,12 @@ int rt_resolve_method(_cstr_t method) {
 	}
 
 	return r;
+}
+
+bool rt_allow_executables(void) {
+	static bool allow_exec = argv_check(OPT_EXEC);
+
+	return allow_exec;
 }
 
 _cstr_t rt_file_ext(_cstr_t path) {

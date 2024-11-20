@@ -566,7 +566,12 @@ _err_t cfg_init(void) {
 				return 0;
 			}, NULL);
 
+			/* --- optimizations--- */
+
+			/* Load mime tipes before fork */
 			mime_open();
+			/* load OPT_EXEC before fork */
+			rt_allow_executables();
 		}
 	}
 
