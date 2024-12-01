@@ -109,6 +109,7 @@ _skip_compression_:
 			}
 		}
 	} else {
+		TRACE("http[%d] Skip encoding for '%s'\n", getpid(), path);
 		if (stat(path, p_stat) == 0) {
 			r = open(path, O_RDONLY);
 			*encoding = NULL;

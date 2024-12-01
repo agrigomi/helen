@@ -166,6 +166,8 @@ static void server_accept(int server_fd, int tmout) {
 
 				close(_g_server_fd_);
 				break;
+			} else if (cpid < 0) {
+				LOG("http[%d] Failed to fork #%d '%s'\n", getpid(), errno, strerror(errno));
 			}
 
 			close(sl);
