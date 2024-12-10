@@ -288,8 +288,7 @@ _cstr_t rt_encoding_bit_to_name(unsigned int *encoding_bit) {
 }
 
 unsigned int rt_select_encoding(_cstr_t ext /* file extension */) {
-	_cstr_t acc_enc = getenv(REQ_ACCEPT_ENCODING);
-	unsigned int r = rt_parse_encoding(acc_enc);
+	unsigned int r = 0;
 	unsigned int ext_mask = 0;
 
 	if (ext) {
@@ -297,8 +296,12 @@ unsigned int rt_select_encoding(_cstr_t ext /* file extension */) {
 		_vhost_t *p_host = cfg_get_vhost(host);
 		_mapping_t *p_ext_map = cfg_get_ext_mapping(p_host->host, ext);
 
-		if (p_ext_map)
+		if (p_ext_map) {
+			_cstr_t acc_enc = getenv(REQ_ACCEPT_ENCODING);
+
+			r = rt_parse_encoding(acc_enc);
 			ext_mask = rt_parse_encoding(p_ext_map->ext._compression());
+		}
 	}
 
 	return r & ext_mask & SUPPORTED_ENCODING;

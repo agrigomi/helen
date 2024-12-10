@@ -441,7 +441,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 				}
 			}
 		} else {
-			TRACE("http[%d] Error parsing '%s'\n", getpid(), json_fname);
+			LOG("http[%d] Error parsing '%s'\n", getpid(), json_fname);
 			char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
 			int i = 0;
 
