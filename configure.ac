@@ -19,8 +19,8 @@ AC_DEFINE([_DEBUG_], [], [For debugging])
 AC_DEFINE([_TRACE_], [], [For enable tracing])
 AC_DEFINE([OPENSSL_API_COMPAT], [0x10000000L], [SSL API version])
 AC_CONFIG_HEADERS([config.h])
-CXXFLAGS="-O0 -g"
-CFLAGS="-O0 -g"
+CXXFLAGS="-O3"
+CFLAGS="-O3"
 AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_INSTALL
