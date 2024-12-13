@@ -478,16 +478,16 @@ static _err_t do_connect(_cstr_t url) {
 	_err_t r = E_DONE;
 	_char_t lb[1024] = "";
 
-	strncpy(lb, url, sizeof(lb));
+	strncpy(lb, url, sizeof(lb) - 1);
 
 	str_split(lb, ":", [] (int idx, char *str,
 			void __attribute__((unused)) *udata) -> int {
 		switch (idx) {
 			case 0:
-				strncpy(_g_proxy_dst_host_, str, sizeof(_g_proxy_dst_host_));
+				strncpy(_g_proxy_dst_host_, str, sizeof(_g_proxy_dst_host_) - 1);
 				break;
 			case 1:
-				strncpy(_g_proxy_dst_port_, str, sizeof(_g_proxy_dst_port_));
+				strncpy(_g_proxy_dst_port_, str, sizeof(_g_proxy_dst_port_) - 1);
 				break;
 		}
 
@@ -586,7 +586,7 @@ _err_t res_processing(void) {
 				}
 			}
 		} else {
-			TRACE("http[%d] Bad request method: '%s' [%d]; host: %s\n", getpid(), method, imethod, (p_vhost) ? p_vhost->host : NULL);
+			TRACE("http[%d] Bad request method: '%s' [%d]; host: %s\n", getpid(), method, imethod, (p_vhost) ? p_vhost->host : "");
 			r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
 		}
 	} else {

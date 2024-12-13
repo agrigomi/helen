@@ -246,13 +246,13 @@ unsigned int rt_parse_encoding(_cstr_t str_alg) {
 		char *rest = NULL;
 		char *token = NULL;
 
-		strncpy(lb, str_alg, sizeof(lb));
+		strncpy(lb, str_alg, sizeof(lb) - 1);
 
 		if ((token = strtok_r(lb, ",", &rest))) {
 			_char_t str[64] = "";
 
 			do {
-				strncpy(str, token, sizeof(str));
+				strncpy(str, token, sizeof(str) - 1);
 				str_trim(str);
 				n = 0;
 

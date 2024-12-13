@@ -29,7 +29,7 @@ _v_range_t *range_parse(_cstr_t req_range, _cstr_t path, _cstr_t boundary) {
 		rdata.boundary = boundary;
 		stat(path, &rdata.st);
 
-		strncpy(vhdr, range, sizeof(vhdr));
+		strncpy(vhdr, range, sizeof(vhdr) - 1);
 
 		str_split(vhdr, "=", [] (int idx, char *str, void *udata) -> int {
 			int r = -1;
