@@ -201,145 +201,181 @@ static int fill_header_append(_json_value_t *jvha, char *buffer, unsigned int sz
 }
 
 static void fill_url_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
-	_json_value_t *method = json_select(p_jcxt, "method", pjo);
-	_json_value_t *protocol = json_select(p_jcxt, "protocol", pjo);
-	_json_value_t *url = json_select(p_jcxt, "url", pjo);
-	_json_value_t *header = json_select(p_jcxt, "header", pjo);
-	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
-	_json_value_t *input = json_select(p_jcxt, "input", pjo);
-	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
-	_json_value_t *response = json_select(p_jcxt, "response", pjo);
-	_json_value_t *response_code = json_select(p_jcxt, "response-code", pjo);
-	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
-	_json_value_t *ext = json_select(p_jcxt, "ext", pjo);
+	typedef struct {
+		_cstr_t tag;
+		void (*pcb)(_json_value_t *, _mapping_url_t *);
+	} _url_tag_t;
+
+	static _url_tag_t tag_map[] = {
+		{ "method",		[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						jv_string(pjv, rec->method, sizeof(rec->method));
+					}},
+		{ "protocol",		[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						rec->off_protocol = rec->buffer_len;
+						rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+										sizeof(rec->buffer) - rec->buffer_len) + 1;
+					}},
+		{ "url",		[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						rec->off_url = rec->buffer_len;
+						rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+										sizeof(rec->buffer) - rec->buffer_len) + 1;
+					}},
+		{ "header",		[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						if (pjv)
+							rec->header = (pjv->jvt == JSON_TRUE);
+					}},
+		{ "no-stderr",		[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						if (pjv)
+							rec->no_stderr = (pjv->jvt == JSON_TRUE);
+					}},
+		{ "input",		[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						if (pjv)
+							rec->input = (pjv->jvt == JSON_TRUE);
+					}},
+		{ "response-code",	[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						rec->resp_code = atoi(jv_string(pjv).c_str());
+					}},
+		{ "exec",		[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						rec->off_proc = rec->buffer_len;
+						if (pjv) {
+							rec->exec = true;
+							rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+											sizeof(rec->buffer) - rec->buffer_len) + 1;
+						}
+					}},
+		{ "response",		[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						if (!rec->exec)
+							rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+											sizeof(rec->buffer) - rec->buffer_len) + 1;
+					}},
+		{ "header-append",	[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						rec->off_header_append = rec->buffer_len;
+						if (pjv && pjv->jvt == JSON_ARRAY)
+							rec->buffer_len += fill_header_append(pjv, rec->buffer + rec->buffer_len,
+												sizeof(rec->buffer) - rec->buffer_len);
+						rec->buffer_len++;
+					}},
+		{ "ext",		[] (_json_value_t *pjv, _mapping_url_t *rec) {
+						rec->off_ext = rec->buffer_len;
+						rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+										sizeof(rec->buffer) - rec->buffer_len) + 1;
+					}},
+		{ NULL,			NULL }
+	};
+	int n = 0;
 
 	p->type = MAPPING_TYPE_URL;
-	jv_string(method, p->url.method, sizeof(p->url.method));
-
-	if (header)
-		p->url.header = (header->jvt == JSON_TRUE);
-	if (no_stderr)
-		p->url.no_stderr = (no_stderr->jvt == JSON_TRUE);
-	if (input)
-		p->url.input = (input->jvt == JSON_TRUE);
-
-	p->url.resp_code = atoi(jv_string(response_code).c_str());
-
 	p->url.buffer_len = 0;
 	memset(p->url.buffer, 0, sizeof(p->url.buffer));
 
-	// protocol
-	p->url.off_protocol = p->url.buffer_len;
-	p->url.buffer_len += jv_string(protocol, p->url.buffer + p->url.buffer_len,
-			sizeof(p->url.buffer) - p->url.buffer_len) + 1;
+	while (tag_map[n].tag) {
+		_json_value_t *pjv = json_select(p_jcxt, tag_map[n].tag, pjo);
 
-	// add URL to buffer
-	p->url.off_url = p->url.buffer_len;
-	p->url.buffer_len += jv_string(url, p->url.buffer + p->url.buffer_len,
-			sizeof(p->url.buffer) - p->url.buffer_len) + 1;
-
-	// Add header-append
-	p->url.off_header_append = p->url.buffer_len;
-	if (header_append && header_append->jvt == JSON_ARRAY)
-		p->url.buffer_len += fill_header_append(header_append, p->url.buffer + p->url.buffer_len,
-					sizeof(p->url.buffer) - p->url.buffer_len);
-
-	p->url.buffer_len++;
-
-	// Add proc or exec
-	p->url.off_proc = p->url.buffer_len;
-	_json_value_t *pjv = exec;
-
-	if (pjv)
-		p->url.exec = true;
-	else
-		pjv = response;
-
-	if (pjv && pjv->jvt == JSON_STRING &&
-			(sizeof(p->url.buffer) - p->url.buffer_len) > (size_t)(pjv->string.size)) {
-		p->url.buffer_len += jv_string(pjv, p->url.buffer + p->url.buffer_len,
-				sizeof(p->url.buffer) - p->url.buffer_len) + 1;
-	}
-
-	// add ext
-	p->url.off_ext = p->url.buffer_len;
-	if (ext && ext->jvt == JSON_STRING &&
-			(sizeof(p->url.buffer) - p->url.buffer_len) > (size_t)(ext->string.size)) {
-		p->url.buffer_len += jv_string(ext, p->url.buffer + p->url.buffer_len,
-				sizeof(p->url.buffer) - p->url.buffer_len) + 1;
+		tag_map[n].pcb(pjv, &p->url);
+		n++;
 	}
 }
 
 static void fill_err_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
-	_json_value_t *code = json_select(p_jcxt, "code", pjo);
-	_json_value_t *header = json_select(p_jcxt, "header", pjo);
-	_json_value_t *no_stderr = json_select(p_jcxt, "no-stderr", pjo);
-	_json_value_t *input = json_select(p_jcxt, "input", pjo);
-	_json_value_t *exec = json_select(p_jcxt, "exec", pjo);
-	_json_value_t *response = json_select(p_jcxt, "response", pjo);
-	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
-	_json_value_t *ext = json_select(p_jcxt, "ext", pjo);
-	char str_code[32] = "";
+	typedef struct {
+		_cstr_t tag;
+		void (*pcb)(_json_value_t *, _mapping_err_t *);
+	} _err_tag_t;
+
+	static _err_tag_t tag_map[] = {
+		{ "code",		[] (_json_value_t *pjv, _mapping_err_t *rec) {
+						rec->code = atoi(jv_string(pjv).c_str());
+					}},
+		{ "header",		[] (_json_value_t *pjv, _mapping_err_t *rec) {
+						if (pjv)
+							rec->header = (pjv->jvt == JSON_TRUE);
+					}},
+		{ "no-stderr",		[] (_json_value_t *pjv, _mapping_err_t *rec) {
+						if (pjv)
+							rec->no_stderr = (pjv->jvt == JSON_TRUE);
+					}},
+		{ "input",		[] (_json_value_t *pjv, _mapping_err_t *rec) {
+						if (pjv)
+							rec->input = (pjv->jvt == JSON_TRUE);
+					}},
+		{ "exec",		[] (_json_value_t *pjv, _mapping_err_t *rec) {
+						rec->off_proc = rec->buffer_len;
+						if (pjv) {
+							rec->exec = true;
+							rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+											sizeof(rec->buffer) - rec->buffer_len) + 1;
+						}
+					}},
+		{ "response",		[] (_json_value_t *pjv, _mapping_err_t *rec) {
+						if (!rec->exec)
+							rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+											sizeof(rec->buffer) - rec->buffer_len) + 1;
+					}},
+		{ "header-append",	[] (_json_value_t *pjv, _mapping_err_t *rec) {
+						rec->off_header_append = rec->buffer_len;
+						if (pjv && pjv->jvt == JSON_ARRAY)
+							rec->buffer_len += fill_header_append(pjv, rec->buffer + rec->buffer_len,
+												sizeof(rec->buffer) - rec->buffer_len);
+						rec->buffer_len++;
+					}},
+		{ "ext",		[] (_json_value_t *pjv, _mapping_err_t *rec) {
+						rec->off_ext = rec->buffer_len;
+						rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+										sizeof(rec->buffer) - rec->buffer_len) + 1;
+					}},
+		{ NULL,			NULL }
+	};
+	int n = 0;
 
 	p->type = MAPPING_TYPE_ERR;
-	jv_string(code, str_code, sizeof(str_code));
-	p->err.code = atoi(str_code);
-	if (header)
-		p->err.header = (header->jvt == JSON_TRUE);
-	if (no_stderr)
-		p->err.no_stderr = (no_stderr->jvt == JSON_TRUE);
-	if (input)
-		p->err.input = (input->jvt == JSON_TRUE);
+	p->err.buffer_len = 0;
+	memset(p->err.buffer, 0, sizeof(p->err.buffer));
+	while (tag_map[n].tag) {
+		_json_value_t *pjv = json_select(p_jcxt, tag_map[n].tag, pjo);
 
-	// Add header-append
-	p->err.off_header_append = p->err.buffer_len;
-	if (header_append && header_append->jvt == JSON_ARRAY)
-		p->err.buffer_len += fill_header_append(header_append, p->err.buffer + p->err.buffer_len,
-					sizeof(p->err.buffer) - p->err.buffer_len);
-
-	p->err.buffer_len++;
-
-	// Add proc or exec
-	p->err.off_proc = p->err.buffer_len;
-	_json_value_t *pjv = exec;
-
-	if (pjv)
-		p->err.exec = true;
-	else
-		pjv = response;
-
-	if (pjv && pjv->jvt == JSON_STRING &&
-			(sizeof(p->err.buffer) - p->err.buffer_len) > (size_t)(pjv->string.size)) {
-		p->err.buffer_len += jv_string(pjv, p->err.buffer + p->err.buffer_len,
-				sizeof(p->err.buffer) - p->err.buffer_len) + 1;
-	}
-
-	// add ext
-	p->err.off_ext = p->err.buffer_len;
-	if (ext && ext->jvt == JSON_STRING &&
-			(sizeof(p->err.buffer) - p->err.buffer_len) > (size_t)(pjv->string.size)) {
-		p->err.buffer_len += jv_string(ext, p->err.buffer + p->err.buffer_len,
-				sizeof(p->err.buffer) - p->err.buffer_len) + 1;
+		tag_map[n].pcb(pjv, &p->err);
+		n++;
 	}
 }
 
 static void fill_ext_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_t *p) {
-	_json_value_t *ident = json_select(p_jcxt, "ident", pjo);
-	_json_value_t *compression = json_select(p_jcxt, "compression", pjo);
-	_json_value_t *header_append = json_select(p_jcxt, "header-append", pjo);
+	typedef struct {
+		_cstr_t tag;
+		void (*pcb)(_json_value_t *, _mapping_ext_t *);
+	} _ext_tag_t;
+
+	static _ext_tag_t tag_map[] = {
+		{ "ident",		[] (_json_value_t *pjv, _mapping_ext_t *rec) {
+						rec->off_ident = rec->buffer_len;
+						rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+										sizeof(rec->buffer) - rec->buffer_len) + 1;
+					}},
+		{ "compression",	[] (_json_value_t *pjv, _mapping_ext_t *rec) {
+						rec->off_compression = rec->buffer_len;
+						rec->buffer_len += jv_string(pjv, rec->buffer + rec->buffer_len,
+										sizeof(rec->buffer) - rec->buffer_len) + 1;
+					}},
+		{ "header-append",	[] (_json_value_t *pjv, _mapping_ext_t *rec) {
+						rec->off_header_append = rec->buffer_len;
+						if (pjv && pjv->jvt == JSON_ARRAY)
+							rec->buffer_len += fill_header_append(pjv, rec->buffer + rec->buffer_len,
+												sizeof(rec->buffer) - rec->buffer_len);
+						rec->buffer_len++;
+					}},
+		{ NULL,			NULL }
+	};
+	int n = 0;
 
 	p->type = MAPPING_TYPE_EXT;
+	p->ext.buffer_len = 0;
+	memset(p->ext.buffer, 0, sizeof(p->ext.buffer));
 
-	p->ext.off_ident = p->ext.buffer_len;
-	p->ext.buffer_len += jv_string(ident, p->ext.buffer + p->ext.buffer_len,
-					sizeof(p->ext.buffer) - p->ext.buffer_len) + 1;
-	p->ext.off_compression = p->ext.buffer_len;
-	p->ext.buffer_len += jv_string(compression, p->ext.buffer + p->ext.buffer_len,
-					sizeof(p->ext.buffer) - p->ext.buffer_len) + 1;
-	p->ext.off_header_append = p->ext.buffer_len;
-	if (header_append && header_append->jvt == JSON_ARRAY)
-		p->ext.buffer_len += fill_header_append(header_append, p->ext.buffer + p->ext.buffer_len,
-					sizeof(p->ext.buffer) - p->ext.buffer_len);
+	while (tag_map[n].tag) {
+		_json_value_t *pjv = json_select(p_jcxt, tag_map[n].tag, pjo);
+
+		tag_map[n].pcb(pjv, &p->ext);
+		n++;
+	}
 }
 
 static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf_context_t *p_hfcxt) {

@@ -40,13 +40,18 @@ static void send_header(int rc, _cstr_t header_append = NULL) {
 	io_write(hdr, sz_hdr);
 }
 
-static _err_t send_response_buffer(int rc, _cstr_t content, unsigned int sz) {
+static _err_t send_response_buffer(int rc, _cstr_t content, unsigned int sz,  _cstr_t header_append = NULL, _cstr_t ext = NULL) {
 	_err_t r = E_FAIL;
 
 	if (sz <= COMPRESSION_TRESHOLD) {
 _no_compression_:
 		hdr_set(RES_CONTENT_LENGTH, sz);
-		send_header(rc);
+		// set content-type
+		if (ext) {
+			mime_open();
+			hdr_set(RES_CONTENT_TYPE, mime_resolve(ext));
+		}
+		send_header(rc, header_append);
 		// send content
 		io_write(content, sz);
 		r = E_OK;
@@ -61,8 +66,13 @@ _no_compression_:
 				// set header options
 				hdr_set(RES_CONTENT_LENGTH, sz_dst);
 				hdr_set(RES_CONTENT_ENCODING, p_type);
+				// set content-type
+				if (ext) {
+					mime_open();
+					hdr_set(RES_CONTENT_TYPE, mime_resolve(ext));
+				}
 
-				send_header(rc);
+				send_header(rc, header_append);
 				// send content
 				io_write((char *)p_gzip_buffer, sz_dst);
 				// release gzip buffer
@@ -439,7 +449,7 @@ static _err_t send_mapping_response(_mapping_t *p_mapping, int rc) {
 		if (stat(resolved_cmd, &st) == 0)
 			r = send_file_response(resolved_cmd, _rc, &st, true, NULL, header_append, ext);
 		else
-			r = send_response_buffer(_rc, resolved_cmd, strlen(resolved_cmd));
+			r = send_response_buffer(_rc, resolved_cmd, strlen(resolved_cmd), header_append, ext);
 	}
 
 	return r;
