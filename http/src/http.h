@@ -138,6 +138,14 @@
 #define HTTPRC_GATEWAY_TIMEOUT		504 // Gateway Time-out
 #define HTTPRC_VERSION_NOT_SUPPORTED	505 // HTTP Version not supported
 
+#define STR_HTTP_1		"HTTP/1"
+#define STR_HTTP_2		"HTTP/2"
+#define STR_HTTP_3		"HTTP/3"
+
+#define PROTO_HTTP_1		1
+#define PROTO_HTTP_2		2
+#define PROTO_HTTP_3		3
+
 #define METHOD_GET		0
 #define METHOD_HEAD		1
 #define METHOD_POST		2
@@ -541,6 +549,7 @@ _cstr_t rt_encoding_bit_to_name(unsigned int *encoding_bit);
 /* returns encoding bitmask */
 unsigned int rt_select_encoding(_cstr_t ext /* file extension */);
 void rt_sha1_string(_cstr_t data, _str_t out, int sz_out);
+int rt_resolve_protocol(void);
 
 // response ranges
 _v_range_t *range_parse(_cstr_t req_range, _cstr_t path, _cstr_t boundary);

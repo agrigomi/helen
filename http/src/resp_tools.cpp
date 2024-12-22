@@ -322,3 +322,31 @@ void rt_sha1_string(_cstr_t data, _str_t out, int sz_out) {
 		out[j + 1] = hex[sha1_result[i] & 0x0f];
 	}
 }
+
+int rt_resolve_protocol(void) {
+	typedef struct {
+		_cstr_t str_proto;
+		int	int_proto;
+	} _proto_t;
+
+	static _proto_t proto[] = {
+		{ STR_HTTP_1,		PROTO_HTTP_1 },
+		{ STR_HTTP_2,		PROTO_HTTP_2 },
+		{ STR_HTTP_3,		PROTO_HTTP_3 },
+		{ NULL,			0 }
+	};
+	int r = 0, n = 0;
+	_cstr_t pv = getenv(REQ_PROTOCOL);
+
+	while (proto[n].str_proto) {
+		if (strncmp(pv, proto[n].str_proto, strlen(proto[n].str_proto)) == 0) {
+			r = proto[n].int_proto;
+			break;
+		}
+
+		n++;
+	}
+
+	return r;
+}
+

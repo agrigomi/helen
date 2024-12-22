@@ -553,16 +553,16 @@ _err_t res_processing(void) {
 	_vhost_t *p_vhost = cfg_get_vhost(host);
 	_cstr_t method = getenv(REQ_METHOD);
 	int imethod = (method) ? rt_resolve_method(method) : -1;
+	_cstr_t proto = getenv(REQ_PROTOCOL);
+
+	if (proto && strlen(proto))
+		// response protocol as requested protocol
+		setenv(RES_PROTOCOL, proto, 1);
 
 	if (imethod != -1) {
 		if (p_vhost) {
-			_cstr_t proto = getenv(REQ_PROTOCOL);
 			_cstr_t url = getenv(REQ_URL);
 			_cstr_t path = getenv(REQ_PATH);
-
-			if (proto && strlen(proto))
-				// response protocol as requested protocol
-				setenv(RES_PROTOCOL, proto, 1);
 
 			if (!path)
 				path = url;
