@@ -135,6 +135,8 @@ _err_t req_receive(int timeout, int *req_len) {
 	int rl = 0; // request length
 
 	*req_len = 0;
+	// Set default response header fields
+	hdr_init();
 
 	if (io_wait_input(timeout) > 0) {
 		// read request line

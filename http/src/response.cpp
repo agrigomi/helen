@@ -116,11 +116,14 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 		unsigned int file_offset = 0;
 		_char_t date[128];
 		tm *_tm = gmtime(&(st.st_mtime));
+		int imethod = rt_resolve_method(getenv(REQ_METHOD));
 
-		hdr_set(RES_CONTENT_LENGTH, st.st_size);
+		if (imethod != METHOD_HEAD) {
+			hdr_set(RES_CONTENT_LENGTH, st.st_size);
 
-		if (_encoding)
-			hdr_set(RES_CONTENT_ENCODING, _encoding);
+			if (_encoding)
+				hdr_set(RES_CONTENT_ENCODING, _encoding);
+		}
 
 		// set last-modified
 		strftime(date, sizeof(date),
@@ -140,7 +143,7 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 
 		send_header(rc, header_append);
 
-		if (rt_resolve_method(getenv(REQ_METHOD)) != METHOD_HEAD) {
+		if (imethod != METHOD_HEAD) {
 			// send file content
 			while (file_offset < st.st_size) {
 				unsigned int n = read(fd, buffer, sizeof(buffer));
@@ -567,7 +570,6 @@ _err_t res_processing(void) {
 			if (!path)
 				path = url;
 
-			hdr_init();
 			cfg_load_mapping(p_vhost);
 			_mapping_t *mapping = cfg_get_url_mapping(p_vhost->host, method, path, proto);
 
