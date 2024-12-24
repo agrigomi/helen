@@ -137,6 +137,8 @@ _err_t req_receive(int timeout, int *req_len) {
 	*req_len = 0;
 	// Set default response header fields
 	hdr_init();
+	// set default protocol version
+	setenv(RES_PROTOCOL, STR_HTTP_1, 1);
 
 	if (io_wait_input(timeout) > 0) {
 		// read request line
