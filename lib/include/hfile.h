@@ -6,7 +6,8 @@
 
 #define HF_INVALID_OFFSET	0xffffffff
 #define HF_MAX_PATH		1024
-#define HF_MAX_RECORD_SIZE	(64 * 1024)
+#define HF_MAX_CHUNK_SIZE	64 // in kilobytes
+#define HF_MAX_RECORD_SIZE	(HF_MAX_CHUNK_SIZE * 1024)
 
 /* File header */
 typedef struct __attribute__((packed)) {

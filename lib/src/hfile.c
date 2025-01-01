@@ -229,7 +229,7 @@ _fit_record_:
 		p_cxt->hdr->records++;
 	} else {
 		/* append empty block to file */
-		if (hf_append(p_cxt, 64) == 0)
+		if (hf_append(p_cxt, HF_MAX_CHUNK_SIZE) == 0)
 			goto _fit_record_;
 	}
 
