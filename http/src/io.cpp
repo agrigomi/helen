@@ -29,20 +29,20 @@ static _err_t setup_ssl_context(const char *method, const char *cert, const char
 				if (ssl_load_key(_g_ssl_context_, key))
 					r = E_OK;
 				else {
-					TRACE("http[%d] Failed to load SSL key '%s'\n", getpid(), key);
+					LOG("http[%d] Failed to load SSL key '%s'\n", getpid(), key);
 					SSL_CTX_free(_g_ssl_context_);
 					_g_ssl_context_ = NULL;
 				}
 			} else {
-				TRACE("http[%d] Failed to load SSL certificate '%s'\n", getpid(), cert);
+				LOG("http[%d] Failed to load SSL certificate '%s'\n", getpid(), cert);
 				SSL_CTX_free(_g_ssl_context_);
 				_g_ssl_context_ = NULL;
 			}
 		} else {
-			TRACE("http[%d] Unable to allocate SSL context\n", getpid());
+			LOG("http[%d] Unable to allocate SSL context\n", getpid());
 		}
 	} else {
-		TRACE("http[%d] Unsupported SSL method '%s'\n", getpid(), method);
+		LOG("http[%d] Unsupported SSL method '%s'\n", getpid(), method);
 	}
 
 	return r;
@@ -85,7 +85,9 @@ static _err_t setup_server_socket(int *p_fd) {
 			memset(&ifr, 0, sizeof(ifr));
 			snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), ifc);
 			if (setsockopt(*p_fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-				TRACE("http[%d] Unknown interface name '%s'\n", getpid(), ifc);
+				LOG("http[%d] Can't bind to interface '%s'\n", getpid(), ifc);
+			} else {
+				LOG("http[%d] Listening on interface '%s'\n", getpid(), ifc);
 			}
 		}
 
@@ -172,7 +174,7 @@ static void server_accept(int server_fd, int tmout) {
 
 			close(sl);
 		} else {
-			TRACE("http[%d] Stop listening\n", getpid());
+			LOG("http[%d] Stop listening\n", getpid());
 			break;
 		}
 	}
