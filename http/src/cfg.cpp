@@ -116,7 +116,7 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 							free(ptr);
 						}, NULL);
 
-		if (json_parse(p_jcxt, content, size) == JSON_OK) {
+		if (p_jcxt && json_parse(p_jcxt, content, size) == JSON_OK) {
 			_json_value_t *pjv_http = json_select(p_jcxt, "http", NULL);
 
 			if (pjv_http && pjv_http->jvt == JSON_OBJECT) {
@@ -154,13 +154,17 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 			}
 		} else {
 			LOG("http[%d] Error parsing '%s'\n", getpid(), json_fname);
-			char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
-			int i = 0;
 
-			fprintf(stderr, "ERROR: (offset: %lu) ", p_jcxt->err_pos);
-			for(; i < 10 && *(pc + p_jcxt->err_pos + i); i++)
-				fprintf(stderr, "%c", *(pc + p_jcxt->err_pos + i));
-			fprintf(stderr, "\n");
+			if (p_jcxt) {
+				char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
+				int i = 0;
+
+				fprintf(stderr, "ERROR: (offset: %lu) ", p_jcxt->err_pos);
+				for(; i < 10 && *(pc + p_jcxt->err_pos + i); i++)
+					fprintf(stderr, "%c", *(pc + p_jcxt->err_pos + i));
+				fprintf(stderr, "\n");
+			} else
+				LOG("http[%d] NULL JSON context\n", getpid());
 		}
 
 		json_destroy_context(p_jcxt);
@@ -396,7 +400,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 							free(ptr);
 						}, NULL);
 
-		if (json_parse(p_jcxt, content, size) == JSON_OK) {
+		if (p_jcxt && json_parse(p_jcxt, content, size) == JSON_OK) {
 			_json_value_t *pjv_mapping = json_select(p_jcxt, "mapping", NULL);
 
 			if (pjv_mapping && pjv_mapping->jvt == JSON_OBJECT) {
@@ -478,13 +482,17 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 			}
 		} else {
 			LOG("http[%d] Error parsing '%s'\n", getpid(), json_fname);
-			char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
-			int i = 0;
 
-			fprintf(stderr, "ERROR: (offset: %lu) ", p_jcxt->err_pos);
-			for(; i < 10 && *(pc + p_jcxt->err_pos + i); i++)
-				fprintf(stderr, "%c", *(pc + p_jcxt->err_pos + i));
-			fprintf(stderr, "\n");
+			if (p_jcxt) {
+				char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
+				int i = 0;
+
+				fprintf(stderr, "ERROR: (offset: %lu) ", p_jcxt->err_pos);
+				for(; i < 10 && *(pc + p_jcxt->err_pos + i); i++)
+					fprintf(stderr, "%c", *(pc + p_jcxt->err_pos + i));
+				fprintf(stderr, "\n");
+			} else
+				LOG("http[%d] NULL JSON context\n", getpid());
 		}
 
 		json_destroy_context(p_jcxt);
