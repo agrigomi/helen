@@ -69,11 +69,13 @@ void json_reset_context(_json_context_t *p_jcxt) {
 }
 
 void json_destroy_context(_json_context_t *p_jcxt) {
-	_ht_context_t *p_htc = p_jcxt->p_htc;
+	if (p_jcxt) {
+		_ht_context_t *p_htc = p_jcxt->p_htc;
 
-	destroy_object(p_jcxt, &p_jcxt->root);
-	p_htc->pf_mem_free(p_jcxt, sizeof(_json_context_t), p_jcxt->udata);
-	ht_destroy_context(p_htc);
+		destroy_object(p_jcxt, &p_jcxt->root);
+		p_htc->pf_mem_free(p_jcxt, sizeof(_json_context_t), p_jcxt->udata);
+		ht_destroy_context(p_htc);
+	}
 }
 
 static _json_err_t parse_object(_json_context_t *p_jcxt, _json_object_t *p_jogb, unsigned int *C);
@@ -616,7 +618,7 @@ _json_err_t json_parse(_json_context_t *p_jcxt, /* JSON context */
 			) {
 	_json_err_t r = JSON_OK;
 
-	if (p_jcxt->p_htc) {
+	if (p_jcxt && p_jcxt->p_htc) {
 		json_reset_context(p_jcxt);
 		ht_init_context(p_jcxt->p_htc, (void *)p_content, content_size);
 		r = parse_object(p_jcxt, &p_jcxt->root, NULL);
