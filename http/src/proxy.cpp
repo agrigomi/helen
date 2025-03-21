@@ -31,10 +31,16 @@ _err_t proxy_http(void) {
 	_cstr_t domain = getenv(REQ_DOMAIN);
 	_cstr_t port = getenv(REQ_PORT);
 	_cstr_t uri = getenv(REQ_URI);
+	_cstr_t path = getenv(REQ_PATH);
 	_cstr_t proto = getenv(REQ_PROTOCOL);
 	_char_t lb[4096] = "";
 	int sfd = -1;
-	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
+	_cstr_t _path = (!uri) ? path : uri;
+
+	if (!_path)
+		_path = "/";
+
+	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, _path, proto);
 
 	sz_lb += read_header(lb + sz_lb, sizeof(lb) - sz_lb);
 	TRACE("http[%d] Request: %s\n", getpid(), lb);
@@ -86,10 +92,16 @@ _err_t proxy_https(void) {
 	_cstr_t domain = getenv(REQ_DOMAIN);
 	_cstr_t port = getenv(REQ_PORT);
 	_cstr_t uri = getenv(REQ_URI);
+	_cstr_t path = getenv(REQ_PATH);
 	_cstr_t proto = getenv(REQ_PROTOCOL);
 	_char_t lb[4096] = "";
 	SSL *ssl = NULL;
-	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, uri, proto);
+	_cstr_t _path = (!uri) ? path : uri;
+
+	if (!_path)
+		_path = "/";
+
+	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, _path, proto);
 
 	sz_lb += read_header(lb + sz_lb, sizeof(lb) - sz_lb);
 	TRACE("http[%d] Request: %s\n", getpid(), lb);
