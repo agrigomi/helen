@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include "http.h"
 #include "argv.h"
@@ -216,7 +217,7 @@ int io_get_stdin_fd(void) {
 }
 
 int verify_input(int fd) {
-	int r = 0;
+	int r = -1;
 
 	if (ioctl(fd, FIONREAD, &r) < 0)
 		r = -1;
@@ -226,15 +227,11 @@ int verify_input(int fd) {
 
 int io_verify_input(void) {
 	int r = 0;
-	int _r = -1;
 
 	if (_g_ssl_in_)
-		_r = ioctl(SSL_get_fd(_g_ssl_in_), FIONREAD, &r);
+		r = verify_input(SSL_get_fd(_g_ssl_in_));
 	else
-		_r = ioctl(STDIN_FILENO, FIONREAD, &r);
-
-	if (_r < 0)
-		r = _r;
+		r = verify_input(STDIN_FILENO);
 
 	return r;
 }

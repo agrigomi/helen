@@ -559,7 +559,7 @@ void range_generate_boundary(_cstr_t path, _str_t b, int sz = MAX_BOUNDARY);
 _err_t resp_exec_v(_cstr_t argv[],
 		int (*out)(unsigned char *buf, unsigned int sz, void *udata),
 		int (*in)(unsigned char *buf, unsigned int sz, void *udata),
-		void *udata);
+		void *udata, int timeout_s);
 _err_t resp_exec(_cstr_t cmd,
 		int (*out)(unsigned char *buf, unsigned int sz, void *udata),
 		int (*in)(unsigned char *buf, unsigned int sz, void *udata),

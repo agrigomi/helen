@@ -6,11 +6,12 @@
 _err_t resp_exec_v(_cstr_t argv[],
 		int (*out)(unsigned char *buf, unsigned int sz, void *udata),
 		int (*in)(unsigned char *buf, unsigned int sz, void *udata),
-		void *udata) {
+		void *udata, int timeout_s) {
 	_err_t r = E_FAIL;
 	_proc_t proc;
 	unsigned char bin[4096];
 	unsigned char bout[16384];
+	int tout = timeout_s * 1000000;
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
@@ -19,16 +20,25 @@ _err_t resp_exec_v(_cstr_t argv[],
 			int nin = (in) ? in(bin, sizeof(bin), udata) : 0;
 			int nout = 0;
 
-			if (nin > 0)
+			if (nin > 0) {
 				proc_write(&proc, bin, nin);
-			else if (nin < 0)
+				tout = timeout_s * 1000000;
+			} else if (nin < 0) {
+				TRACE("http[%d] Terminate '%s'\n", getpid(), argv[0]);
 				proc_break(&proc);
+			}
 
 			if ((nout = verify_input(proc.PREAD_FD)) > 0) {
 				nout = proc_read(&proc, bout, sizeof(bout));
 				out(bout, nout, udata);
+				tout = timeout_s * 1000000;
 			}
-		} while (proc_status(&proc) == -1);
+
+			if (nin == 0 && nout == 0) {
+				tout -= 10000;
+				usleep(10000);
+			}
+		} while (tout && proc_status(&proc) == -1);
 	}
 
 	return r;
@@ -73,7 +83,7 @@ _err_t resp_exec(_cstr_t cmd,
 	split_by_space(cmd, strlen(cmd), argv, 256);
 
 	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
-	r = resp_exec_v((_cstr_t *)argv, out, in, udata);
+	r = resp_exec_v((_cstr_t *)argv, out, in, udata, atoi(argv_value(OPT_TIMEOUT)));
 
 	while (argv[i]) {
 		free(argv[i]);
