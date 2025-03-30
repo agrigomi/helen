@@ -178,17 +178,17 @@ static void server_accept(_listen_t *pl) {
 				} else {
 					TRACE("hl[%d]: Running '%s'; PID: %d; '", getpid(), pl->name, cpid);
 					while (pl->argv[i]) {
-						TRACE("%s ", pl->argv[i]);
+						fprintf(stderr, "%s ", pl->argv[i]);
 						i++;
 					}
-					TRACE("'\n");
+					fprintf(stderr, "'\n");
 				}
 
 				close(sl);
 			}
 		}
 
-		TRACE("\nhl: Server '%s' stopped.\n", pl->name);
+		TRACE("hl: Server '%s' stopped.\n", pl->name);
 
 		pl->flags |= LISTEN_STOPPED;
 		return NULL;
@@ -238,19 +238,13 @@ void cfg_start(void) {
 
 void cfg_stop(void) {
 	cfg_enum_listen([](_listen_t *p, __attribute__((unused)) void *udata) {
-		TRACE("hl: Waiting '%s' to stop. ", p->name);
+		TRACE("hl: Waiting '%s' to stop. \n", p->name);
 		p->flags &= ~LISTEN_RUNNING;
 		if (p->server_fd > 0) {
 			if (_g_fork_)
 				close(p->server_fd);
-			else {
+			else
 				shutdown(p->server_fd, SHUT_RDWR);
-
-				while (!(p->flags & LISTEN_STOPPED)) {
-					TRACE(".");
-					usleep(100000);
-				}
-			}
 		}
 	}, NULL);
 }
