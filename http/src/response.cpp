@@ -186,10 +186,16 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 				int nin = 0;
 
 				if (input) {
-					while ((nin = io_verify_input()) > 0) {
-						nin = io_read((_str_t)buffer, sizeof(buffer));
+					_cstr_t content_len = getenv(REQ_CONTENT_LENGTH);
+					int cl = (content_len) ? atoi(content_len) : 0;
 
-						proc_write(&proc, buffer, nin);
+					while (cl > 0 && io_verify_input() > 0) {
+						if (((nin = io_read((_str_t)buffer, sizeof(buffer))) > 0)) {
+							TRACE("%s\n", buffer);
+							proc_write(&proc, buffer, nin);
+							cl -= nin;
+						} else
+							break;
 					}
 				}
 

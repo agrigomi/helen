@@ -65,6 +65,7 @@
 #define REQ_DIR			"REQ_DIR"
 #define REQ_FILE		"REQ_FILE"
 #define REQ_MISSING		"REQ_MISSING"
+#define REQ_CONTENT_LENGTH	"REQ_CONTENT_LENGTH"
 
 // HTTP response environment variables
 #define RES_ENV_SERVER		"RES_SERVER"
