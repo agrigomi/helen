@@ -41,62 +41,106 @@ extern "C" {
 #endif
 
 /**
-Create hash file.
-path	- path to file
-capacity- size of hash table
-dataK	- size of data area in kilobytes
-hash file remains open for read and write */
+\brief Create hash file.
+\par \b Parameters:
+\n\t- \b path: Path to file
+\n\t- \b capacity: Size of hash table
+\n\t- \b dataK: Size of data area in kilobytes
+
+\brief \b Returns: 0 for success, -1 for failure.
+
+@exception \c EILIB file operation errors */
 int hf_create(_hf_context_t *, const char *path, unsigned int capacity, unsigned int dataK);
 
 /**
-Open hash file.
-path	- path to file
-flags	- combination of O_RDWR and O_RDONLY
-returns 0 for success or -1 for fail */
+\brief Open hash file.
+\par \b Parameters:
+\n\t- \b context: Structure containing file header and other parameters
+\n\t- \b path: Path to file
+\n\t- \b flags: Combination of O_RDWR and O_RDONLY
+
+\brief \b Returns: 0 for success, -1 for failure.
+
+@exception \c EILIB file operation errors */
 int hf_open(_hf_context_t *, const char *path, int flags);
 
 /**
-Close hash file */
+\brief Close hash file.
+\par \b Parameters:
+\n\t- \b context: Structure containing file header and other parameters
+\brief \b Returns: 0 for success, -1 for failure.
+
+@exception \c EILIB file operation errors */
 void hf_close(_hf_context_t *);
 
 /**
-Add record to hash file.
-key	- record identifier
-sz_key	- size of record identifier
-data	- pointer to record content
-sz_data	- size of record content
-returns pointer to record content in case of success, or NULL */
+\brief Add record to hash file.
+\par \b Parameters:
+\n\t- \b context: Structure containing file header and other parameters
+\n\t- \b key: Record identifier
+\n\t- \b sz_key: Size of record identifier
+\n\t- \b data: Pointer to record content
+\n\t- \b sz_data: Size of record content
+
+\brief \b Returns: Pointer to record content in case of success, NULL otherwise.
+
+@exception \c EILIB file operation errors */
 void *hf_add(_hf_context_t *, const void *key, int sz_key, void *data, unsigned int sz_data);
 
 /**
-Search for record in hash file
-key	- record identifier
-sz_key	- size of record identifier
-sz_data	- [out] size of record content
-returns pointer to record or NULL  */
+\brief Search for record in hash file
+\par \b Parameters:
+\n\t- \b context: Structure containing file header and other parameters
+\n\t- \b key: Record identifier
+\n\t- \b sz_key: Size of record identifier
+\n\t- \b sz_data: [out] Size of record content (filled by the function)
+
+\brief \b Returns: Pointer to record or NULL.
+
+@exception \c EILIB file operation errors */
 void *hf_get(_hf_context_t *, const void *key, int sz_key, unsigned int *sz_data);
 
 /**
-Append empty block to hash file
-n	- size of empty block in kilobytes
-returns 0 for siccess or -1 for fail */
+\brief Append empty block to hash file.
+\par \b Parameters:
+\n\t- \b context: Structure containing file header and other parameters
+\n\t- \b size: Number of bytes in each block
+
+\brief \b Returns: 0 for success, -1 for failure.
+
+@exception \c EILIB file operation errors */
 int hf_append(_hf_context_t *, unsigned int n);
 
 /**
-returns pointer to file header. */
+\brief Return the file header.
+\par \b Parameters:
+\n\t- \b context: Structure containing file header and other parameters
+
+\brief \b Returns: Pointer to file header structure.
+
+@exception \c EILIB file operation errors */
 _hf_hdr_t *hf_header(_hf_context_t *);
 
 /**
-Enumeration of records
-pcb	- pointer to callback (will be called for every record)
-	  return 0 from pcb means continue enumeration, less than zero means break
-udata	- pointer to user defined data
-returns 0 for success, otherwise -1 */
+\brief Enumerate all keys in hash table.
+\par \b Parameters:
+\n\t- \b context: Structure containing file header and other parameters
+\n\t- \b callback: Callback function for enumerating each key
+
+\brief \b Returns: 0 for success or -1 for error.
+
+@exception \c EILIB file operation errors */
 int hf_enum(_hf_context_t *, int (*pcb)(void *rec_ptr, unsigned int size,void *udata), void *udata);
 
 /**
-Extend hash table to 'new_capacity'
-returns 0 for success or < 0 for fail */
+\brief Extend hash table.
+\par \b Parameters:
+\n\t- \b context: Structure containing file header and other parameters
+\n\t- \b size: New size of the hash table
+
+\brief \b Returns: 0 for success, -1 for failure.
+
+@exception \c EILIB file operation errors */
 int hf_extend(_hf_context_t *, unsigned int new_capacity);
 
 #ifdef __cplusplus
