@@ -16,9 +16,11 @@ _err_t resp_exec_v(_cstr_t argv[],
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
 
 	if ((r = proc_exec_v(&proc, argv[0], argv)) == E_OK) {
-		do {
+		 while (tout > 0 && proc_status(&proc) == -1) {
 			int nin = (in) ? in(bin, sizeof(bin), udata) : 0;
 			int nout = 0;
+
+			usleep(10000);
 
 			if (nin > 0) {
 				proc_write(&proc, bin, nin);
@@ -34,11 +36,9 @@ _err_t resp_exec_v(_cstr_t argv[],
 				tout = timeout_s * 1000000;
 			}
 
-			if (nin == 0 && nout == 0) {
+			if (nin == 0 && nout == 0)
 				tout -= 10000;
-				usleep(10000);
-			}
-		} while (tout && proc_status(&proc) == -1);
+		}
 	}
 
 	return r;
@@ -83,7 +83,9 @@ _err_t resp_exec(_cstr_t cmd,
 	split_by_space(cmd, strlen(cmd), argv, 256);
 
 	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
-	r = resp_exec_v((_cstr_t *)argv, out, in, udata, atoi(argv_value(OPT_TIMEOUT)));
+	if ((r = resp_exec_v((_cstr_t *)argv, out, in, udata, atoi(argv_value(OPT_TIMEOUT)))) != E_OK) {
+		LOG("http[%d] Failed to execute '%s'\n", getpid(), cmd);
+	}
 
 	while (argv[i]) {
 		free(argv[i]);
