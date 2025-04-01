@@ -31,6 +31,9 @@ static void send_header(int rc, _cstr_t header_append = NULL) {
 			sz_hdr += n;
 
 		close(hdr_fd);
+
+		// remove environment variable
+		unsetenv(RES_HEADER_FILE);
 	}
 
 	// end of header
