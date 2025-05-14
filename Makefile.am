@@ -1,4 +1,5 @@
 SUBDIRS = lib \
 	listener \
-	http
+	http \
+	json
 AUTOMAKE_OPTIONS = foreign subdir-objects

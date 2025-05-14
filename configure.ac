@@ -3,7 +3,8 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_FILES([Makefile
 		lib/Makefile
 		listener/Makefile
-		http/Makefile])
+		http/Makefile
+		json/Makefile])
 AC_CHECK_HEADER([openssl/ssl.h], [], [AC_MSG_FAILURE([could not find ssl header])])
 AC_CHECK_LIB([ssl],
              [OPENSSL_init_ssl],
