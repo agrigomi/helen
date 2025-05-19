@@ -14,5 +14,6 @@ listener/hl
 autom4te.cache/*
 *~
 http/http
+json/jpath
 tags
 
