@@ -163,7 +163,7 @@ static void server_accept(_listen_t *pl) {
 							ssl_io(pl, cl_cxt); // start I/O thread
 							SSL_free(cl_cxt);
 						} else {
-							TRACE("hl[%d]: Failed to allocate SSL conection context\n", getpid());
+							LOG("hl[%d]: Failed to allocate SSL conection context\n", getpid());
 						}
 					} else { // execute child
 						dup2(sl, STDIN_FILENO);
@@ -171,7 +171,7 @@ static void server_accept(_listen_t *pl) {
 						if (pl->no_stderr == false)
 							dup2(sl, STDERR_FILENO);
 						if (execve(pl->argv[0], pl->argv, pl->env) == -1)
-							TRACE("hl[%d]: Unable to execute '%s'\n", getpid(), pl->argv[0]);
+							LOG("hl[%d]: Unable to execute '%s'\n", getpid(), pl->argv[0]);
 					}
 
 					exit(0);
@@ -188,7 +188,7 @@ static void server_accept(_listen_t *pl) {
 			}
 		}
 
-		TRACE("hl: Server '%s' stopped.\n", pl->name);
+		LOG("hl: Server '%s' stopped.\n", pl->name);
 
 		pl->flags |= LISTEN_STOPPED;
 		return NULL;
@@ -211,7 +211,7 @@ void cfg_start(void) {
 				memset(&ifr, 0, sizeof(ifr));
 				snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), p->ifc);
 				if (setsockopt(p->server_fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-					TRACE("hl[%d] Unknown interface name '%s'\n", getpid(), p->ifc);
+					LOG("hl[%d] Unknown interface name '%s'\n", getpid(), p->ifc);
 				}
 			}
 
@@ -223,15 +223,15 @@ void cfg_start(void) {
 				if (listen(p->server_fd, SOMAXCONN) == 0)
 					server_accept(p);
 				else {
-					TRACE("hl: Failed to listen '%s' on port %d\n", p->name, p->port);
+					LOG("hl: Failed to listen '%s' on port %d\n", p->name, p->port);
 					close(p->server_fd);
 				}
 			} else {
-				TRACE("hl: Failed to bind '%s' on port %d\n", p->name, p->port);
+				LOG("hl: Failed to bind '%s' on port %d\n", p->name, p->port);
 				close(p->server_fd);
 			}
 		} else {
-			TRACE("hl: Error oppening socket for '%s'\n", p->name);
+			LOG("hl: Error oppening socket for '%s'\n", p->name);
 		}
 	}, NULL);
 }
@@ -395,29 +395,29 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 					if (SSL_CTX_use_certificate_file(l.ssl_context, l.ssl_cert, SSL_FILETYPE_PEM) > 0) {
 						if (SSL_CTX_use_PrivateKey_file(l.ssl_context, l.ssl_key, SSL_FILETYPE_PEM) > 0) {
 							if (!SSL_CTX_check_private_key(l.ssl_context)) {
-								TRACE("hl: Private key does not match the public certificate");
+								LOG("hl: Private key does not match the public certificate");
 								SSL_CTX_free(l.ssl_context);
 								l.ssl_context = NULL;
 								l.ssl_enable = false;
 							}
 						} else {
-							TRACE("hl: Failed to load key file '%s'\n", l.ssl_key);
+							LOG("hl: Failed to load key file '%s'\n", l.ssl_key);
 							SSL_CTX_free(l.ssl_context);
 							l.ssl_context = NULL;
 							l.ssl_enable = false;
 						}
 					} else {
-						TRACE("hl: Failed to load certificate file '%s'\n", l.ssl_cert);
+						LOG("hl: Failed to load certificate file '%s'\n", l.ssl_cert);
 						SSL_CTX_free(l.ssl_context);
 						l.ssl_context = NULL;
 						l.ssl_enable = false;
 					}
 				} else {
-					TRACE("hl: Failed to create SSL context\n");
+					LOG("hl: Failed to create SSL context\n");
 					l.ssl_enable = false;
 				}
 			} else {
-				TRACE("hl[%d] Unsupported SSL method '%s'\n", getpid(), l.ssl_method);
+				LOG("hl[%d] Unsupported SSL method '%s'\n", getpid(), l.ssl_method);
 			}
 		}
 
@@ -425,7 +425,7 @@ static void add_listener(_json_context_t *p_jcxt, _json_pair_t *p_jp) {
 		l.server_fd = -1;
 		_gv_listen.push_back(l);
 	} else {
-		TRACE("hl: Error parsing section for '%s'\n", l.name);
+		LOG("hl: Error parsing section for '%s'\n", l.name);
 	}
 }
 
@@ -466,7 +466,7 @@ _err_t cfg_load(_cstr_t fname) {
 
 			r = E_OK;
 		} else {
-			TRACEfl("hl: Failed to parse JSON file '%s'\n", fname);
+			LOG("hl: Failed to parse JSON file '%s'\n", fname);
 		}
 
 		json_destroy_context(p_jcxt);
