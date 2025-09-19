@@ -13,6 +13,7 @@ listener/hl
 .dirstamp
 autom4te.cache/*
 *~
+json/jpath
 http/http
 json/jpath
 tags
