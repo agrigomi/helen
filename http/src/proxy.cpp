@@ -56,7 +56,7 @@ _err_t proxy_http(void) {
 			size_t in = 0;
 
 			while (t--) {
-				if (verify_input(sfd)) {
+				if (verify_input(sfd) > 0) {
 					if ((in = read(sfd, respb, sz_respb)) > 0) {
 						if (io_write(respb, in) <= 0)
 							break;
@@ -117,7 +117,7 @@ _err_t proxy_https(void) {
 			size_t in = 0;
 
 			while (t--) {
-				if (verify_input(SSL_get_fd(ssl))) {
+				if (verify_input(SSL_get_fd(ssl)) > 0) {
 					if ((in = SSL_read(ssl, respb, sz_respb)) > 0) {
 						if (io_write(respb, in) <= 0)
 							break;
