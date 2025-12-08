@@ -160,13 +160,13 @@ int main(int argc, char *argv[]) {
 
 				return -1;
 			} else {
-				char buffer[256];
+				char jpath[256];
 
 _again_:
 				fprintf(stderr, "jpath: ");
 
-				fgets(buffer, sizeof(buffer), stdin);
-				_json_value_t *p_jv = json_select(_gp_jcxt_, buffer, NULL);
+				fgets(jpath, sizeof(jpath), stdin);
+				_json_value_t *p_jv = json_select(_gp_jcxt_, jpath, NULL);
 
 				if (p_jv) {
 					print_value(p_jv);
