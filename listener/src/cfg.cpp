@@ -105,7 +105,7 @@ static void server_accept(_listen_t *pl) {
 		pl->flags |= LISTEN_RUNNING;
 
 		pthread_setname_np(pl->thread, pl->name);
-		TRACE("hl: Server '%s' running\n", pl->name);
+		LOG("hl: Server '%s' running\n", pl->name);
 		while (pl->flags & LISTEN_RUNNING) {
 			int sl;
 			struct sockaddr_in client;
@@ -113,7 +113,6 @@ static void server_accept(_listen_t *pl) {
 			pid_t cpid;
 
 			if ((sl = accept(pl->server_fd, (struct sockaddr *) &client, &clen)) > 0) {
-				int i = 0;
 				_char_t strip[64] = "";
 				struct sockaddr_storage addr;
 				struct sockaddr_in *s = (struct sockaddr_in *)&addr;
@@ -176,12 +175,16 @@ static void server_accept(_listen_t *pl) {
 
 					exit(0);
 				} else {
+#if _DEBUG_
+					int i = 0;
+
 					TRACE("hl[%d]: Running '%s'; PID: %d; '", getpid(), pl->name, cpid);
 					while (pl->argv[i]) {
 						fprintf(stderr, "%s ", pl->argv[i]);
 						i++;
 					}
 					fprintf(stderr, "'\n");
+#endif
 				}
 
 				close(sl);
