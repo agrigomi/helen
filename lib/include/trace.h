@@ -3,10 +3,10 @@
 
 #include <stdio.h>
 
-#ifdef _TRACE_
+#if _TRACE_
 #define TRACE(...)      { fprintf_timestamp(stderr); fprintf(stderr, __VA_ARGS__); }
 #define TRACEb(ptr, n)	fprintf_bytes(stderr, ptr, n)
-#ifdef _DEBUG_
+#if _DEBUG_
 #define TRACEfl(...)    fprintf(stderr, "[%s] [%d] ", __FILE__, __LINE__);\
                         fprintf(stderr, __VA_ARGS__);
 #define TRACE1(msg, val) fprintf(stderr, "[%s] [%d] ", __FILE__, __LINE__);\
