@@ -7,7 +7,7 @@
 #include "trace.h"
 
 static void send_header(int rc, _cstr_t header_append = NULL) {
-	_char_t hdr[4096];
+	_char_t hdr[8192];
 	_cstr_t proto = getenv(RES_PROTOCOL);
 	_cstr_t hdr_fname = getenv(RES_HEADER_FILE);
 	_cstr_t rc_text = rt_resp_text(rc);
