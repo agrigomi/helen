@@ -24,7 +24,25 @@ make
 ~~~
 
 ### How to configure
-* Configuring virtual hosts
-~~~
-Will be described later
-~~~
+* Configuring virtual hosts.
+
+In your home folder, create a directory called `test` for example. It should contain the file `http.json`. The contents of `test/http.json` look like this:
+```
+"http": {
+	"default": {
+		"root": "<full path to documents root>"
+	},
+
+	"vhost": [
+		{
+			"host":	"www.example.com",
+			"root": "<full path to documents root>"
+		},
+		{
+			"host":	"www.example.net",
+			"root": "<full path to documents root>"
+		}
+	]
+}
+```
+
