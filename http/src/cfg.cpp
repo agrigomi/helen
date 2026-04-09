@@ -526,7 +526,7 @@ _vhost_stat_cmp_:
 			while (access(lock_path, F_OK) == F_OK)
 				usleep(10000);
 
-			goto _vhost_stat_cmp_;
+			goto _vhost_stat_cmp_; /* F-Of goto haters */
 		}
 
 		touch(lock_path);
@@ -546,7 +546,7 @@ _err_t cfg_load_mapping(_vhost_t *pvhost) {
 	_err_t r = E_FAIL;
 	_vhost_mapping_t::iterator it = _g_mapping_.find(pvhost->host);
 
-	if (it == _g_mapping_.end()) {
+	if (it == _g_mapping_.end()) { /* No mapping, load the mapping table once */
 		_hf_context_t hf_cxt;
 		char src_path[MAX_PATH+256] = "", dat_path[MAX_PATH+256] = "";
 		char *root = pvhost->root;
@@ -557,20 +557,26 @@ _err_t cfg_load_mapping(_vhost_t *pvhost) {
 
 _mapping_stat_cmp_:
 		if (stat_compare(src_path, dat_path) != E_OK) {
+			/* .dat file missing, need to 'precompile' JSON */
 			char lock_path[MAX_PATH+256] = "";
 
 			snprintf(lock_path, sizeof(lock_path), "%s/%s", root, MAPPING_LOCK);
 
 			if (access(lock_path, F_OK) == F_OK) {
+				/* locked, need to wait */
 				while (access(lock_path, F_OK) == F_OK)
 					usleep(10000);
 
+				/* Try again to check for the presence of the .dat file */
 				goto _mapping_stat_cmp_;
 			}
 
+			/* lock till compile */
 			touch(lock_path);
+
 			LOG("http[%d] Compile mapping '%s'\n", getpid(), src_path);
 			r = compile_mapping(src_path, dat_path, &hf_cxt);
+
 			unlink(lock_path);
 		} else
 			r = hf_open(&hf_cxt, dat_path, O_RDONLY);
