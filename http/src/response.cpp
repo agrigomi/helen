@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string>
 #include "str.h"
 #include "argv.h"
 #include "http.h"
@@ -120,6 +121,7 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 		_char_t date[128];
 		tm *_tm = gmtime(&(st.st_mtime));
 		int imethod = rt_resolve_method(getenv(REQ_METHOD));
+		std::string hdr_append((header_append) ? header_append : "");
 
 		if (imethod != METHOD_HEAD) {
 			hdr_set(RES_CONTENT_LENGTH, st.st_size);
@@ -138,13 +140,19 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 
 		// set content-type
 		if (ext) {
+			_vhost_t *pvhost = cfg_get_vhost(getenv(REQ_HOST));
+			_mapping_t *ext_map = cfg_get_ext_mapping(pvhost->host, ext);
+
+			if (ext_map)
+				hdr_append += ext_map->ext._header_append();
+
 			mime_open();
 			hdr_set(RES_CONTENT_TYPE, mime_resolve(ext));
 		}
 
 		// ...
 
-		send_header(rc, header_append);
+		send_header(rc, hdr_append.c_str());
 
 		if (imethod != METHOD_HEAD) {
 			// send file content
