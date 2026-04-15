@@ -4,6 +4,8 @@
 * SSL
 * Virtual hosts
 * gzip and deflate compression
+* Ranges
+* Proxy requests (danger because of anonimus for now)
 * url and error handling
 * JSON configurable
 
