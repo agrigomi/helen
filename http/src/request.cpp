@@ -147,6 +147,7 @@ _err_t req_receive(int timeout, int *req_len) {
 			// parse request
 			if ((r = decode_request(line)) == E_OK) {
 				_cstr_t scheme = getenv(REQ_SCHEME);
+				bool proxy = argv_check(OPT_PROXY);
 
 				if (!scheme)
 					scheme = SCHEME_FILE;
@@ -163,15 +164,15 @@ _err_t req_receive(int timeout, int *req_len) {
 					*req_len = rl;
 					setenv(RES_ENV_SERVER, SERVER_NAME, 1);
 					setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
-				} else if (strcmp(scheme, SCHEME_HTTP) == 0 && argv_check(OPT_PROXY))
+				} else if (strcmp(scheme, SCHEME_HTTP) == 0 && proxy)
 					r = proxy_http();
-				else if (strcmp(scheme, SCHEME_HTTPS) == 0 && argv_check(OPT_PROXY))
+				else if (strcmp(scheme, SCHEME_HTTPS) == 0 && proxy)
 					r = proxy_https();
-				else {
+				else {	/* Read the rest of requwst */
 					while (io_read_line(line, sizeof(line)) > 0) {
 						TRACE("%s\n", line);
 					}
-
+					TRACE("http[%d] Service unavailable\n", getpid());
 					r = send_error_response(NULL, HTTPRC_SERVICE_UNAVAILABLE);
 				}
 			} else {

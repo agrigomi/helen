@@ -605,8 +605,10 @@ _err_t res_processing(void) {
 					case METHOD_CONNECT:
 						if (argv_check(OPT_PROXY))
 							r = do_connect(url);
-						else
+						else {
+							TRACE("htt[[%d] Proxy not enabled\n", getpid());
 							r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
+						}
 						break;
 					default:
 						TRACE("http[%d] Unsupported  method '%s' #%d\n", getpid(), method, imethod);
