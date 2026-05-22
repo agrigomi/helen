@@ -170,6 +170,8 @@ static _err_t send_file_response(_cstr_t path, int rc, struct stat *pstat = NULL
 	return r;
 }
 
+#define EXECFN_PREFIX	"/tmp/http-"
+
 static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 			bool header = true, _cstr_t header_append = NULL, _cstr_t ext = NULL) {
 	_char_t tmp_fname[64];
@@ -181,8 +183,8 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 		int tmp_fd = -1, hdr_fd = -1;
 		unsigned int encoding = rt_select_encoding(ext);
 
-		snprintf(tmp_fname, sizeof(tmp_fname), "/tmp/http-%d.out", getpid());
-		snprintf(hdr_fname, sizeof(hdr_fname), "/tmp/http-%d.hdr", getpid());
+		snprintf(tmp_fname, sizeof(tmp_fname), EXECFN_PREFIX "%d.out", getpid());
+		snprintf(hdr_fname, sizeof(hdr_fname), EXECFN_PREFIX "%d.hdr", getpid());
 
 		if ((hdr_fd = open(hdr_fname, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) > 0) {
 			setenv(RES_HEADER_FILE, hdr_fname, 1);
@@ -253,7 +255,7 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 
 				return r;
 			},
-			NULL) == E_OK ? E_DONE : -1;
+			NULL) == E_OK ? E_DONE : E_FAIL;
 	}
 
 	return r;
