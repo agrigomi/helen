@@ -24,6 +24,7 @@
 #define OPT_SSL_METHOD		"ssl-method"
 #define OPT_PROXY		"proxy"
 #define OPT_CACHE		"cache"
+#define OPT_LIMIT		"limit"
 
 #define SERVER_NAME		"Helen"
 #define ALLOW_METHOD		"GET, POST, HEAD"

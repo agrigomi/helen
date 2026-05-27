@@ -19,6 +19,8 @@ static SSL	*_g_ssl_out_ = NULL;
 static bool	_g_fork_ = false;
 static bool	_g_listening_ = false;
 static int	_g_server_fd_ = -1;
+unsigned int 	_g_cc_limit_ = 0;
+unsigned int 	_g_cc_ = 0; /* connection counter */
 
 static _err_t setup_ssl_context(const char *method, const char *cert, const char *key) {
 	_err_t r = E_FAIL;
@@ -117,6 +119,11 @@ static void server_accept(int server_fd, int tmout) {
 		socklen_t clen = sizeof(struct sockaddr_in);
 		pid_t cpid;
 
+		if (_g_cc_ >= _g_cc_limit_) {
+			usleep(1000000);
+			continue;
+		}
+
 		if ((sl = accept(server_fd, (struct sockaddr *) &client, &clen)) > 0) {
 			_char_t strip[64] = "";
 			struct sockaddr_storage addr;
@@ -147,7 +154,7 @@ static void server_accept(int server_fd, int tmout) {
 				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			}
 
-			TRACE("http[%d] Incoming connection from %s\n", getpid(), strip);
+			TRACE("http[%d] Incoming connection from %s CC=%d\n", getpid(), strip, _g_cc_);
 			setenv("PEER_IP", strip, 1);
 
 			if ((cpid = fork()) == 0) { // child
@@ -171,7 +178,8 @@ static void server_accept(int server_fd, int tmout) {
 				break;
 			} else if (cpid < 0) {
 				LOG("http[%d] Failed to fork #%d '%s'\n", getpid(), errno, strerror(errno));
-			}
+			} else // after successful creation of child process
+				_g_cc_++; // increase the number of concurrent connections
 
 			close(sl);
 		} else {
@@ -453,6 +461,8 @@ _err_t io_start(void) {
 	}
 
 	if (argv_check(OPT_LISTEN)) {
+		_g_cc_limit_ = atoi(argv_value(OPT_LIMIT));
+
 		// setup server
 		if ((r = setup_server_socket(&_g_server_fd_)) == E_OK)
 			// start listening

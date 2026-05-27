@@ -25,9 +25,12 @@ static _argv_t args[] = {
 	{ OPT_SSL_METHOD,	OF_LONG | OF_VALUE,			NULL,				"SSL server method (SSLv23, TLSv1_2, DTLS, TLS)" },
 	{ OPT_PROXY,		OF_LONG,				NULL,				"Enable proxy" },
 	{ OPT_CACHE,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)"/tmp/http_cache",	"Cache location (--" OPT_CACHE "=<path>)" },
+	{ OPT_LIMIT,		OF_LONG | OF_VALUE | OF_PRESENT,	(_str_t)"256",			"Limit of concurrent connections (--" OPT_LIMIT "=<<limit>)" },
 	//...
 	{ NULL,			0,					NULL,				NULL }
 };
+
+extern unsigned int 	_g_cc_; /* connection counter */
 
 static void usage(void) {
 	int n = 0;
@@ -55,7 +58,8 @@ int main(int argc, char *argv[]) {
 		while (1) {
 			if ((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) <= 0)
 				break;
-			TRACE("http[%d] SIGCHLD: PID=%u, STATUS=%d\n", getpid(), pid, stat);
+			_g_cc_--;
+			TRACE("http[%d] SIGCHLD: PID=%u, STATUS=%d CC=%d\n", getpid(), pid, stat, _g_cc_);
 		}
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
