@@ -85,6 +85,9 @@ int main(int argc, char *argv[]) {
 	signal(SIGPIPE, [](__attribute__((unused)) int sig) {
 		TRACE("http[%d] SIGPIPE\n", getpid());
 	});
+	signal(SIGBUS, [](__attribute__((unused)) int sig) {
+		TRACE("hl[%d]: SIGBUS\n", getpid());
+	});
 
 	if (argv_parse(argc, (_cstr_t *)argv, args)) {
 		if (argv_check(OPT_SHELP) || argv_check(OPT_HELP))
