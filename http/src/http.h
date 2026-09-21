@@ -315,8 +315,9 @@ struct __attribute__((packed)) mapping_ext {
 typedef struct mapping_url _mapping_url_t;
 typedef struct mapping_err _mapping_err_t;
 typedef struct mapping_ext _mapping_ext_t;
+typedef struct mapping_http _mapping_t;
 
-typedef struct __attribute__((packed)) {
+struct __attribute__((packed)) mapping_http {
 	unsigned char type;
 	union {
 		_mapping_url_t	url;
@@ -448,7 +449,7 @@ typedef struct __attribute__((packed)) {
 
 		return r;
 	}
-} _mapping_t;
+};
 
 typedef struct {
 	unsigned long begin; // start offset in content
