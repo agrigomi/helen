@@ -33,7 +33,8 @@ static _u8 *map_file(_cstr_t fname, int *fd, _u64 *size) {
 	if (_fd > 0) {
 		_size = lseek(_fd, 0, SEEK_END);
 		lseek(_fd, 0, SEEK_SET);
-		if ((r = (_u8 *)mmap(NULL, _size, PROT_READ, MAP_SHARED, _fd, 0))) {
+		r = (_u8 *)mmap(NULL, _size, PROT_READ, MAP_SHARED, _fd, 0);
+		if ((r && r != MAP_FAILED)) {
 			*fd = _fd;
 			*size = _size;
 		} else

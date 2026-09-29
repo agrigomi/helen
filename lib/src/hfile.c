@@ -16,7 +16,8 @@ static unsigned char *map_file(const char *fname, int flags, int *fd, unsigned l
 	if (_fd > 0) {
 		_size = lseek(_fd, 0, SEEK_END);
 		lseek(_fd, 0, SEEK_SET);
-		if ((r = (unsigned char *)mmap(NULL, _size, map_flags, MAP_SHARED, _fd, 0))) {
+		r = (unsigned char *)mmap(NULL, _size, map_flags, MAP_SHARED, _fd, 0);
+		if (r && r != MAP_FAILED) {
 			*fd = _fd;
 			*size = _size;
 		} else
@@ -307,7 +308,8 @@ void *hf_get(_hf_context_t *p_cxt, const void *key, int sz_key, unsigned int *sz
 			/* Compare hash */
 			if (memcmp(p_rec->hash, hash_buffer, SHA1HashSize) == 0) {
 				/* This is a requested record */
-				*sz_data = p_rec->size;
+				if (sz_data)
+					*sz_data = p_rec->size;
 
 				/* Return data (behind the record header) */
 				r = (void *)(p_rec + 1);
