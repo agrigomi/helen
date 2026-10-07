@@ -39,6 +39,8 @@ _err_t resp_exec_v(_cstr_t argv[],
 			if (nin == 0 && nout == 0)
 				tout -= 10000;
 		}
+
+		proc_close_pipe(&proc);
 	}
 
 	return r;

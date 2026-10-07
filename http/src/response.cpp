@@ -222,6 +222,7 @@ static _err_t send_exec(_cstr_t cmd, int rc, bool input = false,
 				}
 
 				proc_wait(&proc);
+				proc_close_pipe(&proc);
 			}
 
 			close(tmp_fd);
