@@ -32,20 +32,20 @@ static _err_t setup_ssl_context(const char *method, const char *cert, const char
 				if (ssl_load_key(_g_ssl_context_, key))
 					r = E_OK;
 				else {
-					LOG("http[%d] Failed to load SSL key '%s'\n", getpid(), key);
+					LOG_WRN("http[%d] Failed to load SSL key '%s'\n", getpid(), key);
 					SSL_CTX_free(_g_ssl_context_);
 					_g_ssl_context_ = NULL;
 				}
 			} else {
-				LOG("http[%d] Failed to load SSL certificate '%s'\n", getpid(), cert);
+				LOG_ERR("http[%d] Failed to load SSL certificate '%s'\n", getpid(), cert);
 				SSL_CTX_free(_g_ssl_context_);
 				_g_ssl_context_ = NULL;
 			}
 		} else {
-			LOG("http[%d] Unable to allocate SSL context\n", getpid());
+			LOG_ERR("http[%d] Unable to allocate SSL context\n", getpid());
 		}
 	} else {
-		LOG("http[%d] Unsupported SSL method '%s'\n", getpid(), method);
+		LOG_ERR("http[%d] Unsupported SSL method '%s'\n", getpid(), method);
 	}
 
 	return r;
@@ -88,9 +88,9 @@ static _err_t setup_server_socket(int *p_fd) {
 			memset(&ifr, 0, sizeof(ifr));
 			snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), ifc);
 			if (setsockopt(*p_fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-				LOG("http[%d] Can't bind to interface '%s'\n", getpid(), ifc);
+				LOG_WRN("http[%d] Can't bind to interface '%s'\n", getpid(), ifc);
 			} else {
-				LOG("http[%d] Listening on interface '%s'\n", getpid(), ifc);
+				LOG_INF("http[%d] Listening on interface '%s'\n", getpid(), ifc);
 			}
 		}
 
@@ -154,7 +154,7 @@ static void server_accept(int server_fd, int tmout) {
 				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			}
 
-			TRACE("http[%d] Incoming connection from %s CC=%d\n", getpid(), strip, _g_cc_);
+			TRACE_INF("http[%d] Incoming connection from %s CC=%d\n", getpid(), strip, _g_cc_);
 			setenv("PEER_IP", strip, 1);
 
 			if ((cpid = fork()) == 0) { // child
@@ -164,9 +164,9 @@ static void server_accept(int server_fd, int tmout) {
 
 					if (setup_ssl_io(sl, &cl_cxt) == E_OK) {
 						_g_ssl_in_ = _g_ssl_out_ = cl_cxt;
-						TRACE("http[%d] Fork PID = %d SSL I/O\n", getpid(), getpid());
+						TRACE_INF("http[%d] Fork PID = %d SSL I/O\n", getpid(), getpid());
 					} else {
-						TRACE("http[%d] Failed to setup SSL I/O\n", getpid());
+						LOG_WRN("http[%d] Failed to setup SSL I/O\n", getpid());
 					}
 				} else {
 					dup2(sl, STDIN_FILENO);
@@ -177,7 +177,7 @@ static void server_accept(int server_fd, int tmout) {
 				close(_g_server_fd_);
 				break;
 			} else if (cpid < 0) {
-				LOG("http[%d] Failed to fork #%d '%s'\n", getpid(), errno, strerror(errno));
+				LOG_ERR("http[%d] Failed to fork #%d '%s'\n", getpid(), errno, strerror(errno));
 			} else // after successful creation of child process
 				_g_cc_++; // increase the number of concurrent connections
 

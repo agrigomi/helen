@@ -59,34 +59,34 @@ int main(int argc, char *argv[]) {
 			if ((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) <= 0)
 				break;
 			_g_cc_--;
-			TRACE("http[%d] SIGCHLD: PID=%u, STATUS=%d CC=%d\n", getpid(), pid, stat, _g_cc_);
+			TRACE_INF("http[%d] SIGCHLD: PID=%u, STATUS=%d CC=%d\n", getpid(), pid, stat, _g_cc_);
 		}
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
-		TRACE("http[%d] SIGSEGV\n", getpid());
+		LOG_ERR("http[%d] SIGSEGV\n", getpid());
 		dump_stack();
 		exit(0);
 	});
 	signal(SIGINT, [](__attribute__((unused)) int sig) {
-		TRACE("http[%d] SIGINT\n", getpid());
+		LOG_INF("http[%d] SIGINT\n", getpid());
 		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGKILL, [](__attribute__((unused)) int sig) {
-		TRACE("http[%d] SIGKILL\n", getpid());
+		LOG_WRN("http[%d] SIGKILL\n", getpid());
 		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGTERM, [](__attribute__((unused)) int sig) {
-		TRACE("http[%d] SIGTERM\n", getpid());
+		LOG_WRN("http[%d] SIGTERM\n", getpid());
 		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGPIPE, [](__attribute__((unused)) int sig) {
-		TRACE("http[%d] SIGPIPE\n", getpid());
+		LOG_ERR("http[%d] SIGPIPE\n", getpid());
 	});
 	signal(SIGBUS, [](__attribute__((unused)) int sig) {
-		TRACE("hl[%d]: SIGBUS\n", getpid());
+		LOG_WRN("hl[%d]: SIGBUS\n", getpid());
 	});
 
 	if (argv_parse(argc, (_cstr_t *)argv, args)) {

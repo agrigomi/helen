@@ -169,27 +169,29 @@ _err_t req_receive(int timeout, int *req_len) {
 				else if (strcmp(scheme, SCHEME_HTTPS) == 0 && proxy)
 					r = proxy_https();
 				else {	/* Read the rest of requwst */
+#ifdef _TRACE_
 					while (io_read_line(line, sizeof(line)) > 0) {
 						TRACE("%s\n", line);
 					}
-					TRACE("http[%d] Service unavailable\n", getpid());
+#endif
+					LOG_WRN("http[%d] PROXY Service unavailable\n", getpid());
 					r = send_error_response(NULL, HTTPRC_SERVICE_UNAVAILABLE);
 				}
 			} else {
-				TRACE("http[%d] Invalid request\n", getpid());
+				TRACE_ERR("http[%d] Invalid request\n", getpid());
 				send_error_response(NULL, HTTPRC_BAD_REQUEST);
 				r = E_DONE;
 			}
 		} else if(rl == 0) {
 			// empty request
 			r = E_OK;
-			TRACE("http[%d] Empty request\n", getpid());
+			TRACE_WRN("http[%d] Empty request\n", getpid());
 		} else {
 			TRACE("http[%d] Disconnect (remote close)\n", getpid());
 		}
 	} else {
 		send_error_response(NULL, HTTPRC_REQUEST_TIMEOUT);
-		TRACE("http[%d] Request timed out\n", getpid());
+		TRACE_WRN("http[%d] Request timed out\n", getpid());
 	}
 
 	return r;

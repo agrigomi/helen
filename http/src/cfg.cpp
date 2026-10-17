@@ -153,7 +153,7 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 				}
 			}
 		} else {
-			LOG("http[%d] Error parsing '%s'\n", getpid(), json_fname);
+			LOG_ERR("http[%d] Error parsing '%s'\n", getpid(), json_fname);
 
 			if (p_jcxt) {
 				char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
@@ -164,7 +164,7 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 					fprintf(stderr, "%c", *(pc + p_jcxt->err_pos + i));
 				fprintf(stderr, "\n");
 			} else
-				LOG("http[%d] NULL JSON context\n", getpid());
+				LOG_ERR("http[%d] NULL JSON context\n", getpid());
 		}
 
 		json_destroy_context(p_jcxt);
@@ -481,7 +481,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 				}
 			}
 		} else {
-			LOG("http[%d] Error parsing '%s'\n", getpid(), json_fname);
+			LOG_ERR("http[%d] Error parsing '%s'\n", getpid(), json_fname);
 
 			if (p_jcxt) {
 				char *pc = (char *)p_jcxt->p_htc->ht_content.p_content;
@@ -492,7 +492,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 					fprintf(stderr, "%c", *(pc + p_jcxt->err_pos + i));
 				fprintf(stderr, "\n");
 			} else
-				LOG("http[%d] NULL JSON context\n", getpid());
+				LOG_ERR("http[%d] NULL JSON context\n", getpid());
 		}
 
 		json_destroy_context(p_jcxt);
@@ -530,10 +530,11 @@ _vhost_stat_cmp_:
 		}
 
 		touch(lock_path);
-		LOG("http[%d] Compile virtual hosts\n", getpid());
+		LOG_INF("http[%d] Compile virtual hosts\n", getpid());
 		r = compile_vhosts(src_path, dat_path);
 		unlink(lock_path);
 	} else {
+		LOG_INF("http[%d] Load virtual hosts mapping '%s'\n", getpid(), dat_path);
 		r = hf_open(&_g_vhost_cxt_, dat_path, O_RDONLY);
 	}
 
@@ -574,12 +575,14 @@ _mapping_stat_cmp_:
 			/* lock till compile */
 			touch(lock_path);
 
-			LOG("http[%d] Compile mapping '%s'\n", getpid(), src_path);
+			LOG_INF("http[%d] Compile mapping '%s'\n", getpid(), src_path);
 			r = compile_mapping(src_path, dat_path, &hf_cxt);
 
 			unlink(lock_path);
-		} else
+		} else {
+			LOG_INF("http[%d] Load mapping file '%s'\n", getpid(), dat_path);
 			r = hf_open(&hf_cxt, dat_path, O_RDONLY);
+		}
 
 		_g_mapping_.insert({pvhost->host, hf_cxt});
 	} else

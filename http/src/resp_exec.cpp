@@ -65,7 +65,7 @@ static void split_by_space(_cstr_t str, _u32 str_size, _str_t dst_arr[], _u32 ar
 				if (i >= arr_size)
 					break;
 			} else {
-				TRACEfl("Unable to allocate memory !\n");
+				LOG_ERR("Unable to allocate memory !\n");
 			}
 		}
 
@@ -86,7 +86,7 @@ _err_t resp_exec(_cstr_t cmd,
 
 	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
 	if ((r = resp_exec_v((_cstr_t *)argv, out, in, udata, atoi(argv_value(OPT_TIMEOUT)))) != E_OK) {
-		LOG("http[%d] Failed to execute '%s'\n", getpid(), cmd);
+		LOG_ERR("http[%d] Failed to execute '%s'\n", getpid(), cmd);
 	}
 
 	while (argv[i]) {

@@ -87,7 +87,7 @@ _no_compression_:
 				goto _no_compression_;
 			}
 		} else {
-			LOG("http[%d] Failed to allocate buffer (%d bytes) for compression\n", getpid(), sz);
+			LOG_ERR("http[%d] Failed to allocate buffer (%d bytes) for compression\n", getpid(), sz);
 			goto _no_compression_;
 		}
 	}
@@ -531,10 +531,10 @@ static _err_t do_connect(_cstr_t url) {
 
 	if (port) {
 		if (port == 443 || port == 8443) {
-			TRACE("http[%d] Try secure connection to '%s:%d'\n", getpid(), _g_proxy_dst_host_, port);
+			TRACE_INF("http[%d] Try secure connection to '%s:%d'\n", getpid(), _g_proxy_dst_host_, port);
 			r = proxy_ssl_connect(_g_proxy_dst_host_, port);
 		} else {
-			TRACE("http[%d] Try connection to '%s:%d'\n", getpid(), _g_proxy_dst_host_, port);
+			TRACE_INF("http[%d] Try connection to '%s:%d'\n", getpid(), _g_proxy_dst_host_, port);
 			r = proxy_raw_connect(_g_proxy_dst_host_, port);
 		}
 	}
@@ -559,7 +559,7 @@ static _err_t process_file_request(int imethod, _vhost_t *p_vhost, _cstr_t path)
 					break;
 			}
 		} else {
-			TRACE("http[%d] Forbidden path '%s'\n", getpid(), rpath);
+			LOG_WRN("http[%d] Forbidden path '%s'\n", getpid(), rpath);
 			r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
 		}
 	} else {
@@ -609,22 +609,22 @@ _err_t res_processing(void) {
 						if (argv_check(OPT_PROXY))
 							r = do_connect(url);
 						else {
-							TRACE("htt[[%d] Proxy not enabled\n", getpid());
+							TRACE_WRN("htt[[%d] Proxy not enabled\n", getpid());
 							r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 						}
 						break;
 					default:
-						TRACE("http[%d] Unsupported  method '%s' #%d\n", getpid(), method, imethod);
+						TRACE_WRN("http[%d] Unsupported  method '%s' #%d\n", getpid(), method, imethod);
 						r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 						break;
 				}
 			}
 		} else {
-			TRACE("http[%d] Bad request method: '%s' [%d]; host: %s\n", getpid(), method, imethod, (p_vhost) ? p_vhost->host : "");
+			TRACE_WRN("http[%d] Bad request method: '%s' [%d]; host: %s\n", getpid(), method, imethod, (p_vhost) ? p_vhost->host : "");
 			r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
 		}
 	} else {
-		TRACE("http[%d] Unsupported  method '%s'\n", getpid(), method);
+		TRACE_WRN("http[%d] Unsupported  method '%s'\n", getpid(), method);
 		r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 	}
 
