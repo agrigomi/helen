@@ -524,6 +524,10 @@ int io_write(const char *buffer, int size);
 formatted output
 return >0 for number of sent bytes <=0 means fail */
 int io_fwrite(const char *fmt, ...);
+/**
+Return peer IP as string */
+const char *io_get_peer_ip(void);
+
 // Request
 void set_env_var(char *vstr, const char *div);
 _err_t req_receive(int timeout, int *req_len);

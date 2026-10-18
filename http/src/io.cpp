@@ -21,6 +21,7 @@ static bool	_g_listening_ = false;
 static int	_g_server_fd_ = -1;
 unsigned int 	_g_cc_limit_ = 0;
 unsigned int 	_g_cc_ = 0; /* connection counter */
+static char	_g_peer_ip_[32] = "";
 
 static _err_t setup_ssl_context(const char *method, const char *cert, const char *key) {
 	_err_t r = E_FAIL;
@@ -125,13 +126,12 @@ static void server_accept(int server_fd, int tmout) {
 		}
 
 		if ((sl = accept(server_fd, (struct sockaddr *) &client, &clen)) > 0) {
-			_char_t strip[64] = "";
 			struct sockaddr_storage addr;
 			struct sockaddr_in *s = (struct sockaddr_in *)&addr;
 			socklen_t _len = sizeof addr;
 
 			getpeername(sl, (struct sockaddr*)&addr, &_len);
-			inet_ntop(AF_INET, &s->sin_addr, strip, sizeof(strip));
+			inet_ntop(AF_INET, &s->sin_addr, _g_peer_ip_, sizeof(_g_peer_ip_));
 
 			_s32 opt = 1;
 			setsockopt(sl, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt));
@@ -154,8 +154,8 @@ static void server_accept(int server_fd, int tmout) {
 				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			}
 
-			TRACE_INF("http[%d] Incoming connection from %s CC=%d\n", getpid(), strip, _g_cc_);
-			setenv("PEER_IP", strip, 1);
+			TRACE_INF("http[%d] Incoming connection from %s CC=%d\n", getpid(), _g_peer_ip_, _g_cc_);
+			setenv("PEER_IP", _g_peer_ip_, 1);
 
 			if ((cpid = fork()) == 0) { // child
 				_g_fork_ = true;
@@ -222,6 +222,10 @@ int io_get_stdin_fd(void) {
 		r = SSL_get_fd(_g_ssl_in_);
 
 	return r;
+}
+
+const char *io_get_peer_ip(void) {
+	return _g_peer_ip_;
 }
 
 int verify_input(int fd) {

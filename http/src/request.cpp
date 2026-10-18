@@ -174,11 +174,11 @@ _err_t req_receive(int timeout, int *req_len) {
 						TRACE("%s\n", line);
 					}
 #endif
-					LOG_WRN("http[%d] PROXY Service unavailable\n", getpid());
+					LOG_WRN("http[%d] PROXY Service unavailable. IP='%s'\n", getpid(), io_get_peer_ip());
 					r = send_error_response(NULL, HTTPRC_SERVICE_UNAVAILABLE);
 				}
 			} else {
-				TRACE_ERR("http[%d] Invalid request\n", getpid());
+				TRACE_ERR("http[%d] Invalid request. IP=%s\n", getpid(), io_get_peer_ip());
 				send_error_response(NULL, HTTPRC_BAD_REQUEST);
 				r = E_DONE;
 			}

@@ -559,7 +559,7 @@ static _err_t process_file_request(int imethod, _vhost_t *p_vhost, _cstr_t path)
 					break;
 			}
 		} else {
-			LOG_WRN("http[%d] Forbidden path '%s'\n", getpid(), rpath);
+			LOG_WRN("http[%d] Forbidden path '%s' IP=%s\n", getpid(), rpath, io_get_peer_ip());
 			r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
 		}
 	} else {
@@ -609,12 +609,12 @@ _err_t res_processing(void) {
 						if (argv_check(OPT_PROXY))
 							r = do_connect(url);
 						else {
-							TRACE_WRN("htt[[%d] Proxy not enabled\n", getpid());
+							LOG_WRN("http[%d] Proxy not enabled. IP=%s\n", getpid(), io_get_peer_ip());
 							r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 						}
 						break;
 					default:
-						TRACE_WRN("http[%d] Unsupported  method '%s' #%d\n", getpid(), method, imethod);
+						LOG_WRN("http[%d] Unsupported  method '%s' #%d IP=%s\n", getpid(), method, imethod, io_get_peer_ip());
 						r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 						break;
 				}
