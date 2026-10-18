@@ -178,7 +178,7 @@ _err_t req_receive(int timeout, int *req_len) {
 					r = send_error_response(NULL, HTTPRC_SERVICE_UNAVAILABLE);
 				}
 			} else {
-				TRACE_ERR("http[%d] Invalid request. IP=%s\n", getpid(), io_get_peer_ip());
+				LOG_ERR("http[%d] Invalid request. IP=%s\n", getpid(), io_get_peer_ip());
 				send_error_response(NULL, HTTPRC_BAD_REQUEST);
 				r = E_DONE;
 			}
