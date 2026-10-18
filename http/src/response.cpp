@@ -559,7 +559,7 @@ static _err_t process_file_request(int imethod, _vhost_t *p_vhost, _cstr_t path)
 					break;
 			}
 		} else {
-			LOG_WRN("http[%d] Forbidden path '%s' IP=%s\n", getpid(), rpath, io_get_peer_ip());
+			LOG_WRN("http[%d] Forbidden path  IP='%s' PATH='%s'\n", getpid(), io_get_peer_ip(), rpath);
 			r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
 		}
 	} else {
