@@ -24,10 +24,10 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...);
 
 
 #if _TRACE_
-#define TRACE(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KWHT, __VA_ARGS__); fprintf(stderr, KNRM); }
-#define TRACE_INF(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KNRM, __VA_ARGS__); fprintf(stderr, KNRM); }
-#define TRACE_WRN(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KCYN, __VA_ARGS__); fprintf(stderr, KNRM); }
-#define TRACE_ERR(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KRED, __VA_ARGS__); fprintf(stderr, KNRM); }
+#define TRACE(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KWHT, __VA_ARGS__); }
+#define TRACE_INF(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KNRM, __VA_ARGS__); }
+#define TRACE_WRN(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KCYN, __VA_ARGS__); }
+#define TRACE_ERR(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KRED, __VA_ARGS__); }
 #define TRACEb(ptr, n)	fprintf_bytes(stderr, ptr, n)
 #if _DEBUG_
 #define TRACEfl(...)    fprintf(stderr, KYEL "[%s] [%d] ", __FILE__, __LINE__);\
@@ -46,8 +46,8 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...);
 #endif // _TRACE_
 
 #define LOG(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KWHT, __VA_ARGS__); }
-#define LOG_INF(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KNRM, __VA_ARGS__); fprintf(stderr, KNRM); }
-#define LOG_ERR(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KRED, __VA_ARGS__); fprintf(stderr, KNRM); }
-#define LOG_WRN(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KCYN, __VA_ARGS__); fprintf(stderr, KNRM); }
+#define LOG_INF(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KNRM, __VA_ARGS__); }
+#define LOG_ERR(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KRED, __VA_ARGS__); }
+#define LOG_WRN(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KCYN, __VA_ARGS__); }
 
 #endif

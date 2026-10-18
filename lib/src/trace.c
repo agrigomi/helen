@@ -33,8 +33,8 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...) {
 
 	va_start(va, fmt);
 
-	fprintf(stream, color);
-	vfprintf(stream, fmt, va);
-
+	fprintf(stream, color); /* switch to requested color */
+	vfprintf(stream, fmt, va); /* Print message */
+	fprintf(stream, KNRM); /* switch back to normal color */
 	va_end(va);
 }
