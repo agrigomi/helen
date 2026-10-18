@@ -401,6 +401,11 @@ int io_read_line(char *buffer, int size) {
 		}
 	}
 
+	if (r == size) {
+		LOG_WRN("http[%d] Buffer overflow IP=%s\n", getpid(), _g_peer_ip_);
+		r = 0;
+	}
+
 	return r;
 }
 
