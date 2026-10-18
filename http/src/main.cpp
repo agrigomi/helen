@@ -55,9 +55,7 @@ int main(int argc, char *argv[]) {
 		int stat;
 		pid_t	pid;
 
-		while (1) {
-			if ((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) <= 0)
-				break;
+		while ((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) > 0) {
 			_g_cc_--;
 			TRACE_INF("http[%d] SIGCHLD: PID=%u, STATUS=%d CC=%d\n", getpid(), pid, stat, _g_cc_);
 		}
