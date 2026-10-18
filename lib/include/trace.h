@@ -40,6 +40,9 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...);
 #endif // _DEBUG_
 #else
 #define TRACE(...)
+#define TRACE_INF(...)
+#define TRACE_WRN(...)
+#define TRACE_ERR(...)
 #define TRACEb(ptr, n)
 #define TRACEfl(...)
 #define TRACE1(msg, val)
