@@ -39,13 +39,10 @@ int main(int argc, char *argv[]) {
 	int r = 0;
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {
-		int stat;
 		pid_t	pid;
 
-		while (1) {
-			if ((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) <= 0)
-				break;
-			TRACE("hl[%d]: SIGCHLD: PID=%u, STATUS=%d\n", getpid(), pid, stat);
+		while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
+			TRACE_INF("http[%d] SIGCHLD: PID=%u\n", getpid(), pid);
 		}
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
