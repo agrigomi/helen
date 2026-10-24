@@ -324,30 +324,46 @@ static _json_err_t parse_string_value(_json_context_t *p_jcxt, _json_string_t *p
 	unsigned long pos = ht_position(p_jcxt->p_htc);
 	_ht_content_t *p_hc = &p_jcxt->p_htc->ht_content;
 	unsigned char term = '"';
+	unsigned char is_escaped = 0;
+	unsigned char string_terminated = 0;
 
-	if (_c == '\'' || _c == '"')
+	if (_c == '\'' || _c == '"') {
 		term = _c;
-	else {
+
+		if (p_jstr->data == NULL) {
+			p_jstr->data = (char *)ht_ptr(p_jcxt->p_htc);
+		}
+
+		/* Main character reading stream loop */
+		while (!string_terminated && (c = p_jcxt->p_htc->pf_read(p_hc, &pos))) {
+			if (c == term && !is_escaped) {
+				/* Found a valid unescaped closing quote */
+				string_terminated = 1;
+			} else if (c == '\\' && !is_escaped) {
+				/* Current character is a backslash and is not already escaped */
+				/* This signals that the immediate next character will be escaped */
+				is_escaped = 1;
+			} else {
+				/* Regular literal characters or an already escaped character sequence */
+				is_escaped = 0;
+			}
+		}
+
+		/* Stream evaluation process step */
+		if (string_terminated) {
+			p_jstr->size = ht_symbols(p_jcxt->p_htc,
+						(unsigned char *)p_jstr->data,
+						(unsigned char *)p_hc->p_content + pos);
+			*C = c;
+		} else {
+			/* Stream reached EOF without encountering a closing termination symbol */
+			r = JSON_PARSE_ERROR;
+			p_jcxt->err_pos = pos;
+		}
+	} else {
 		r = JSON_PARSE_ERROR;
 		p_jcxt->err_pos = pos;
-		return r;
 	}
-
-	if (p_jstr->data == NULL)
-		p_jstr->data = (char *)ht_ptr(p_jcxt->p_htc);
-
-	while ((c = p_jcxt->p_htc->pf_read(p_hc, &pos))) {
-		if(c == term && _c != '\\')
-			break;
-
-		_c = c;
-	}
-
-	if (r == JSON_OK)
-		p_jstr->size = ht_symbols(p_jcxt->p_htc,
-					(unsigned char *)p_jstr->data,
-					(unsigned char *)p_hc->p_content + pos);
-	*C = c;
 
 	return r;
 }
