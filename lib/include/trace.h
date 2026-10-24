@@ -2,6 +2,7 @@
 #define __TRACE_H__
 
 #include <stdio.h>
+#include <sys/file.h>
 
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"
@@ -24,10 +25,10 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...);
 
 
 #if _TRACE_
-#define TRACE(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KWHT, __VA_ARGS__); }
-#define TRACE_INF(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KNRM, __VA_ARGS__); }
-#define TRACE_WRN(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KCYN, __VA_ARGS__); }
-#define TRACE_ERR(...)      { fprintf_timestamp(stderr); color_fprintf(stderr, KRED, __VA_ARGS__); }
+#define TRACE(...)          { color_fprintf(stderr, KWHT, __VA_ARGS__); }
+#define TRACE_INF(...)      { color_fprintf(stderr, KNRM, __VA_ARGS__); }
+#define TRACE_WRN(...)      { color_fprintf(stderr, KCYN, __VA_ARGS__); }
+#define TRACE_ERR(...)      { color_fprintf(stderr, KRED, __VA_ARGS__); }
 #define TRACEb(ptr, n)	fprintf_bytes(stderr, ptr, n)
 #if _DEBUG_
 #define TRACEfl(...)    fprintf(stderr, KYEL "[%s] [%d] ", __FILE__, __LINE__);\
@@ -48,9 +49,9 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...);
 #define TRACE1(msg, val)
 #endif // _TRACE_
 
-#define LOG(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KWHT, __VA_ARGS__); }
-#define LOG_INF(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KNRM, __VA_ARGS__); }
-#define LOG_ERR(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KRED, __VA_ARGS__); }
-#define LOG_WRN(...) { fprintf_timestamp(stderr); color_fprintf(stderr, KCYN, __VA_ARGS__); }
+#define LOG(...)     { color_fprintf(stderr, KWHT, __VA_ARGS__); }
+#define LOG_INF(...) { color_fprintf(stderr, KNRM, __VA_ARGS__); }
+#define LOG_ERR(...) { color_fprintf(stderr, KRED, __VA_ARGS__); }
+#define LOG_WRN(...) { color_fprintf(stderr, KCYN, __VA_ARGS__); }
 
 #endif

@@ -21,18 +21,19 @@ void fprintf_timestamp(FILE *stream) {
 	time_t t = time(NULL);
 	struct tm *_tm = localtime(&t);
 
-	color_fprintf(stream, KNRM, "[");
-	color_fprintf(stream, KWHT, "%02d%02d%02d %02d%02d%02d",
+	fprintf(stream, "%s[", KNRM);
+	fprintf(stream, "%s%02d%02d%02d %02d%02d%02d", KWHT,
 		_tm->tm_year - 100, _tm->tm_mon + 1, _tm->tm_mday,
 		_tm->tm_hour, _tm->tm_min, _tm->tm_sec);
-	color_fprintf(stream, KNRM, "] ");
+	fprintf(stream, "%s] ", KNRM);
 }
 
 void color_fprintf(FILE *stream, const char *color, const char *fmt, ...) {
 	va_list va;
 
-	va_start(va, fmt);
+	fprintf_timestamp(stream);
 
+	va_start(va, fmt);
 	fprintf(stream, color); /* switch to requested color */
 	vfprintf(stream, fmt, va); /* Print message */
 	fprintf(stream, KNRM); /* switch back to normal color */
