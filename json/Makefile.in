@@ -257,6 +257,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 jpath_SOURCES = src/main.c
+jpath_DEPENDENCIES = $(LIBS);
 all: all-am
 
 .SUFFIXES:
