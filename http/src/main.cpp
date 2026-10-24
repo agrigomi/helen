@@ -52,12 +52,11 @@ int main(int argc, char *argv[]) {
 	int r = 0;
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {
-		int stat;
 		pid_t	pid;
 
-		while ((pid = wait3 (&stat, WNOHANG, (struct rusage *)NULL )) > 0) {
+		while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
 			_g_cc_--;
-			TRACE_INF("http[%d] SIGCHLD: PID=%u, STATUS=%d CC=%d\n", getpid(), pid, stat, _g_cc_);
+			TRACE_INF("http[%d] SIGCHLD: PID=%u, CC=%d\n", getpid(), pid, _g_cc_);
 		}
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
