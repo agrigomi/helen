@@ -7,4 +7,4 @@ nobase_include_HEADERS = src/cfg.h
 hl_SOURCES = src/main.cpp \
 	src/cfg.cpp \
 	src/ssl_io.cpp
-
+hl_DEPENDENCIES = $(LIBS)

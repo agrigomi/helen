@@ -315,6 +315,7 @@ http_SOURCES = src/main.cpp \
 		src/mime.cpp \
 		src/resp_cache.cpp
 
+http_DEPENDENCIES = $(LIBS)
 all: all-am
 
 .SUFFIXES:
