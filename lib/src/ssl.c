@@ -87,20 +87,76 @@ int ssl_write(SSL *pssl, const void *buffer, int size) {
 }
 
 int ssl_read_line(SSL *pssl, char *buffer, int size) {
-	int r = 0;
+	int r = -1;
 
-	while (r < size) {
-		if (SSL_read(pssl, (buffer + r), 1) == 1) {
-			if (*(buffer + r) == '\n') {
-				*(buffer + r) = 0;
+	if (pssl != NULL && size > 1) {
+		int total_read = 0;
+		int is_line_complete = 0;
+		char peek_buf[1024];
+
+		/* Loop blocks and waits until a full line (\n) is composed or buffer fills up */
+		while (!is_line_complete && total_read < (size - 1)) {
+			int max_to_peek = (size - 1) - total_read;
+			if (max_to_peek > (int)sizeof(peek_buf)) {
+				max_to_peek = (int)sizeof(peek_buf);
+			}
+
+			/* Look into OpenSSL internal decrypted buffer without consuming the data */
+			int bytes_peeked = SSL_peek(pssl, peek_buf, max_to_peek);
+
+			if (bytes_peeked > 0) {
+				peek_buf[bytes_peeked] = '\0';
+				char *newline_ptr = strchr(peek_buf, '\n');
+
+				if (newline_ptr != NULL) {
+					/* Found the newline marker. Calculate how much to consume from this chunk */
+					int chunk_length = (int)(newline_ptr - peek_buf) + 1;
+
+					/* Actually drain the exact line slice from the SSL stream */
+					int bytes_drained = SSL_read(pssl, buffer + total_read, chunk_length);
+					if (bytes_drained > 0) {
+						total_read += bytes_drained;
+						is_line_complete = 1;
+					} else {
+						break; /* SSL read error or connection drop */
+					}
+				} else {
+					/* No newline found yet. Consume the entire peeked chunk blocking-wise */
+					/* so the next loop iteration can wait for fresh encrypted TLS records */
+					int bytes_drained = SSL_read(pssl, buffer + total_read, bytes_peeked);
+					if (bytes_drained > 0) {
+						total_read += bytes_drained;
+					} else {
+						break;
+					}
+				}
+			} else {
+				/* SSL_peek returned <= 0. Check for structural errors or clean EOF */
+				int ssl_err = SSL_get_error(pssl, bytes_peeked);
+				if (ssl_err == SSL_ERROR_WANT_READ || ssl_err == SSL_ERROR_WANT_WRITE) {
+					continue; /* Retry if the underlying non-blocking socket requires more I/O */
+				}
 				break;
-			} else if (*(buffer + r) == '\r')
-				;
-			else
-				r++;
+			}
+		}
+
+		/* Post-processing the final gathered string buffer safely */
+		if (total_read > 0) {
+			r = total_read;
+			buffer[r] = '\0'; /* Always ensure safe null-termination */
+
+			/* Safely strip the trailing newline character marker */
+			if (buffer[r - 1] == '\n') {
+				buffer[r - 1] = '\0';
+				r--;
+			}
+			/* Safely strip the carriage return if it was part of the HTTP \r\n schema */
+			if (r > 0 && buffer[r - 1] == '\r') {
+				buffer[r - 1] = '\0';
+				r--;
+			}
 		} else {
-			r = -1;
-			break;
+			r = -1; /* Signal an absolute failure or immediate SSL EOF */
 		}
 	}
 
