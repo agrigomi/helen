@@ -135,12 +135,10 @@ static void server_accept(int server_fd, int tmout) {
 
 			_s32 opt = 1;
 			setsockopt(sl, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt));
-			setsockopt(sl, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-			setsockopt(sl, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
 			setsockopt(sl, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
 			setsockopt(sl, IPPROTO_TCP, TCP_QUICKACK, &opt, sizeof(opt));
 			opt = 10;
-			setsockopt(sl, SOL_TCP, TCP_KEEPIDLE, &opt, sizeof(opt));
+			setsockopt(sl, IPPROTO_TCP, TCP_KEEPIDLE, &opt, sizeof(opt));
 			opt = 3;
 			setsockopt(sl, SOL_TCP, TCP_KEEPCNT, &opt, sizeof(opt));
 
@@ -304,7 +302,7 @@ _err_t io_create_raw_client_connection(_cstr_t domain, int port, int *socket_fd)
 		if ((*socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) > 0) {
 			struct sockaddr_in server;
 
-			bzero(&server, sizeof(server));
+			memset(&server, 0, sizeof(server));
 			server.sin_family = AF_INET;
 			memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
 			server.sin_port = htons(port);
@@ -385,21 +383,38 @@ int io_read_line(char *buffer, int size) {
 		// SSL input
 		r = ssl_read_line(_g_ssl_in_, buffer, size);
 	else { // STDIO input
-		while (r < size) {
-			if (read(STDIN_FILENO, (buffer + r), 1) == 1) {
-				if (*(buffer + r) == '\n') {
-					*(buffer + r) = 0;
+		char peak_buf[1024];
+		int bytes_peeked = 0;
+
+		memset(buffer, 0, size);
+
+		// Look into the kernel socket buffer without removing the content
+		if ((bytes_peeked = recv(STDIN_FILENO, peak_buf, sizeof(peak_buf), MSG_PEEK| MSG_DONTWAIT)) > 0) {
+			int n = 0;
+
+			while (n < bytes_peeked) {
+				if (peak_buf[n] == '\n') {
+					n++;
 					break;
-				} else if (*(buffer + r) == '\r')
-					;
-				else
-					r++;
-			} else {
-				r = -1;
-				break;
+				} else
+					n++;
 			}
-		}
+
+			// Now perform the actual read slice consuming exactly one line out of the stream
+			if ((n = read(STDIN_FILENO, buffer, n)) > 0) {
+				while (n--) {
+					if (buffer[n] == '\n' || buffer[n] == '\r')
+						buffer[n] = 0;
+					else
+						break;
+				}
+
+				r = strlen(buffer);
+			}
+		} else
+			r = -1;
 	}
+	TRACE("[%d]<< '%s'\n", r, buffer);
 
 	if (r == size) {
 		LOG_WRN("http[%d] Buffer overflow IP=%s\n", getpid(), _g_peer_ip_);
