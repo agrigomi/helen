@@ -103,7 +103,7 @@ static _err_t setup_server_socket(int *p_fd) {
 			if (listen(*p_fd, SOMAXCONN) == 0)
 				r = E_OK;
 			else
-				close(*p_fd);
+close(*p_fd);
 		} else
 			close(*p_fd);
 	}
@@ -373,6 +373,23 @@ void io_close_ssl_client_connection(SSL *ssl) {
 	}
 }
 
+static int peek_line(int fd) {
+	int r = -1;
+	char peek_buf[2048];
+	int peek_bytes = 0;
+
+	if ((peek_bytes = recv(fd, peek_buf, sizeof(peek_buf), MSG_PEEK| MSG_DONTWAIT)) > 0) {
+		for (r = 0; r < peek_bytes; r++) {
+			if (peek_buf[r] == '\n') {
+				r++; // include LF
+				break;
+			}
+		}
+	}
+
+	return r;
+}
+
 /**
 Read line from input stream
 return line size (without \r\n) */
@@ -383,33 +400,27 @@ int io_read_line(char *buffer, int size) {
 		// SSL input
 		r = ssl_read_line(_g_ssl_in_, buffer, size);
 	else { // STDIO input
-		char peak_buf[1024];
-		int bytes_peeked = 0;
+		int lsz = peek_line(STDIN_FILENO);
 
 		memset(buffer, 0, size);
 
 		// Look into the kernel socket buffer without removing the content
-		if ((bytes_peeked = recv(STDIN_FILENO, peak_buf, sizeof(peak_buf), MSG_PEEK| MSG_DONTWAIT)) > 0) {
+		if (lsz > 0) {
 			int n = 0;
 
-			while (n < bytes_peeked) {
-				if (peak_buf[n] == '\n') {
-					n++;
-					break;
-				} else
-					n++;
-			}
-
 			// Now perform the actual read slice consuming exactly one line out of the stream
-			if ((n = read(STDIN_FILENO, buffer, n)) > 0) {
-				while (n--) {
-					if (buffer[n] == '\n' || buffer[n] == '\r')
-						buffer[n] = 0;
-					else
-						break;
+			if ((n = read(STDIN_FILENO, buffer, lsz)) > 0) {
+				if (buffer[n - 1] == '\n') {
+					buffer[n - 1] = 0;
+					n--;
 				}
 
-				r = strlen(buffer);
+				if (buffer[n - 1] == '\r') {
+					buffer[n - 1] = 0;
+					n--;
+				}
+
+				r = n;
 			}
 		} else
 			r = -1;
