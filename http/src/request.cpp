@@ -129,6 +129,15 @@ _err_t decode_request(char *request) {
 	return r;
 }
 
+static bool is_empty_line(const char *s) {
+	bool r = false;
+
+	if (*s == '\r' || *s == '\n')
+		r = true;
+
+	return r;
+}
+
 _err_t req_receive(int timeout, int *req_len) {
 	_err_t r = E_FAIL;
 	char line[2048];
@@ -140,10 +149,12 @@ _err_t req_receive(int timeout, int *req_len) {
 	// set default protocol version
 	setenv(RES_PROTOCOL, STR_HTTP_1, 1);
 
-	if (io_wait_input(timeout) > 0) {
-		// read request line
-		if ((rl = io_read_line(line, sizeof(line))) > 0) {
-			// parse request
+	// read request line
+	if ((rl = io_read_line(line, sizeof(line), timeout)) > 0) {
+		// parse request
+		if (!is_empty_line(line)) {
+			rl = str_remove_eol(line);
+			TRACE("<< %s\n",line);
 			if ((r = decode_request(line)) == E_OK) {
 				_cstr_t scheme = getenv(REQ_SCHEME);
 				bool proxy = argv_check(OPT_PROXY);
@@ -155,7 +166,10 @@ _err_t req_receive(int timeout, int *req_len) {
 					int hl = 0; // header line length
 
 					// read header lines
-					while ((hl = io_read_line(line, sizeof(line))) > 0) {
+					while ((hl = io_read_line(line, sizeof(line), timeout)) > 0 &&
+							!is_empty_line(line)) {
+						hl = str_remove_eol(line);
+						TRACE("<< %s\n",line);
 						rl += hl;
 						set_env_var(line, ":");
 					}
@@ -164,13 +178,14 @@ _err_t req_receive(int timeout, int *req_len) {
 					setenv(RES_ENV_SERVER, SERVER_NAME, 1);
 					setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
 				} else if (strcmp(scheme, SCHEME_HTTP) == 0 && proxy)
-					r = proxy_http();
+					r = proxy_http(timeout);
 				else if (strcmp(scheme, SCHEME_HTTPS) == 0 && proxy)
-					r = proxy_https();
-				else {	/* Read the rest of requwst */
+					r = proxy_https(timeout);
+				else {	// Read the rest of requwst
 #ifdef _TRACE_
-					while (io_read_line(line, sizeof(line)) > 0) {
-						TRACE("%s\n", line);
+					while (io_read_line(line, sizeof(line), timeout) > 0) {
+						str_remove_eol(line);
+						TRACE("<< %s\n", line);
 					}
 #endif
 					LOG_WRN("http[%d] PROXY Service unavailable. IP='%s'\n", getpid(), io_get_peer_ip());
@@ -181,16 +196,13 @@ _err_t req_receive(int timeout, int *req_len) {
 				send_error_response(NULL, HTTPRC_BAD_REQUEST);
 				r = E_DONE;
 			}
-		} else if(rl == 0) {
+		 } else {
 			// empty request
 			r = E_OK;
 			TRACE_WRN("http[%d] Empty request\n", getpid());
-		} else {
-			TRACE("http[%d] Disconnect (remote close)\n", getpid());
 		}
 	} else {
-		send_error_response(NULL, HTTPRC_REQUEST_TIMEOUT);
-		TRACE_WRN("http[%d] Request timed out\n", getpid());
+		TRACE("http[%d] Disconnect (remote close)\n", getpid());
 	}
 
 	return r;
