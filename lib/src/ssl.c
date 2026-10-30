@@ -144,17 +144,6 @@ int ssl_read_line(SSL *pssl, char *buffer, int size) {
 		if (total_read > 0) {
 			r = total_read;
 			buffer[r] = '\0'; /* Always ensure safe null-termination */
-
-			/* Safely strip the trailing newline character marker */
-			if (buffer[r - 1] == '\n') {
-				buffer[r - 1] = '\0';
-				r--;
-			}
-			/* Safely strip the carriage return if it was part of the HTTP \r\n schema */
-			if (r > 0 && buffer[r - 1] == '\r') {
-				buffer[r - 1] = '\0';
-				r--;
-			}
 		} else {
 			r = -1; /* Signal an absolute failure or immediate SSL EOF */
 		}

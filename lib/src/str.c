@@ -114,3 +114,14 @@ void str_div_s(char *str, const char *div, char **left, char **right) {
 	}
 }
 
+/*  Removes trailing EOL and returns the new size */
+size_t str_remove_eol(char *str) {
+	size_t l = strlen(str);
+	size_t i = l;
+
+	for (; i > 0 && *(str + i) < 0x20; --i)
+		*(str + i) = 0;
+
+	return i;
+}
+
