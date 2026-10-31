@@ -27,7 +27,7 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...);
 #if _TRACE_
 #define TRACE(...)          { color_fprintf(stderr, KWHT, __VA_ARGS__); }
 #define TRACE_INF(...)      { color_fprintf(stderr, KNRM, __VA_ARGS__); }
-#define TRACE_WRN(...)      { color_fprintf(stderr, KCYN, __VA_ARGS__); }
+#define TRACE_WRN(...)      { color_fprintf(stderr, KYEL, __VA_ARGS__); }
 #define TRACE_ERR(...)      { color_fprintf(stderr, KRED, __VA_ARGS__); }
 #define TRACEb(ptr, n)	fprintf_bytes(stderr, ptr, n)
 #if _DEBUG_
@@ -52,6 +52,6 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...);
 #define LOG(...)     { color_fprintf(stderr, KWHT, __VA_ARGS__); }
 #define LOG_INF(...) { color_fprintf(stderr, KNRM, __VA_ARGS__); }
 #define LOG_ERR(...) { color_fprintf(stderr, KRED, __VA_ARGS__); }
-#define LOG_WRN(...) { color_fprintf(stderr, KCYN, __VA_ARGS__); }
+#define LOG_WRN(...) { color_fprintf(stderr, KYEL, __VA_ARGS__); }
 
 #endif
