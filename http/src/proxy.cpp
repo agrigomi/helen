@@ -5,12 +5,17 @@
 #include "http.h"
 #include "trace.h"
 
-static int read_header(_str_t b, int s, int timeout) {
+static int read_header(_str_t b, int s) {
 	int sz_lb = 0, sz = 0;
 
 	// Read the rest of the request
-	while ((sz = io_read_line(b + sz_lb, s - sz_lb, timeout)) > 0)
+	while ((sz = io_read_line(b + sz_lb, s - sz_lb)) > 0) {
 		sz_lb += sz;
+		strcat(b, "\r\n");
+		sz_lb += 2;
+	}
+	strcat(b, "\r\n");
+	sz_lb += 2;
 
 	// Read content
 	sz = io_verify_input();
@@ -20,7 +25,7 @@ static int read_header(_str_t b, int s, int timeout) {
 	return sz_lb;
 }
 
-_err_t proxy_http(int timeout) {
+_err_t proxy_http(void) {
 	_err_t r = E_FAIL;
 	_cstr_t method = getenv(REQ_METHOD);
 	_cstr_t domain = getenv(REQ_DOMAIN);
@@ -37,7 +42,7 @@ _err_t proxy_http(int timeout) {
 
 	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, _path, proto);
 
-	sz_lb += read_header(lb + sz_lb, sizeof(lb) - sz_lb, timeout);
+	sz_lb += read_header(lb + sz_lb, sizeof(lb) - sz_lb);
 	TRACE("http[%d] Request: %s\n", getpid(), lb);
 
 	if ((r = io_create_raw_client_connection(domain, (port) ? atoi(port) : 80, &sfd)) == E_OK) {
@@ -81,7 +86,7 @@ _err_t proxy_http(int timeout) {
 	return r;
 }
 
-_err_t proxy_https(int timeout) {
+_err_t proxy_https(void) {
 	_err_t r = E_FAIL;
 	_cstr_t method = getenv(REQ_METHOD);
 	_cstr_t domain = getenv(REQ_DOMAIN);
@@ -98,7 +103,7 @@ _err_t proxy_https(int timeout) {
 
 	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, _path, proto);
 
-	sz_lb += read_header(lb + sz_lb, sizeof(lb) - sz_lb, timeout);
+	sz_lb += read_header(lb + sz_lb, sizeof(lb) - sz_lb);
 	TRACE("http[%d] Request: %s\n", getpid(), lb);
 
 	if ((r = io_create_ssl_client_connection(domain, (port) ? atoi(port) : 443, &ssl)) == E_OK) {

@@ -373,15 +373,6 @@ void io_close_ssl_client_connection(SSL *ssl) {
 	}
 }
 
-bool io_is_alive(int fd) {
-	bool r = true;
-
-	if (fcntl(fd, F_GETFL) == -1 && errno == EBADF)
-		r = false;
-
-	return r;
-}
-
 static int peek_line(int fd) {
 	int r = -1;
 	char peek_buf[2048];
@@ -394,9 +385,6 @@ static int peek_line(int fd) {
 				break;
 			}
 		}
-	} else {
-		if (io_is_alive(fd))
-			r = 0;
 	}
 
 	return r;
@@ -405,30 +393,43 @@ static int peek_line(int fd) {
 /**
 Read line from input stream
 return line size (without \r\n) */
-int io_read_line(char *buffer, int size, int timeout) {
-	int r = -1;
+int io_read_line(char *buffer, int size) {
+	int r = 0;
 
-	if (io_wait_input(timeout) > 0) {
-		if (_g_ssl_in_)
-			// SSL input
-			r = ssl_read_line(_g_ssl_in_, buffer, size);
-		else { // STDIO input
-			int lsz = peek_line(STDIN_FILENO);
+	if (_g_ssl_in_)
+		// SSL input
+		r = ssl_read_line(_g_ssl_in_, buffer, size);
+	else { // STDIO input
+		int lsz = peek_line(STDIN_FILENO);
 
-			memset(buffer, 0, size);
+		memset(buffer, 0, size);
 
-			// Look into the kernel socket buffer without removing the content
-			if (lsz > 0)
-				// Now perform the actual read slice consuming exactly one line out of the stream
-				r = read(STDIN_FILENO, buffer, lsz);
-		}
+		// Look into the kernel socket buffer without removing the content
+		if (lsz > 0) {
+			int n = 0;
 
-		if (r == size) {
-			LOG_WRN("http[%d] Buffer overflow IP=%s\n", getpid(), _g_peer_ip_);
-			r = 0;
-		}
-	} else {
-		TRACE_INF("http[%d] TIMEOUT\n", getpid());
+			// Now perform the actual read slice consuming exactly one line out of the stream
+			if ((n = read(STDIN_FILENO, buffer, lsz)) > 0) {
+				if (buffer[n - 1] == '\n') {
+					buffer[n - 1] = 0;
+					n--;
+				}
+
+				if (buffer[n - 1] == '\r') {
+					buffer[n - 1] = 0;
+					n--;
+				}
+
+				r = n;
+			}
+		} else
+			r = -1;
+	}
+	TRACE("[%d]<< '%s'\n", r, buffer);
+
+	if (r == size) {
+		LOG_WRN("http[%d] Buffer overflow IP=%s\n", getpid(), _g_peer_ip_);
+		r = 0;
 	}
 
 	return r;

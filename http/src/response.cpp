@@ -563,7 +563,7 @@ static _err_t process_file_request(int imethod, _vhost_t *p_vhost, _cstr_t path)
 			r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
 		}
 	} else {
-		TRACE_WRN("http[%d] File not found '%s'\n", getpid(), doc_path);
+		TRACE("http[%d] File not found '%s'\n", getpid(), doc_path);
 		r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
 	}
 

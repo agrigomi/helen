@@ -513,7 +513,7 @@ void io_close_ssl_client_connection(SSL *ssl);
 /**
 Read line from input stream
 return line size (without \r\n) */
-int io_read_line(char *buffer, int size, int timeout);
+int io_read_line(char *buffer, int size);
 /**
 return >0 for number of received bytes <=0 means fail */
 int io_read(char *buffer, int size);
@@ -587,8 +587,8 @@ void hdr_clear(void);
 int hdr_export(_str_t hb, int sz);
 
 // proxy
-_err_t proxy_http(int timeout);
-_err_t proxy_https(int timeout);
+_err_t proxy_http(void);
+_err_t proxy_https(void);
 _err_t proxy_raw_connect(_cstr_t domain, int port);
 _err_t proxy_ssl_connect(_cstr_t domain, int port);
 
