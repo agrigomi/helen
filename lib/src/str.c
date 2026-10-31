@@ -117,11 +117,26 @@ void str_div_s(char *str, const char *div, char **left, char **right) {
 /*  Removes trailing EOL and returns the new size */
 size_t str_remove_eol(char *str) {
 	size_t l = strlen(str);
-	size_t i = l;
 
-	for (; i > 0 && *(str + i) < 0x20; --i)
-		*(str + i) = 0;
+	if (l > 0) {
+		size_t i = l - 1;
 
-	return i;
+		/* Scan backwards from the last actual character while it is a control character (< 0x20) */
+		while (i > 0 && (unsigned char)*(str + i) < 0x20)
+			--i;
+
+		/* Check if the character where the loop stopped is also a control character 
+ 		   (Handles the edge case where the entire string consists only of control characters) */
+		if ((unsigned char)*(str + i) < 0x20) {
+			*str = '\0';
+			l = 0;
+		} else {
+			/* Place the null terminator immediately after the last valid printable character */
+			*(str + i + 1) = '\0';
+			l = i + 1;
+		}
+	}
+
+	return l;
 }
 
