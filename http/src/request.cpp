@@ -168,10 +168,10 @@ _err_t req_receive(int timeout, int *req_len) {
 
 						// read header lines
 						while ((hl = io_read_line(line, sizeof(line))) > 0) {
+							TRACE("<< %s", line);
 							if (!is_line_empty(line)) {
 								hl = str_remove_eol(line);
 								rl += hl;
-								TRACE("<< %s\n", line);
 								set_env_var(line, ":");
 							} else
 								break;
