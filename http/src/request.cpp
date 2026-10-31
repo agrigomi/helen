@@ -107,6 +107,15 @@ void req_decode_url(_cstr_t url) {
 		setenv(REQ_DOMAIN, s, 1);
 }
 
+static bool is_line_empty(const char *line) {
+	bool r = false;
+
+	if (*line == '\r' || *line == '\n')
+		r = true;
+
+	return r;
+}
+
 _err_t decode_request(char *request) {
 	_err_t r = E_FAIL;
 	char *rest = NULL;
@@ -143,54 +152,66 @@ _err_t req_receive(int timeout, int *req_len) {
 	if (io_wait_input(timeout) > 0) {
 		// read request line
 		if ((rl = io_read_line(line, sizeof(line))) > 0) {
-			// parse request
-			if ((r = decode_request(line)) == E_OK) {
-				_cstr_t scheme = getenv(REQ_SCHEME);
-				bool proxy = argv_check(OPT_PROXY);
+			if (!is_line_empty(line)) {
+				// parse request
+				str_remove_eol(line);
+				TRACE("<< %s\n", line);
+				if ((r = decode_request(line)) == E_OK) {
+					_cstr_t scheme = getenv(REQ_SCHEME);
+					bool proxy = argv_check(OPT_PROXY);
 
-				if (!scheme)
-					scheme = SCHEME_FILE;
+					if (!scheme)
+						scheme = SCHEME_FILE;
 
-				if (strcmp(scheme, SCHEME_FILE) == 0) {
-					int hl = 0; // header line length
+					if (strcmp(scheme, SCHEME_FILE) == 0) {
+						int hl = 0; // header line length
 
-					// read header lines
-					while ((hl = io_read_line(line, sizeof(line))) > 0) {
-						rl += hl;
-						set_env_var(line, ":");
-					}
+						// read header lines
+						while ((hl = io_read_line(line, sizeof(line))) > 0) {
+							if (!is_line_empty(line)) {
+								hl = str_remove_eol(line);
+								rl += hl;
+								TRACE("<< %s\n", line);
+								set_env_var(line, ":");
+							} else
+								break;
+						}
 
-					*req_len = rl;
-					setenv(RES_ENV_SERVER, SERVER_NAME, 1);
-					setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
-				} else if (strcmp(scheme, SCHEME_HTTP) == 0 && proxy)
-					r = proxy_http();
-				else if (strcmp(scheme, SCHEME_HTTPS) == 0 && proxy)
-					r = proxy_https();
-				else {	/* Read the rest of requwst */
+						*req_len = rl;
+						setenv(RES_ENV_SERVER, SERVER_NAME, 1);
+						setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
+					} else if (strcmp(scheme, SCHEME_HTTP) == 0 && proxy)
+						r = proxy_http();
+					else if (strcmp(scheme, SCHEME_HTTPS) == 0 && proxy)
+						r = proxy_https();
+					else {	/* Read the rest of request */
 #ifdef _TRACE_
-					while (io_read_line(line, sizeof(line)) > 0) {
-						TRACE("%s\n", line);
-					}
+						while (io_read_line(line, sizeof(line)) > 0 && !is_line_empty(line)) {
+							str_remove_eol(line);
+							TRACE("<< %s\n", line);
+						}
 #endif
-					LOG_WRN("http[%d] PROXY Service unavailable. IP='%s'\n", getpid(), io_get_peer_ip());
-					r = send_error_response(NULL, HTTPRC_SERVICE_UNAVAILABLE);
+						LOG_WRN("http[%d] PROXY Service unavailable. IP='%s'\n", getpid(), io_get_peer_ip());
+						send_error_response(NULL, HTTPRC_SERVICE_UNAVAILABLE);
+						r = E_DONE;
+					}
+				} else {
+					LOG_ERR("http[%d] Invalid request. IP='%s' REQUEST='%s'\n", getpid(), io_get_peer_ip(), line);
+					send_error_response(NULL, HTTPRC_BAD_REQUEST);
+					r = E_DONE;
 				}
 			} else {
-				LOG_ERR("http[%d] Invalid request. IP='%s' REQUEST='%s'\n", getpid(), io_get_peer_ip(), line);
-				send_error_response(NULL, HTTPRC_BAD_REQUEST);
-				r = E_DONE;
+				// empty request
+				r = E_OK;
+				TRACE_WRN("http[%d] Empty request\n", getpid());
 			}
-		} else if(rl == 0) {
-			// empty request
-			r = E_OK;
-			TRACE_WRN("http[%d] Empty request\n", getpid());
 		} else {
 			TRACE("http[%d] Disconnect (remote close)\n", getpid());
 		}
 	} else {
 		send_error_response(NULL, HTTPRC_REQUEST_TIMEOUT);
 		TRACE_WRN("http[%d] Request timed out\n", getpid());
+		r = E_TIMEOUT;
 	}
 
 	return r;

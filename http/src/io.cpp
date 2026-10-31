@@ -377,14 +377,19 @@ static int peek_line(int fd) {
 	int r = -1;
 	char peek_buf[2048];
 	int peek_bytes = 0;
+	bool complete = false;
 
-	if ((peek_bytes = recv(fd, peek_buf, sizeof(peek_buf), MSG_PEEK| MSG_DONTWAIT)) > 0) {
-		for (r = 0; r < peek_bytes; r++) {
-			if (peek_buf[r] == '\n') {
-				r++; // include LF
-				break;
+	while (!complete) {
+		if ((peek_bytes = recv(fd, peek_buf, sizeof(peek_buf), MSG_PEEK)) > 0) {
+			for (r = 0; r < peek_bytes; r++) {
+				if (peek_buf[r] == '\n') {
+					r++; // include LF
+					complete = true;
+					break;
+				}
 			}
-		}
+		} else
+			break;
 	}
 
 	return r;
@@ -402,30 +407,17 @@ int io_read_line(char *buffer, int size) {
 	else { // STDIO input
 		int lsz = peek_line(STDIN_FILENO);
 
-		memset(buffer, 0, size);
-
 		// Look into the kernel socket buffer without removing the content
 		if (lsz > 0) {
 			int n = 0;
 
+			memset(buffer, 0, size);
 			// Now perform the actual read slice consuming exactly one line out of the stream
-			if ((n = read(STDIN_FILENO, buffer, lsz)) > 0) {
-				if (buffer[n - 1] == '\n') {
-					buffer[n - 1] = 0;
-					n--;
-				}
-
-				if (buffer[n - 1] == '\r') {
-					buffer[n - 1] = 0;
-					n--;
-				}
-
+			if ((n = read(STDIN_FILENO, buffer, lsz)) > 0)
 				r = n;
-			}
 		} else
 			r = -1;
 	}
-	TRACE("[%d]<< '%s'\n", r, buffer);
 
 	if (r == size) {
 		LOG_WRN("http[%d] Buffer overflow IP=%s\n", getpid(), _g_peer_ip_);
