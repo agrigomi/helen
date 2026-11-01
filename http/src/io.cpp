@@ -505,6 +505,6 @@ _err_t io_start(void) {
 
 	if (_g_ssl_context_)
 		SSL_CTX_free(_g_ssl_context_);
-
+	TRACE_INF("--- Done ---\n");
 	return r;
 }
