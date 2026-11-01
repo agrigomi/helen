@@ -145,7 +145,7 @@ static void server_accept(int server_fd, int tmout) {
 				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			}
 
-			TRACE_INF("http: Incoming connection from %s\%d\n", _g_peer_ip_);
+			TRACE_INF("http: Incoming connection from %s\n", _g_peer_ip_);
 			setenv("PEER_IP", _g_peer_ip_, 1);
 
 			if ((cpid = fork()) == 0) { // child

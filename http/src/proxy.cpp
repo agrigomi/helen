@@ -188,7 +188,6 @@ _err_t proxy_raw_connect(_cstr_t domain, int port) {
 		pthread_detach(pt);
 
 		while ((nb_in = io_read(reqb, sz_reqb)) > 0) {
-			TRACE("<<< %s\n", reqb);
 			if (write(sfd, reqb, nb_in) <= 0)
 				break;
 		}
@@ -251,7 +250,6 @@ _err_t proxy_ssl_connect(_cstr_t domain, int port) {
 		pthread_detach(pt);
 
 		while ((nb_in = io_read(reqb, sz_reqb)) > 0) {
-			TRACE("<<< %s\n", reqb);
 			if (SSL_write(ssl, reqb, nb_in) <= 0)
 				break;
 		}
