@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "api_ssl.h"
 
 static _char_t _g_error_string_[2048] = "";
@@ -93,9 +94,10 @@ int ssl_read_line(SSL *pssl, char *buffer, int size) {
 		int total_read = 0;
 		int is_line_complete = 0;
 		char peek_buf[1024];
+		int t = 1000;
 
 		/* Loop blocks and waits until a full line (\n) is composed or buffer fills up */
-		while (!is_line_complete && total_read < (size - 1)) {
+		while (!is_line_complete && total_read < (size - 1) && t) {
 			int max_to_peek = (size - 1) - total_read;
 			if (max_to_peek > (int)sizeof(peek_buf)) {
 				max_to_peek = (int)sizeof(peek_buf);
@@ -138,6 +140,8 @@ int ssl_read_line(SSL *pssl, char *buffer, int size) {
 				}
 				break;
 			}
+
+			t--;
 		}
 
 		/* Post-processing the final gathered string buffer safely */

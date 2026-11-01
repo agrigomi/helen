@@ -40,9 +40,10 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...) {
 	struct tm *_tm = localtime(&t);
 
 	total_len += snprintf(log_buffer + total_len, sizeof(log_buffer) - total_len,
-		"%s[%s%02d%02d%02d %02d%02d%02d%s] ",
+		"%s[%s%02d%02d%02d%02d%02d%02d%s] [%s%d%s] ",
 		KNRM, KWHT, _tm->tm_year - 100, _tm->tm_mon + 1, _tm->tm_mday,
-		_tm->tm_hour, _tm->tm_min, _tm->tm_sec, KNRM);
+		_tm->tm_hour, _tm->tm_min, _tm->tm_sec,
+		KNRM, KWHT, getpid(), KNRM);
 
 	/* 2. Append the target layout ANSI escape color code */
 	total_len += snprintf(log_buffer + total_len, sizeof(log_buffer) - total_len,
