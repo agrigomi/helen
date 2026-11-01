@@ -38,6 +38,8 @@ _err_t proxy_http(void) {
 			size_t in = 0;
 			size_t td = 0;
 
+			memset(respb, 0, sz_respb);
+
 			// Trans data
 			while (t--) {
 				if (verify_input(sfd) > 0) {
@@ -106,6 +108,8 @@ _err_t proxy_https(void) {
 			int t = 100;
 			size_t in = 0;
 			size_t td = 0;
+
+			memset(respb, 0, sz_respb);
 
 			// Transfer data
 			while (t--) {
