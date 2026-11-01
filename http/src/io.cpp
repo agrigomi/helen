@@ -19,7 +19,6 @@ static SSL	*_g_ssl_out_ = NULL;
 static bool	_g_fork_ = false;
 static bool	_g_listening_ = false;
 static int	_g_server_fd_ = -1;
-unsigned int 	_g_cc_limit_ = 0;
 static char	_g_peer_ip_[32] = "";
 
 static _err_t setup_ssl_context(const char *method, const char *cert, const char *key) {
@@ -481,8 +480,6 @@ _err_t io_start(void) {
 	}
 
 	if (argv_check(OPT_LISTEN)) {
-		_g_cc_limit_ = atoi(argv_value(OPT_LIMIT));
-
 		// setup server
 		if ((r = setup_server_socket(&_g_server_fd_)) == E_OK)
 			// start listening
