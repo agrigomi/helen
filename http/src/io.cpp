@@ -20,7 +20,6 @@ static bool	_g_fork_ = false;
 static bool	_g_listening_ = false;
 static int	_g_server_fd_ = -1;
 unsigned int 	_g_cc_limit_ = 0;
-unsigned int 	_g_cc_ = 0; /* connection counter */
 static char	_g_peer_ip_[32] = "";
 
 static _err_t setup_ssl_context(const char *method, const char *cert, const char *key) {
@@ -120,11 +119,6 @@ static void server_accept(int server_fd, int tmout) {
 		socklen_t clen = sizeof(struct sockaddr_in);
 		pid_t cpid;
 
-		if (_g_cc_ >= _g_cc_limit_) {
-			usleep(1000000);
-			continue;
-		}
-
 		if ((sl = accept(server_fd, (struct sockaddr *) &client, &clen)) > 0) {
 			struct sockaddr_storage addr;
 			struct sockaddr_in *s = (struct sockaddr_in *)&addr;
@@ -152,7 +146,7 @@ static void server_accept(int server_fd, int tmout) {
 				setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			}
 
-			TRACE_INF("http: Incoming connection from %s CC=%d\n", _g_peer_ip_, _g_cc_);
+			TRACE_INF("http: Incoming connection from %s\%d\n", _g_peer_ip_);
 			setenv("PEER_IP", _g_peer_ip_, 1);
 
 			if ((cpid = fork()) == 0) { // child
@@ -176,7 +170,6 @@ static void server_accept(int server_fd, int tmout) {
 				LOG_ERR("http: Failed to fork #%d '%s'\n", errno, strerror(errno));
 			} else { // after successful creation of child process
 				TRACE_INF("http: Fork PID = %d\n", cpid);
-				_g_cc_++; // increase the number of concurrent connections
 			}
 
 			close(sl);

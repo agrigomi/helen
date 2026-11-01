@@ -142,7 +142,6 @@ int ssl_read_line(SSL *pssl, char *buffer, int size) {
 				break;
 			}
 
-			fprintf(stderr, ".");
 			t--;
 		}
 

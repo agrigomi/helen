@@ -51,14 +51,7 @@ static void usage(void) {
 int main(int argc, char *argv[]) {
 	int r = 0;
 
-	signal(SIGCHLD, [](__attribute__((unused)) int sig) {
-		pid_t	pid;
-
-		while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
-			_g_cc_--;
-			TRACE_INF("http: SIGCHLD: PID=%u, CC=%d\n", pid, _g_cc_);
-		}
-	});
+	signal(SIGCHLD, SIG_IGN);
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
 		LOG_ERR("http: SIGSEGV\n");
 		dump_stack();

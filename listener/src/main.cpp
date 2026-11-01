@@ -38,13 +38,7 @@ static void usage(void) {
 int main(int argc, char *argv[]) {
 	int r = 0;
 
-	signal(SIGCHLD, [](__attribute__((unused)) int sig) {
-		pid_t	pid;
-
-		while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
-			TRACE_INF("hl: SIGCHLD: PID=%u\n", pid);
-		}
-	});
+	signal(SIGCHLD, SIG_IGN);
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
 		TRACE("hl: SIGSEGV\n");
 		dump_stack();
