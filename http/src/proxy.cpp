@@ -22,10 +22,12 @@ _err_t proxy_http(void) {
 
 	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, _path, proto);
 
+	// read header
 	sz_lb += io_read(lb + sz_lb, sizeof(lb) - sz_lb);
-	TRACE("%s\n", lb);
 
 	if ((r = io_create_raw_client_connection(domain, (port) ? atoi(port) : 80, &sfd)) == E_OK) {
+		// write request
+		TRACE("<<< %s\n", lb);
 		write(sfd, lb, sz_lb);
 
 		// read ...
@@ -34,21 +36,27 @@ _err_t proxy_http(void) {
 			_str_t respb = (_str_t)malloc(sz_respb);
 			int t = 100;
 			size_t in = 0;
+			size_t td = 0;
 
+			// Trans data
 			while (t--) {
 				if (verify_input(sfd) > 0) {
 					if ((in = read(sfd, respb, sz_respb)) > 0) {
+						TRACE(">>> %s\n", respb);
 						if (io_write(respb, in) <= 0)
 							break;
 					} else
 						break;
 
 					t = 100;
+					td += in;
 				} else
 					usleep(10000);
 			}
 
+			TRACE("End of transfer (%u bytes)\n", td);
 			free(respb);
+			r = E_DONE;
 		}
 
 		close(sfd);
@@ -83,10 +91,12 @@ _err_t proxy_https(void) {
 
 	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, _path, proto);
 
+	// Read header
 	sz_lb += io_read(lb + sz_lb, sizeof(lb) - sz_lb);
-	TRACE("%s\n", lb);
 
 	if ((r = io_create_ssl_client_connection(domain, (port) ? atoi(port) : 443, &ssl)) == E_OK) {
+		// write request
+		TRACE("<<< %s\n", lb);
 		SSL_write(ssl, (void *)lb, sz_lb);
 
 		// read ...
@@ -95,21 +105,27 @@ _err_t proxy_https(void) {
 			_str_t respb = (_str_t)malloc(sz_respb);
 			int t = 100;
 			size_t in = 0;
+			size_t td = 0;
 
+			// Transfer data
 			while (t--) {
 				if (verify_input(SSL_get_fd(ssl)) > 0) {
 					if ((in = SSL_read(ssl, respb, sz_respb)) > 0) {
+						TRACE(">>> %s\n", respb);
 						if (io_write(respb, in) <= 0)
 							break;
 					} else
 						break;
 
 					t = 100;
+					td += in;
 				} else
 					usleep(10000);
 			}
 
+			TRACE("End of transfer (%u bytes)\n", td);
 			free(respb);
+			r = E_DONE;
 		}
 
 		io_close_ssl_client_connection(ssl);
@@ -140,6 +156,7 @@ _err_t proxy_raw_connect(_cstr_t domain, int port) {
 		_cstr_t proto = getenv(REQ_PROTOCOL);
 		int sz = snprintf(lb, sizeof(lb), "%s %d Connection Established\r\n\r\n", (proto) ? proto : "HTTP/1.1", HTTPRC_OK);
 
+		TRACE("<<< %s\n", lb);
 		io_write(lb, sz);
 
 		pthread_create(&pt, NULL, [] (void *udata) -> void * {
@@ -147,12 +164,17 @@ _err_t proxy_raw_connect(_cstr_t domain, int port) {
 			int *p = (int *)udata;
 			int sz_respb = 256 * 1024;
 			_str_t respb = (_str_t)malloc(sz_respb);
+			size_t td = 0;
 
 			while ((nb_out = read(*p, respb, sz_respb)) > 0) {
+				TRACE(">>> %s\n", respb);
 				if (io_write(respb, nb_out) <= 0)
 					break;
+
+				td += nb_out;
 			}
 
+			TRACE("End of transfer (%u bytes)\n", td);
 			free(respb);
 
 			return NULL;
@@ -162,6 +184,7 @@ _err_t proxy_raw_connect(_cstr_t domain, int port) {
 		pthread_detach(pt);
 
 		while ((nb_in = io_read(reqb, sz_reqb)) > 0) {
+			TRACE("<<< %s\n", reqb);
 			if (write(sfd, reqb, nb_in) <= 0)
 				break;
 		}
@@ -196,6 +219,7 @@ _err_t proxy_ssl_connect(_cstr_t domain, int port) {
 		_cstr_t proto = getenv(REQ_PROTOCOL);
 		int sz = snprintf(lb, sizeof(lb), "%s %d Connection Established\r\n\r\n", (proto) ? proto : "HTTP/1.1", HTTPRC_OK);
 
+		TRACE("<<< %s\n", lb);
 		io_write(lb, sz);
 
 		pthread_create(&pt, NULL, [] (void *udata) -> void * {
@@ -203,12 +227,17 @@ _err_t proxy_ssl_connect(_cstr_t domain, int port) {
 			SSL **p = (SSL **)udata;
 			int sz_respb = 256 * 1024;
 			_str_t respb = (_str_t)malloc(sz_respb);
+			size_t td = 0;
 
 			while ((nb_out = SSL_read(*p, respb, sz_respb)) > 0) {
+				TRACE(">>> %s\n", respb);
 				if (io_write(respb, nb_out) <= 0)
 					break;
+
+				td += nb_out;
 			}
 
+			TRACE("End of transfer (%u bytes)\n", td);
 			free(respb);
 
 			return NULL;
@@ -218,6 +247,7 @@ _err_t proxy_ssl_connect(_cstr_t domain, int port) {
 		pthread_detach(pt);
 
 		while ((nb_in = io_read(reqb, sz_reqb)) > 0) {
+			TRACE("<<< %s\n", reqb);
 			if (SSL_write(ssl, reqb, nb_in) <= 0)
 				break;
 		}
