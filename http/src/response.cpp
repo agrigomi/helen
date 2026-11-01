@@ -87,7 +87,7 @@ _no_compression_:
 				goto _no_compression_;
 			}
 		} else {
-			LOG_ERR("http[%d] Failed to allocate buffer (%d bytes) for compression\n", getpid(), sz);
+			LOG_ERR("http: Failed to allocate buffer (%d bytes) for compression\n", sz);
 			goto _no_compression_;
 		}
 	}
@@ -312,7 +312,7 @@ static _err_t send_partial_content(_cstr_t path, struct stat *p_stat, _v_range_t
 				if (lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
 					goto _close_file_;
 
-				TRACE("http[%d] Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
+				TRACE("http: Partial content (%lu / %lu)\n", (*i).begin, s);
 				// send range header
 				io_write(hdr, strlen(hdr));
 
@@ -351,7 +351,7 @@ static _err_t send_partial_content(_cstr_t path, struct stat *p_stat, _v_range_t
 			if (lseek(fd, (*i).begin, SEEK_SET) == (off_t)-1)
 				goto _close_file_;
 
-			TRACE("http[%d] Partial content (%lu / %lu)\n", getpid(), (*i).begin, s);
+			TRACE("http: Partial content (%lu / %lu)\n", (*i).begin, s);
 
 			// send range content
 			while ((nb = read(fd, resp_buffer,
@@ -410,7 +410,7 @@ static _err_t send_file(_cstr_t path, int rc, struct stat *pstat = NULL) {
 		// directory
 		_char_t fname[MAX_PATH];
 
-		TRACE("http[%d] Directory request '%s'\n", getpid(), path);
+		TRACE("http: Directory request '%s'\n", path);
 
 		// try index.html
 		snprintf(fname, sizeof(fname), "%s/%s", path, "index.html");
@@ -531,10 +531,10 @@ static _err_t do_connect(_cstr_t url) {
 
 	if (port) {
 		if (port == 443 || port == 8443) {
-			TRACE_INF("http[%d] Try secure connection to '%s:%d'\n", getpid(), _g_proxy_dst_host_, port);
+			TRACE_INF("http: Try secure connection to '%s:%d'\n", _g_proxy_dst_host_, port);
 			r = proxy_ssl_connect(_g_proxy_dst_host_, port);
 		} else {
-			TRACE_INF("http[%d] Try connection to '%s:%d'\n", getpid(), _g_proxy_dst_host_, port);
+			TRACE_INF("http: Try connection to '%s:%d'\n", _g_proxy_dst_host_, port);
 			r = proxy_raw_connect(_g_proxy_dst_host_, port);
 		}
 	}
@@ -559,11 +559,11 @@ static _err_t process_file_request(int imethod, _vhost_t *p_vhost, _cstr_t path)
 					break;
 			}
 		} else {
-			LOG_WRN("http[%d] Forbidden path  IP='%s' PATH='%s'\n", getpid(), io_get_peer_ip(), rpath);
+			LOG_WRN("http: Forbidden path  IP='%s' PATH='%s'\n", io_get_peer_ip(), rpath);
 			r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
 		}
 	} else {
-		TRACE_WRN("http[%d] File not found '%s'\n", getpid(), doc_path);
+		TRACE_WRN("http: File not found '%s'\n", doc_path);
 		r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
 	}
 
@@ -609,22 +609,22 @@ _err_t res_processing(void) {
 						if (argv_check(OPT_PROXY))
 							r = do_connect(url);
 						else {
-							LOG_WRN("http[%d] Proxy not enabled. IP=%s\n", getpid(), io_get_peer_ip());
+							LOG_WRN("http: Proxy not enabled. IP=%s\n", io_get_peer_ip());
 							r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 						}
 						break;
 					default:
-						LOG_WRN("http[%d] Unsupported  method '%s' #%d IP=%s\n", getpid(), method, imethod, io_get_peer_ip());
+						LOG_WRN("http: Unsupported  method '%s' #%d IP=%s\n", method, imethod, io_get_peer_ip());
 						r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 						break;
 				}
 			}
 		} else {
-			TRACE_WRN("http[%d] Bad request method: '%s' [%d]; host: %s\n", getpid(), method, imethod, (p_vhost) ? p_vhost->host : "");
+			TRACE_WRN("http: Bad request method: '%s' [%d]; host: %s\n", method, imethod, (p_vhost) ? p_vhost->host : "");
 			r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
 		}
 	} else {
-		TRACE_WRN("http[%d] Unsupported  method '%s'\n", getpid(), method);
+		TRACE_WRN("http: Unsupported  method '%s'\n", method);
 		r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 	}
 

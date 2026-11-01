@@ -142,7 +142,7 @@ static void server_accept(_listen_t *pl) {
 					setsockopt(sl, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 				}
 
-				TRACE_INF("hl[%d]: Incoming connection from %s on port %d\n", getpid(), strip, pl->port);
+				TRACE_INF("hl: Incoming connection from %s on port %d\n", strip, pl->port);
 
 				if ((cpid = fork()) == 0) { // child
 					_g_fork_ = true;
@@ -163,7 +163,7 @@ static void server_accept(_listen_t *pl) {
 							ssl_io(pl, cl_cxt); // start I/O thread
 							SSL_free(cl_cxt);
 						} else {
-							LOG("hl[%d]: Failed to allocate SSL conection context\n", getpid());
+							LOG("hl: Failed to allocate SSL conection context\n");
 						}
 					} else { // execute child
 						dup2(sl, STDIN_FILENO);
@@ -171,7 +171,7 @@ static void server_accept(_listen_t *pl) {
 						if (pl->no_stderr == false)
 							dup2(sl, STDERR_FILENO);
 						if (execve(pl->argv[0], pl->argv, pl->env) == -1)
-							LOG("hl[%d]: Unable to execute '%s'\n", getpid(), pl->argv[0]);
+							LOG("hl: Unable to execute '%s'\n", pl->argv[0]);
 					}
 
 					exit(0);
@@ -179,7 +179,7 @@ static void server_accept(_listen_t *pl) {
 #if _DEBUG_
 					int i = 0;
 
-					TRACE("hl[%d]: Running '%s'; PID: %d; '", getpid(), pl->name, cpid);
+					TRACE("hl: Running '%s'; PID: %d; '", pl->name, cpid);
 					while (pl->argv[i]) {
 						fprintf(stderr, "%s ", pl->argv[i]);
 						i++;
@@ -215,7 +215,7 @@ void cfg_start(void) {
 				memset(&ifr, 0, sizeof(ifr));
 				snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), p->ifc);
 				if (setsockopt(p->server_fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-					LOG("hl[%d] Unknown interface name '%s'\n", getpid(), p->ifc);
+					LOG("hl: Unknown interface name '%s'\n", p->ifc);
 				}
 			}
 

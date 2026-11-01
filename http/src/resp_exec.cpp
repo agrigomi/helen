@@ -26,7 +26,7 @@ _err_t resp_exec_v(_cstr_t argv[],
 				proc_write(&proc, bin, nin);
 				tout = timeout_s * 1000000;
 			} else if (nin < 0) {
-				TRACE("http[%d] Terminate '%s'\n", getpid(), argv[0]);
+				TRACE("http: Terminate '%s'\n", argv[0]);
 				proc_break(&proc);
 			}
 
@@ -84,9 +84,9 @@ _err_t resp_exec(_cstr_t cmd,
 	memset(argv, 0, sizeof(argv));
 	split_by_space(cmd, strlen(cmd), argv, 256);
 
-	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
+	TRACE("http: Execute '%s'\n", cmd);
 	if ((r = resp_exec_v((_cstr_t *)argv, out, in, udata, atoi(argv_value(OPT_TIMEOUT)))) != E_OK) {
-		LOG_ERR("http[%d] Failed to execute '%s'\n", getpid(), cmd);
+		LOG_ERR("http: Failed to execute '%s'\n", cmd);
 	}
 
 	while (argv[i]) {
@@ -106,7 +106,7 @@ _err_t resp_exec(_cstr_t cmd, _proc_t *proc) {
 	split_by_space(cmd, strlen(cmd), argv, 256);
 
 	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
-	TRACE("http[%d] Execute '%s'\n", getpid(), cmd);
+	TRACE("http: Execute '%s'\n", cmd);
 	r = proc_exec_v(proc, argv[0], argv);
 
 	while (argv[i]) {

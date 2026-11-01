@@ -93,7 +93,7 @@ int cache_open(_cstr_t path/* in */,
 
 				if (stat(cache_path, p_stat) == 0) {
 _skip_stat_:
-					TRACE("http[%d] Use cache file '%s'\n", getpid(), cache_path);
+					TRACE("http: Use cache file '%s'\n", cache_path);
 					r = open(cache_path, O_RDONLY);
 					*encoding = enc_name;
 				} else
@@ -109,7 +109,7 @@ _skip_compression_:
 			}
 		}
 	} else {
-		TRACE("http[%d] Skip encoding for '%s'\n", getpid(), path);
+		TRACE("http: Skip encoding for '%s'\n", path);
 		if (stat(path, p_stat) == 0) {
 			r = open(path, O_RDONLY);
 			*encoding = NULL;

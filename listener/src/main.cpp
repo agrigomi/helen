@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 		pid_t	pid;
 
 		while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
-			TRACE_INF("http[%d] SIGCHLD: PID=%u\n", getpid(), pid);
+			TRACE_INF("hl: SIGCHLD: PID=%u\n", pid);
 		}
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
@@ -51,25 +51,25 @@ int main(int argc, char *argv[]) {
 		exit(0);
 	});
 	signal(SIGINT, [](__attribute__((unused)) int sig) {
-		TRACE("hl[%d]: SIGINT\n", getpid());
+		TRACE("hl: SIGINT\n");
 		cfg_stop();
 		exit(0);
 	});
 	signal(SIGKILL, [](__attribute__((unused)) int sig) {
-		TRACE("hl[%d]: SIGKILL\n", getpid());
+		TRACE("hl: SIGKILL\n");
 		cfg_stop();
 		exit(0);
 	});
 	signal(SIGTERM, [](__attribute__((unused)) int sig) {
-		TRACE("hl[%d]: SIGTERM\n", getpid());
+		TRACE("hl: SIGTERM\n");
 		cfg_stop();
 		exit(0);
 	});
 	signal(SIGPIPE, [](__attribute__((unused)) int sig) {
-		TRACE("hl[%d]: SIGPIPE\n", getpid());
+		TRACE("hl: SIGPIPE\n");
 	});
 	signal(SIGBUS, [](__attribute__((unused)) int sig) {
-		TRACE("hl[%d]: SIGBUS\n", getpid());
+		TRACE("hl: SIGBUS\n");
 	});
 
 	if (argv_parse(argc, (_cstr_t *)argv, args)) {

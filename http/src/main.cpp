@@ -56,34 +56,34 @@ int main(int argc, char *argv[]) {
 
 		while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
 			_g_cc_--;
-			TRACE_INF("http[%d] SIGCHLD: PID=%u, CC=%d\n", getpid(), pid, _g_cc_);
+			TRACE_INF("http: SIGCHLD: PID=%u, CC=%d\n", pid, _g_cc_);
 		}
 	});
 	signal(SIGSEGV, [](__attribute__((unused)) int sig) {
-		LOG_ERR("http[%d] SIGSEGV\n", getpid());
+		LOG_ERR("http: SIGSEGV\n");
 		dump_stack();
 		exit(0);
 	});
 	signal(SIGINT, [](__attribute__((unused)) int sig) {
-		LOG_INF("http[%d] SIGINT\n", getpid());
+		LOG_INF("http: SIGINT\n");
 		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGKILL, [](__attribute__((unused)) int sig) {
-		LOG_WRN("http[%d] SIGKILL\n", getpid());
+		LOG_WRN("http: SIGKILL\n");
 		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGTERM, [](__attribute__((unused)) int sig) {
-		LOG_WRN("http[%d] SIGTERM\n", getpid());
+		LOG_WRN("http: SIGTERM\n");
 		cfg_uninit();
 		exit(0);
 	});
 	signal(SIGPIPE, [](__attribute__((unused)) int sig) {
-		LOG_ERR("http[%d] SIGPIPE\n", getpid());
+		LOG_ERR("http: SIGPIPE\n");
 	});
 	signal(SIGBUS, [](__attribute__((unused)) int sig) {
-		LOG_WRN("hl[%d]: SIGBUS\n", getpid());
+		LOG_WRN("http: SIGBUS\n");
 	});
 
 	if (argv_parse(argc, (_cstr_t *)argv, args)) {

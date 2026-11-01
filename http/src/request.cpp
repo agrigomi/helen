@@ -191,26 +191,26 @@ _err_t req_receive(int timeout, int *req_len) {
 							TRACE("<< %s\n", line);
 						}
 #endif
-						LOG_WRN("http[%d] PROXY Service unavailable. IP='%s'\n", getpid(), io_get_peer_ip());
+						LOG_WRN("http: PROXY Service unavailable. IP='%s'\n", io_get_peer_ip());
 						send_error_response(NULL, HTTPRC_SERVICE_UNAVAILABLE);
 						r = E_DONE;
 					}
 				} else {
-					LOG_ERR("http[%d] Invalid request. IP='%s' REQUEST='%s'\n", getpid(), io_get_peer_ip(), line);
+					LOG_ERR("http: Invalid request. IP='%s' REQUEST='%s'\n", io_get_peer_ip(), line);
 					send_error_response(NULL, HTTPRC_BAD_REQUEST);
 					r = E_DONE;
 				}
 			} else {
 				// empty request
 				r = E_OK;
-				TRACE_WRN("http[%d] Empty request\n", getpid());
+				TRACE_WRN("http: Empty request\n");
 			}
 		} else {
-			TRACE("http[%d] Disconnect (remote close)\n", getpid());
+			TRACE("http: Disconnect (remote close)\n");
 		}
 	} else {
 		send_error_response(NULL, HTTPRC_REQUEST_TIMEOUT);
-		TRACE_WRN("http[%d] Request timed out\n", getpid());
+		TRACE_WRN("http: Request timed out\n");
 		r = E_TIMEOUT;
 	}
 
