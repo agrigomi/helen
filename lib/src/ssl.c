@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "api_ssl.h"
+#include "trace.h"
 
 static _char_t _g_error_string_[2048] = "";
 typedef const SSL_METHOD *_ssl_methodcb_t(void);
@@ -94,7 +95,7 @@ int ssl_read_line(SSL *pssl, char *buffer, int size) {
 		int total_read = 0;
 		int is_line_complete = 0;
 		char peek_buf[1024];
-		int t = 1000;
+		int t = 10;
 
 		/* Loop blocks and waits until a full line (\n) is composed or buffer fills up */
 		while (!is_line_complete && total_read < (size - 1) && t) {
@@ -141,6 +142,7 @@ int ssl_read_line(SSL *pssl, char *buffer, int size) {
 				break;
 			}
 
+			fprintf(stderr, ".");
 			t--;
 		}
 
