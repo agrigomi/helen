@@ -13,7 +13,7 @@ _err_t proxy_http(const char *hdr, size_t sz) {
 	_cstr_t uri = getenv(REQ_URI);
 	_cstr_t path = getenv(REQ_PATH);
 	_cstr_t proto = getenv(REQ_PROTOCOL);
-	_char_t lb[4096] = "";
+	_char_t lb[2048] = "";
 	int sfd = -1;
 	_cstr_t _path = (!uri) ? path : uri;
 
@@ -85,7 +85,7 @@ _err_t proxy_https(const char *hdr, size_t sz) {
 	_cstr_t uri = getenv(REQ_URI);
 	_cstr_t path = getenv(REQ_PATH);
 	_cstr_t proto = getenv(REQ_PROTOCOL);
-	_char_t lb[4096] = "";
+	_char_t lb[2048] = "";
 	SSL *ssl = NULL;
 	_cstr_t _path = (!uri) ? path : uri;
 
