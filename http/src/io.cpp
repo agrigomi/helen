@@ -405,7 +405,7 @@ int io_read_line(char *buffer, int size) {
 
 			memset(buffer, 0, size);
 			// Now perform the actual read slice consuming exactly one line out of the stream
-			if ((n = read(STDIN_FILENO, buffer, lsz)) > 0)
+			if ((n = read(STDIN_FILENO, buffer, (lsz < size) ? lsz : size)) > 0)
 				r = n;
 		} else
 			r = -1;

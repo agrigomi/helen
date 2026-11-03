@@ -586,8 +586,8 @@ void hdr_clear(void);
 int hdr_export(_str_t hb, int sz);
 
 // proxy
-_err_t proxy_http(void);
-_err_t proxy_https(void);
+_err_t proxy_http(const char *hdr, size_t sz);
+_err_t proxy_https(const char *hdr, size_t sz);
 _err_t proxy_raw_connect(_cstr_t domain, int port);
 _err_t proxy_ssl_connect(_cstr_t domain, int port);
 

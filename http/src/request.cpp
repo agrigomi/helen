@@ -115,7 +115,6 @@ static bool is_line_empty(const char *line) {
 
 	return r;
 }
-
 _err_t decode_request(char *request) {
 	_err_t r = E_FAIL;
 	char *rest = NULL;
@@ -138,10 +137,67 @@ _err_t decode_request(char *request) {
 	return r;
 }
 
+static _err_t receive_request(char *buffer, int sz, int *req_len) {
+	_err_t r = E_FAIL;
+	int bidx = 0; /* index in buffer */
+	int sz_line = 0;
+
+	memset(buffer, 0 , sz);
+
+	while ((sz_line = io_read_line((buffer + bidx), sz - bidx)) > 0) {
+		if (is_line_empty(buffer + bidx)) {
+			*req_len = bidx;
+			r = E_OK;
+			break;
+		}
+
+		bidx += sz_line;
+	}
+
+	return r;
+}
+
+static char *enum_lines(char *buf, int sz, int *lsz, char **next) {
+	char *r = NULL;
+	char *p, *end;
+
+	*lsz = 0;
+	*next = NULL;
+
+	if (buf) {
+		end = buf + sz;
+
+		/* skip leading control chars, stop at NUL */
+		p = buf;
+		while (p < end && *p && *p < 0x20)
+			p++;
+
+		/* a printable char here starts the line */
+		if (p < end && *p) {
+			r = p;
+			while (p < end && *p >= 0x20)
+				p++;
+
+			*lsz = (int)(p - r);
+
+			/* terminate the line and skip the separator run up to the next line */
+			if (p < end && *p) {
+				*p++ = 0;
+				while (p < end - 1 && *p && *p < 0x20)
+					p++;
+
+				if (*p)
+					*next = p;
+			}
+		}
+	}
+
+	return r;
+}
+
 _err_t req_receive(int timeout, int *req_len) {
 	_err_t r = E_FAIL;
-	char line[2048];
-	int rl = 0; // request length
+	char req_buffer[2048];
 
 	*req_len = 0;
 	// Set default response header fields
@@ -150,47 +206,36 @@ _err_t req_receive(int timeout, int *req_len) {
 	setenv(RES_PROTOCOL, STR_HTTP_1, 1);
 
 	if (io_wait_input(timeout) > 0) {
-		// read request line
-		if ((rl = io_read_line(line, sizeof(line))) > 0) {
-			if (!is_line_empty(line)) {
-				// parse request
-				str_remove_eol(line);
-				TRACE("<< %s\n", line);
+		if ((r = receive_request(req_buffer, sizeof(req_buffer), req_len)) == E_OK) {
+			char *line = NULL;
+			char *next = NULL;
+			int line_sz = 0;
+
+			TRACE("<< %s\n", req_buffer);
+
+			// Read the first line (HTTP request)
+			if ((line = enum_lines(req_buffer, *req_len, &line_sz, &next))) {
 				if ((r = decode_request(line)) == E_OK) {
 					_cstr_t scheme = getenv(REQ_SCHEME);
 					bool proxy = argv_check(OPT_PROXY);
 
-					if (!scheme)
+					if (!scheme) // default scheme is FILE
 						scheme = SCHEME_FILE;
 
 					if (strcmp(scheme, SCHEME_FILE) == 0) {
-						int hl = 0; // header line length
-
-						// read header lines
-						while ((hl = io_read_line(line, sizeof(line))) > 0) {
-							TRACE("<< %s", line);
-							if (!is_line_empty(line)) {
-								hl = str_remove_eol(line);
-								rl += hl;
+						while ((line = next)) {
+							// parse header
+							if ((line = enum_lines(line, *req_len - line_sz, &line_sz, &next)))
 								set_env_var(line, ":");
-							} else
-								break;
 						}
 
-						*req_len = rl;
 						setenv(RES_ENV_SERVER, SERVER_NAME, 1);
 						setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
 					} else if (strcmp(scheme, SCHEME_HTTP) == 0 && proxy)
-						r = proxy_http();
+						r = proxy_http(next, strlen(next));
 					else if (strcmp(scheme, SCHEME_HTTPS) == 0 && proxy)
-						r = proxy_https();
-					else {	/* Read the rest of request */
-#ifdef _TRACE_
-						while (io_read_line(line, sizeof(line)) > 0 && !is_line_empty(line)) {
-							str_remove_eol(line);
-							TRACE("<< %s\n", line);
-						}
-#endif
+						r = proxy_https(next, strlen(next));
+					else {
 						LOG_WRN("http: PROXY Service unavailable. IP='%s'\n", io_get_peer_ip());
 						send_error_response(NULL, HTTPRC_SERVICE_UNAVAILABLE);
 						r = E_DONE;

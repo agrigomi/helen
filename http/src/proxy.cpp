@@ -5,7 +5,7 @@
 #include "http.h"
 #include "trace.h"
 
-_err_t proxy_http(void) {
+_err_t proxy_http(const char *hdr, size_t sz) {
 	_err_t r = E_FAIL;
 	_cstr_t method = getenv(REQ_METHOD);
 	_cstr_t domain = getenv(REQ_DOMAIN);
@@ -22,8 +22,9 @@ _err_t proxy_http(void) {
 
 	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, _path, proto);
 
-	// read header
-	sz_lb += io_read(lb + sz_lb, sizeof(lb) - sz_lb);
+	// add header
+	strncpy(lb + sz_lb, hdr, sizeof(lb) - sz_lb);
+	sz_lb += sz;
 
 	if ((r = io_create_raw_client_connection(domain, (port) ? atoi(port) : 80, &sfd)) == E_OK) {
 		// write request
@@ -76,7 +77,7 @@ _err_t proxy_http(void) {
 	return r;
 }
 
-_err_t proxy_https(void) {
+_err_t proxy_https(const char *hdr, size_t sz) {
 	_err_t r = E_FAIL;
 	_cstr_t method = getenv(REQ_METHOD);
 	_cstr_t domain = getenv(REQ_DOMAIN);
@@ -93,8 +94,9 @@ _err_t proxy_https(void) {
 
 	int sz_lb = snprintf(lb, sizeof(lb), "%s %s %s\r\n", method, _path, proto);
 
-	// Read header
-	sz_lb += io_read(lb + sz_lb, sizeof(lb) - sz_lb);
+	// add header
+	strncpy(lb + sz_lb, hdr, sizeof(lb) - sz_lb);
+	sz_lb += sz;
 
 	if ((r = io_create_ssl_client_connection(domain, (port) ? atoi(port) : 443, &ssl)) == E_OK) {
 		// write request
@@ -188,6 +190,7 @@ _err_t proxy_raw_connect(_cstr_t domain, int port) {
 		pthread_detach(pt);
 
 		while ((nb_in = io_read(reqb, sz_reqb)) > 0) {
+			TRACE(">>> %s\n", reqb);
 			if (write(sfd, reqb, nb_in) <= 0)
 				break;
 		}
@@ -250,6 +253,7 @@ _err_t proxy_ssl_connect(_cstr_t domain, int port) {
 		pthread_detach(pt);
 
 		while ((nb_in = io_read(reqb, sz_reqb)) > 0) {
+			TRACE(">>> %s\n", reqb);
 			if (SSL_write(ssl, reqb, nb_in) <= 0)
 				break;
 		}
