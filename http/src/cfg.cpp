@@ -170,6 +170,8 @@ static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 		json_destroy_context(p_jcxt);
 		munmap(content, size);
 		close(fd);
+	} else {
+		LOG_ERR("Failed to process '%s'\n", json_fname);
 	}
 
 	return r;
@@ -498,6 +500,8 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 		json_destroy_context(p_jcxt);
 		munmap(content, size);
 		close(fd);
+	} else {
+		LOG_WRN("Can't find mapping file '%s'\n", json_fname);
 	}
 
 	return r;

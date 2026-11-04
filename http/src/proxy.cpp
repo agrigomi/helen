@@ -13,7 +13,7 @@ _err_t proxy_http(const char *hdr, size_t sz) {
 	_cstr_t uri = getenv(REQ_URI);
 	_cstr_t path = getenv(REQ_PATH);
 	_cstr_t proto = getenv(REQ_PROTOCOL);
-	_char_t lb[2048] = "";
+	_char_t lb[MAX_BUFFER_LEN] = "";
 	int sfd = -1;
 	_cstr_t _path = (!uri) ? path : uri;
 
@@ -85,7 +85,7 @@ _err_t proxy_https(const char *hdr, size_t sz) {
 	_cstr_t uri = getenv(REQ_URI);
 	_cstr_t path = getenv(REQ_PATH);
 	_cstr_t proto = getenv(REQ_PROTOCOL);
-	_char_t lb[2048] = "";
+	_char_t lb[MAX_BUFFER_LEN] = "";
 	SSL *ssl = NULL;
 	_cstr_t _path = (!uri) ? path : uri;
 
@@ -162,7 +162,7 @@ _err_t proxy_raw_connect(_cstr_t domain, int port) {
 		_cstr_t proto = getenv(REQ_PROTOCOL);
 		int sz = snprintf(lb, sizeof(lb), "%s %d Connection Established\r\n\r\n", (proto) ? proto : "HTTP/1.1", HTTPRC_OK);
 
-		TRACE("<<< %s\n", lb);
+		TRACE(">>> %s\n", lb);
 		io_write(lb, sz);
 
 		pthread_create(&pt, NULL, [] (void *udata) -> void * {
@@ -223,9 +223,10 @@ _err_t proxy_ssl_connect(_cstr_t domain, int port) {
 		int sz_reqb = 256 * 1024;
 		_str_t reqb = (_str_t)malloc(sz_reqb);
 		_cstr_t proto = getenv(REQ_PROTOCOL);
+		// format the response
 		int sz = snprintf(lb, sizeof(lb), "%s %d Connection Established\r\n\r\n", (proto) ? proto : "HTTP/1.1", HTTPRC_OK);
 
-		TRACE("<<< %s\n", lb);
+		TRACE(">>> %s\n", lb);
 		io_write(lb, sz);
 
 		pthread_create(&pt, NULL, [] (void *udata) -> void * {

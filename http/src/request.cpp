@@ -197,7 +197,7 @@ static char *enum_lines(char *buf, int sz, int *lsz, char **next) {
 
 _err_t req_receive(int timeout, int *req_len) {
 	_err_t r = E_FAIL;
-	char req_buffer[2048];
+	char req_buffer[MAX_BUFFER_LEN];
 
 	*req_len = 0;
 	// Set default response header fields

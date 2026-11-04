@@ -31,7 +31,7 @@ static _err_t setup_ssl_context(const char *method, const char *cert, const char
 				if (ssl_load_key(_g_ssl_context_, key))
 					r = E_OK;
 				else {
-					LOG_WRN("http: Failed to load SSL key '%s'\n", key);
+					LOG_ERR("http: Failed to load SSL key '%s'\n", key);
 					SSL_CTX_free(_g_ssl_context_);
 					_g_ssl_context_ = NULL;
 				}
