@@ -101,7 +101,7 @@ static _err_t setup_server_socket(int *p_fd) {
 			if (listen(*p_fd, SOMAXCONN) == 0)
 				r = E_OK;
 			else
-close(*p_fd);
+				close(*p_fd);
 		} else
 			close(*p_fd);
 	}
@@ -370,6 +370,7 @@ static int peek_line(int fd) {
 	char peek_buf[2048];
 	int peek_bytes = 0;
 	bool complete = false;
+	int t = 10;
 
 	while (!complete) {
 		if ((peek_bytes = recv(fd, peek_buf, sizeof(peek_buf), MSG_PEEK)) > 0) {
@@ -382,6 +383,11 @@ static int peek_line(int fd) {
 			}
 		} else
 			break;
+
+		if (!t--) {
+			TRACE_WRN("Emergent  case for stop receiving\n");
+			break;
+		}
 	}
 
 	return r;
