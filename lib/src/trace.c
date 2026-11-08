@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include "trace.h"
 
+#define USE_PRECISE_TIME	1
+
 int fprintf_bytes(FILE *stream, void *ptr, int n) {
 	int i = 0;
 	int r = 0;
@@ -36,6 +38,15 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...) {
 	int total_len = 0;
 
 	/* 1. Generate timestamp string slice inside local stack memory */
+#if USE_PRECISE_TIME
+	struct timespec  ts;
+
+	if (clock_gettime(CLOCK_REALTIME, &ts) != -1)
+		total_len = snprintf(log_buffer + total_len, sizeof(log_buffer) - total_len,
+				"%s[%s%10jd.%03ld%s] [%s%d%s] ",
+				KNRM, KWHT, (long) ts.tv_sec, ts.tv_nsec / 1000000,
+				KNRM, KGRN, getpid(), KNRM);
+#else
 	time_t t = time(NULL);
 	struct tm *_tm = localtime(&t);
 
@@ -43,7 +54,8 @@ void color_fprintf(FILE *stream, const char *color, const char *fmt, ...) {
 		"%s[%s%02d%02d%02d%02d%02d%02d%s] [%s%d%s] ",
 		KNRM, KWHT, _tm->tm_year - 100, _tm->tm_mon + 1, _tm->tm_mday,
 		_tm->tm_hour, _tm->tm_min, _tm->tm_sec,
-		KNRM, KWHT, getpid(), KNRM);
+		KNRM, KGRN, getpid(), KNRM);
+#endif
 
 	/* 2. Append the target layout ANSI escape color code */
 	total_len += snprintf(log_buffer + total_len, sizeof(log_buffer) - total_len,
