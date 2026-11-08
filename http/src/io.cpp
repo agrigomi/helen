@@ -386,6 +386,7 @@ static int peek_line(int fd) {
 
 		if (!t--) {
 			TRACE_WRN("Emergent  case for stop receiving\n");
+			r = -1;
 			break;
 		}
 	}
