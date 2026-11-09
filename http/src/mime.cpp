@@ -111,6 +111,8 @@ _compare_time_:
 					goto _compare_time_;
 				}
 
+				LOG_INF("http: Compile mime types\n");
+
 				// lock
 				touch(lock_path);
 
