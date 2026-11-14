@@ -20,7 +20,7 @@ static _hf_context_t	_g_hf_cxt_;
 static volatile bool	_g_hf_open_ = false;
 
 static void touch(const char *path) {
-	close(open(path, O_CREAT | S_IRUSR | S_IWUSR));
+	close(open(path, O_CREAT, S_IRUSR | S_IWUSR));
 }
 
 static _err_t read_line(FILE *fs, char *buffer, int size) {
