@@ -7,7 +7,7 @@ int lock_fd(int fd) {
 }
 
 int lock(const char *fname) {
-	int r = open(fname, O_CREAT);
+	int r = open(fname, O_CREAT, S_IRWXU);
 
 	if (r > 0)
 		flock(r, LOCK_EX);
