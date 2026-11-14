@@ -370,7 +370,7 @@ static int peek_line(int fd) {
 	char peek_buf[2048];
 	int peek_bytes = 0;
 	bool complete = false;
-	int t = 10;
+	int t = 100;
 
 	while (!complete) {
 		if ((peek_bytes = recv(fd, peek_buf, sizeof(peek_buf), MSG_PEEK)) > 0) {
