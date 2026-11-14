@@ -508,7 +508,7 @@ static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf
 }
 
 static void touch(const char *path) {
-	close(open(path, O_CREAT | S_IRUSR | S_IWUSR));
+	close(open(path, O_CREAT, S_IRUSR | S_IWUSR));
 }
 
 static _err_t load_vhosts(void) {

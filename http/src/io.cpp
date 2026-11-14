@@ -323,7 +323,7 @@ static SSL_CTX *create_ssl_context(void) {
 
 		OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
 		SSL_load_error_strings();   /* Bring in and register error messages */
-		method = TLSv1_2_client_method();  /* Create new client-method instance */
+		method = TLS_client_method();  /* Create new client-method instance */
 
 		r =  _g_ssl_ctx_ = SSL_CTX_new(method);
 	}
