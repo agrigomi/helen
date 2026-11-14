@@ -85,7 +85,7 @@ static _err_t setup_server_socket(int *p_fd) {
 
 		if (ifc) {
 			memset(&ifr, 0, sizeof(ifr));
-			snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), ifc);
+			snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifc);
 			if (setsockopt(*p_fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
 				LOG_WRN("http: Can't bind to interface '%s'\n", ifc);
 			} else {

@@ -213,7 +213,7 @@ void cfg_start(void) {
 				struct ifreq ifr;
 
 				memset(&ifr, 0, sizeof(ifr));
-				snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), p->ifc);
+				snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", p->ifc);
 				if (setsockopt(p->server_fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
 					LOG("hl: Unknown interface name '%s'\n", p->ifc);
 				}
