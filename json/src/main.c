@@ -221,20 +221,20 @@ _again_:
 				fprintf(stderr, "%s", e_prompt);
 				fprintf(stdout, "%s", o_prompt);
 
-				fgets(jpath, sizeof(jpath), stdin);
+				if (fgets(jpath, sizeof(jpath), stdin)) {
+					if (strlen(jpath) > 1) {
+						_json_value_t *p_jv = json_select(_gp_jcxt_, jpath, NULL);
 
-				if (strlen(jpath) > 1) {
-					_json_value_t *p_jv = json_select(_gp_jcxt_, jpath, NULL);
+						if (p_jv) {
+							print_value(p_jv);
+							printf("\n");
+						} else
+							fprintf(stdout, "NULL\n");
+					}
 
-					if (p_jv) {
-						print_value(p_jv);
-						printf("\n");
-					} else
-						fprintf(stdout, "NULL\n");
+					if (loop)
+						goto _again_;
 				}
-
-				if (loop)
-					goto _again_;
 			}
 
 			json_destroy_context(_gp_jcxt_);
