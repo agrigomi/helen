@@ -45,9 +45,9 @@ static _err_t cache_update(_cstr_t path, _cstr_t cache_path, unsigned int encodi
 			lock_fd(cfd);
 
 			r = rt_compress_stream(encoding, sfd, cfd, &str_enc);
-
 			unlock(cfd);
 			close(cfd);
+			TRACE("http: Create cache file '%s' (%d)\n", cache_path, r);
 
 			if (r != E_OK)
 				unlink(cache_path);
