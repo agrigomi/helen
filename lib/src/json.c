@@ -729,7 +729,8 @@ _json_value_t *json_select(_json_context_t *p_jcxt,
 							r = tmp;
 							break;
 						}
-					}
+					} else
+						break;
 				} else if (tmp->jvt == JSON_OBJECT) {
 					_json_pair_t *pair = json_object_pair(&tmp->object, aidx);
 
@@ -741,7 +742,8 @@ _json_value_t *json_select(_json_context_t *p_jcxt,
 							r = tmp;
 							break;
 						}
-					}
+					} else
+						break;
 				}
 			}
 
