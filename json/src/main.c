@@ -66,14 +66,14 @@ static void print_object(_json_object_t *p_jobj) {
 
 		if (p_jpair) {
 			if (i)
-				printf(",\n");
+				printf(",");
 			printf("\"");
 			fwrite(p_jpair->name.data, p_jpair->name.size, 1, stdout);
 			printf("\": ");
 			print_value(&p_jpair->value);
 		}
 	}
-	printf("}\n");
+	printf("}");
 }
 
 static void print_string(_json_string_t *p_jstr) {
@@ -95,11 +95,11 @@ static void print_array(_json_array_t *p_jarray) {
 
 		if (p_jv) {
 			if (i)
-				printf(", ");
+				printf(",");
 			print_value(p_jv);
 		}
 	}
-	printf("]\n");
+	printf("]");
 }
 
 static void print_const(_json_value_t *p_jv) {
@@ -194,13 +194,16 @@ _again_:
 				fprintf(stdout, "%s", o_prompt);
 
 				fgets(jpath, sizeof(jpath), stdin);
-				_json_value_t *p_jv = json_select(_gp_jcxt_, jpath, NULL);
 
-				if (p_jv) {
-					print_value(p_jv);
-					printf("\n");
-				} else
-					fprintf(stdout, "NULL\n");
+				if (strlen(jpath) > 1) {
+					_json_value_t *p_jv = json_select(_gp_jcxt_, jpath, NULL);
+
+					if (p_jv) {
+						print_value(p_jv);
+						printf("\n");
+					} else
+						fprintf(stdout, "NULL\n");
+				}
 
 				goto _again_;
 			}
