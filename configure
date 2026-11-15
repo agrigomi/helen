@@ -4878,16 +4878,15 @@ then :
   test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
 
 else case e in #(
-  e)
-    as_fn_error $? "libz library was not found" "$LINENO" 5 ;;
+  e) as_fn_error $? "libz library was not found" "$LINENO" 5 ;;
 esac
 fi
 
 
-printf "%s\n" "#define _DEBUG_ 1" >>confdefs.h
+printf "%s\n" "#define _DEBUG_ 0" >>confdefs.h
 
 
-printf "%s\n" "#define _TRACE_ 1" >>confdefs.h
+printf "%s\n" "#define _TRACE_ 0" >>confdefs.h
 
 
 printf "%s\n" "#define OPENSSL_API_COMPAT 0x10000000L" >>confdefs.h
