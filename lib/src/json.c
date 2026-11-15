@@ -267,7 +267,7 @@ static _json_err_t parse_string_name(_json_context_t *p_jcxt, _json_string_t *p_
 			;
 		else if (c >= 'a' && c <= 'z')
 			;
-		else if (c == '-' || c == '_')
+		else if (c == '-' || c == '_' || c == '.')
 			;
 		else if (c == '\'') {
 			if (flags & STRNAME_STROPHE)
