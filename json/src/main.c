@@ -12,17 +12,37 @@
 #include "argv.h"
 #include "config.h"
 
+#define OPT_HELP		"h"
 #define OPT_VERSION		"v"
 #define OPT_STDERR_PROMPT	"p" 	// stderr prompt
 #define OPT_STDOUT_PROMPT	"P"	// stdout prompt
+#define OPT_LOOP		"l"
 
 static _argv_t args[] = {
 	{ OPT_VERSION,			0,			NULL,		"Show version" },
-	{ OPT_STDERR_PROMPT,		OF_VALUE |OF_PRESENT,	(_str_t)"",	"Prompt to show in stderr" },
-	{ OPT_STDOUT_PROMPT,		OF_VALUE |OF_PRESENT,	(_str_t)"",	"Prompt to show in stdout" },
+	{ OPT_HELP,			0,			NULL,		"Print this help" },
+	{ OPT_STDERR_PROMPT,		OF_VALUE |OF_PRESENT,	(_str_t)"",	"Prompt to show in stderr (-p\"<prompt>\")" },
+	{ OPT_STDOUT_PROMPT,		OF_VALUE |OF_PRESENT,	(_str_t)"",	"Prompt to show in stdout (-P\"<prompt>\")" },
+	{ OPT_LOOP,			0,			NULL,		"Loop in reading of stdin" },
 	//...
 	{ NULL,				0,			NULL,		NULL }
 };
+
+static void usage(void) {
+	int n = 0;
+
+	printf("options:\n");
+	while (args[n].opt_name) {
+		if (args[n].opt_flags & OF_LONG)
+			printf("--%-10s  \t %s\n", args[n].opt_name, args[n].opt_help);
+		else
+			printf("-%-10s   \t %s\n", args[n].opt_name, args[n].opt_help);
+
+		n++;
+	}
+
+	printf("Usage: jpath [options] <json file>\n");
+}
 
 unsigned char *open_fmap(const char *fname, int *fd, unsigned long *sz) {
 	unsigned char *r = NULL;
@@ -162,11 +182,19 @@ int main(int argc, char *argv[]) {
 	signal(SIGKILL, quit);
 
 	if (argv_parse(argc, (_cstr_t *)argv, args)) {
+		if (argv_check(OPT_HELP)) {
+			usage();
+			return 0;
+		}
+
 		_cstr_t e_prompt = argv_value(OPT_STDERR_PROMPT);
 		_cstr_t o_prompt = argv_value(OPT_STDOUT_PROMPT);
+		_bool loop = argv_check(OPT_LOOP);
 
-		if (argv_check(OPT_VERSION))
+		if (argv_check(OPT_VERSION)) {
 			fprintf(stdout, "%s\n", PACKAGE_VERSION);
+			return 0;
+		}
 
 		_cstr_t jfile = argv_get(1);
 
@@ -187,7 +215,7 @@ int main(int argc, char *argv[]) {
 
 				return -1;
 			} else {
-				char jpath[256];
+				char jpath[1024];
 
 _again_:
 				fprintf(stderr, "%s", e_prompt);
@@ -205,7 +233,8 @@ _again_:
 						fprintf(stdout, "NULL\n");
 				}
 
-				goto _again_;
+				if (loop)
+					goto _again_;
 			}
 
 			json_destroy_context(_gp_jcxt_);
@@ -213,7 +242,8 @@ _again_:
 			close(_g_fd_);
 		} else
 			fprintf(stderr, "Can't open file '%s'\n", jfile);
-	}
+	} else
+		usage();
 
 	return 0;
 }
