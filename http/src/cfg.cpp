@@ -33,6 +33,13 @@ typedef std::map<std::string, _hf_context_t> _vhost_mapping_t;
 static _hf_context_t _g_vhost_cxt_;
 static _vhost_mapping_t _g_mapping_;
 
+/**
+ * Maps a file into memory.
+ * @param fname File path
+ * @param fd Output file descriptor
+ * @param size Output file size
+ * @return Pointer to mapped memory or NULL on failure
+ */
 static _u8 *map_file(_cstr_t fname, int *fd, _u64 *size) {
 	_u8 *r = NULL;
 	int _fd = open(fname, O_RDONLY);
@@ -51,6 +58,12 @@ static _u8 *map_file(_cstr_t fname, int *fd, _u64 *size) {
 	return r;
 }
 
+/**
+ * Compares modification times of two files.
+ * @param src Source file path
+ * @param dat Data file path
+ * @return E_OK if dat is newer than or same as src, E_FAIL otherwise
+ */
 static _err_t stat_compare(const char *src, const char *dat) {
 	_err_t r = E_FAIL;
 	static struct stat stat_dat;
@@ -67,6 +80,11 @@ static _err_t stat_compare(const char *src, const char *dat) {
 	return r;
 }
 
+/**
+ * Extracts a string from a JSON value.
+ * @param pjv JSON value
+ * @return std::string representation
+ */
 static std::string jv_string(_json_value_t *pjv) {
 	std::string r("");
 
@@ -76,6 +94,13 @@ static std::string jv_string(_json_value_t *pjv) {
 	return r;
 }
 
+/**
+ * Extracts a string from a JSON value into a character buffer.
+ * @param pjv JSON value
+ * @param dst Destination buffer
+ * @param sz_dst Destination buffer size
+ * @return Number of characters copied
+ */
 static unsigned int jv_string(_json_value_t *pjv, _char_t *dst, unsigned int sz_dst) {
 	unsigned int r = 0;
 
@@ -88,6 +113,12 @@ static unsigned int jv_string(_json_value_t *pjv, _char_t *dst, unsigned int sz_
 	return r;
 }
 
+/**
+ * Populates a vhost structure from a JSON object.
+ * @param p_jcxt JSON context
+ * @param pjo JSON object containing host/root
+ * @param pvh Output vhost structure
+ */
 static void fill_vhost(_json_context_t *p_jcxt, _json_object_t *pjo, _vhost_t *pvh) {
 	_json_value_t *pjv_host = json_select(p_jcxt, "host", pjo);
 	_json_value_t *pjv_root = json_select(p_jcxt, "root", pjo);
@@ -98,6 +129,12 @@ static void fill_vhost(_json_context_t *p_jcxt, _json_object_t *pjo, _vhost_t *p
 	jv_string(pjv_root, pvh->root, sizeof(pvh->root));
 }
 
+/**
+ * Compiles virtual host definitions from JSON to a hash file.
+ * @param json_fname Source JSON file path
+ * @param dat_fname Destination hash file path
+ * @return E_OK on success
+ */
 static _err_t compile_vhosts(const char *json_fname, const char *dat_fname) {
 	_err_t r = E_FAIL;
 	int fd = -1;
@@ -384,6 +421,13 @@ static void fill_ext_rec(_json_context_t *p_jcxt, _json_object_t *pjo, _mapping_
 	}
 }
 
+/**
+ * Compiles URL/Error/Extension mappings from JSON to a hash file.
+ * @param json_fname Source JSON file path
+ * @param dat_fname Destination hash file path
+ * @param p_hfcxt Hash file context to populate
+ * @return E_OK on success
+ */
 static _err_t compile_mapping(const char *json_fname, const char *dat_fname, _hf_context_t *p_hfcxt) {
 	_err_t r = E_FAIL;
 	int fd = -1;
@@ -511,6 +555,10 @@ static void touch(const char *path) {
 	close(open(path, O_CREAT, S_IRUSR | S_IWUSR));
 }
 
+/**
+ * Loads virtual hosts from http.json. Compiles to http.dat if source is newer.
+ * @return E_OK on success
+ */
 static _err_t load_vhosts(void) {
 	_err_t r = E_FAIL;
 	char src_path[MAX_PATH+256] = "", dat_path[MAX_PATH+256] = "";
@@ -607,6 +655,11 @@ _err_t cfg_load_mapping(_cstr_t vhost) {
 	return r;
 }
 
+/**
+ * Initializes the configuration system.
+ * Loads virtual hosts and pre-loads mappings if in listen mode.
+ * @return E_OK on success
+ */
 _err_t cfg_init(void) {
 	_err_t r = E_FAIL;
 
@@ -635,6 +688,9 @@ _err_t cfg_init(void) {
 	return r;
 }
 
+/**
+ * Cleans up the configuration system, closing all hash files and MIME database.
+ */
 void cfg_uninit(void) {
 	mime_close();
 
@@ -649,7 +705,10 @@ void cfg_uninit(void) {
 }
 
 /**
-Returns pointer to _vhost_t ot NULL */
+ * Retrieves a virtual host record by name.
+ * @param host Hostname (falls back to DEFAULT_HOST if NULL or not found)
+ * @return Pointer to vhost record or NULL
+ */
 _vhost_t *cfg_get_vhost(_cstr_t host) {
 	_vhost_t *r = NULL;
 	_cstr_t _host = (host) ? host : DEFAULT_HOST;
@@ -662,7 +721,13 @@ _vhost_t *cfg_get_vhost(_cstr_t host) {
 }
 
 /**
-Get mapping record by vhost record and URL */
+ * Retrieves a URL mapping for a virtual host and request.
+ * @param pvhost Vhost record
+ * @param method HTTP method (GET, POST, etc.)
+ * @param url Request URL
+ * @param proto Protocol (unused)
+ * @return Pointer to mapping record or NULL
+ */
 _mapping_t *cfg_get_url_mapping(_vhost_t *pvhost, _cstr_t method, _cstr_t url, _cstr_t proto) {
 	_mapping_t *r = NULL;
 
@@ -727,7 +792,11 @@ _mapping_t *cfg_get_err_mapping(_cstr_t host, short rc) {
 }
 
 /**
-Get mapping record for fie extension by vhost and <.ext>>  */
+ * Retrieves a mapping record for a file extension.
+ * @param host Virtual host name
+ * @param ext File extension (including dot)
+ * @return Pointer to mapping record or NULL
+ */
 _mapping_t *cfg_get_ext_mapping(_cstr_t host, _cstr_t ext) {
 	_mapping_t *r = NULL;
 	_vhost_mapping_t::iterator it = _g_mapping_.find(host);
