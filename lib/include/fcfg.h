@@ -3,7 +3,7 @@
 
 #include <string>
 #include <map>
-#include "err.h"
+#include "errors.h"
 
 #define EOF_SIGNATURE		"--eof--\n"
 

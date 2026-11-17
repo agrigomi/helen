@@ -7,7 +7,7 @@
 #include "api_ssl.h"
 #include "sha1.h"
 #include "respawn.h"
-#include "err.h"
+#include "errors.h"
 
 // command line options
 #define OPT_HELP		"help"

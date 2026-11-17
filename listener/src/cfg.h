@@ -2,7 +2,7 @@
 #define __CFG_H__
 
 #include <pthread.h>
-#include "err.h"
+#include "errors.h"
 #include "dtype.h"
 #include "api_ssl.h"
 

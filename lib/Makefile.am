@@ -8,7 +8,7 @@ nobase_include_HEADERS = include/context.h \
 			include/sig.h \
 			include/respawn.h \
 			include/trace.h \
-			include/err.h \
+			include/errors.h \
 			include/sha1.h \
 			include/hfile.h \
 			include/api_ssl.h \
