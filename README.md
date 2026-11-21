@@ -34,22 +34,24 @@ Since it is stupid to parse JSON files every time, they are `compiled` into .dat
 
 In your home folder or somewhere else, create a new directory called for example `http_cfg`. 
 It should contain the file `http.json`. The contents of `http_cfg/http.json` look like this:
-```
-"http": {
-	"default": {
-		"root": "<full path to documents root>"
-	},
-
-	"vhost": [
-		{
-			"host":	"www.example.com",
+```json
+{
+	"http": {
+		"default": {
 			"root": "<full path to documents root>"
 		},
-		{
-			"host":	"www.example.net",
-			"root": "<full path to documents root>"
-		}
-	]
+
+		"vhost": [
+			{
+				"host":	"www.example.com",
+				"root": "<full path to documents root>"
+			},
+			{
+				"host":	"www.example.net",
+				"root": "<full path to documents root>"
+			}
+		]
+	}
 }
 ```
 
@@ -66,7 +68,7 @@ The structure of `mapping.json` is:
 			{
 				"method": "GET",
 				"url": "/api/test",
-				"protocol": "http",
+				"protocol": "HTTP/1.1",
 				"header": true,
 				"no-stderr": false,
 				"input": false,
@@ -86,22 +88,19 @@ The structure of `mapping.json` is:
 				"header": true,
 				"no-stderr": true,
 				"input": false,
-				"exec": "/path/to/cgi-bin/error_handler",
-				"response": "Custom 404 Error Message",
+				"exec": "/usr/bin/cat $(DOC_ROOT)/404.html",
 				"header-append": [
 					"X-Error-Reason: Not Found"
 				],
-				"ext": ".txt"
+				"ext": ".html"
 			}
 		],
 		"ext": [
-			{
-				"ident": ".php",
-				"compression": "gzip",
-				"header-append": [
-					"X-Powered-By: Helen"
-				]
-			}
+			{ "ident": ".css", "compression": "gzip, deflate", "header-append": [] },
+			{ "ident": ".txt", "compression": "gzip, deflate" },
+			{ "ident": ".xml", "compression": "gzip, deflate" },
+			{ "ident": ".html", "compression": "gzip", "header-append": [ "X-Powered-By: Helen" ] },
+			{ "ident": ".txt", "compression": "gzip, deflate" }
 		]
 	}
 }

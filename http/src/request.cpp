@@ -232,6 +232,7 @@ _err_t req_receive(int timeout, int *req_len) {
 						setenv(RES_ENV_SERVER, SERVER_NAME, 1);
 						setenv(RES_ENV_ALLOW, ALLOW_METHOD, 1);
 					} else if (strcmp(scheme, SCHEME_HTTP) == 0 && proxy)
+						/* 'next' must point to the second line of the HTTP request */
 						r = proxy_http(next, strlen(next));
 					else if (strcmp(scheme, SCHEME_HTTPS) == 0 && proxy)
 						r = proxy_https(next, strlen(next));
