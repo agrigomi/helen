@@ -610,33 +610,39 @@ _err_t cfg_load_mapping(_vhost_t *pvhost) {
 
 _mapping_stat_cmp_:
 		if (stat_compare(src_path, dat_path) != E_OK) {
-			/* .dat file missing, need to 'precompile' JSON */
-			char lock_path[MAX_PATH+256] = "";
+			if (access(src_path, F_OK) == F_OK) {
+				/* .dat file missing, need to 'precompile' JSON */
+				char lock_path[MAX_PATH+256] = "";
 
-			snprintf(lock_path, sizeof(lock_path), "%s/%s", root, MAPPING_LOCK);
+				snprintf(lock_path, sizeof(lock_path), "%s/%s", root, MAPPING_LOCK);
 
-			if (access(lock_path, F_OK) == F_OK) {
-				/* locked, need to wait */
-				while (access(lock_path, F_OK) == F_OK)
-					usleep(10000);
+				if (access(lock_path, F_OK) == F_OK) {
+					/* locked, need to wait */
+					while (access(lock_path, F_OK) == F_OK)
+						usleep(10000);
 
-				/* Try again to check for the presence of the .dat file */
-				goto _mapping_stat_cmp_;
+					/* Try again to check for the presence of the .dat file */
+					goto _mapping_stat_cmp_;
+				}
+
+				/* lock till compile */
+				touch(lock_path);
+
+				LOG_INF("http: Compile mapping '%s'\n", src_path);
+				r = compile_mapping(src_path, dat_path, &hf_cxt);
+
+				unlink(lock_path);
+			} else {
+				LOG_INF("http: No mapping source '%s'\n", src_path);
+				r = hf_open(&hf_cxt, dat_path, O_RDONLY);
 			}
-
-			/* lock till compile */
-			touch(lock_path);
-
-			LOG_INF("http: Compile mapping '%s'\n", src_path);
-			r = compile_mapping(src_path, dat_path, &hf_cxt);
-
-			unlink(lock_path);
 		} else {
 			LOG_INF("http: Load mapping file '%s'\n", dat_path);
 			r = hf_open(&hf_cxt, dat_path, O_RDONLY);
 		}
 
-		_g_mapping_.insert({pvhost->host, hf_cxt});
+		if (r == E_OK)
+			_g_mapping_.insert({pvhost->host, hf_cxt});
 	} else
 		r = E_OK;
 
