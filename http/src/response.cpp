@@ -559,11 +559,11 @@ static _err_t process_file_request(int imethod, _vhost_t *p_vhost, _cstr_t path)
 					break;
 			}
 		} else {
-			LOG_WRN("http: Forbidden path  IP: '%s' PATH='%s'\n", io_get_peer_ip(), rpath);
+			LOG_WRN("http: Forbidden path  IP: '%s' PATH='%s' >> %s\n", io_get_peer_ip(), rpath, io_get_peer_ip());
 			r = send_error_response(p_vhost, HTTPRC_FORBIDDEN);
 		}
 	} else {
-		TRACE_WRN("http: File not found '%s'\n", doc_path);
+		LOG_WRN("http: File not found '%s' >> %s\n", doc_path, io_get_peer_ip());
 		r = send_error_response(p_vhost, HTTPRC_NOT_FOUND);
 	}
 
@@ -620,11 +620,11 @@ _err_t res_processing(void) {
 				}
 			}
 		} else {
-			TRACE_WRN("http: Bad request method: '%s' [%d]; host: %s\n", method, imethod, (p_vhost) ? p_vhost->host : "");
+			LOG_WRN("http: Bad request method: '%s' [%d]; host: %s >> %s\n", method, imethod, (p_vhost) ? p_vhost->host : "", io_get_peer_ip());
 			r = send_error_response(p_vhost, HTTPRC_BAD_REQUEST);
 		}
 	} else {
-		TRACE_WRN("http: Unsupported  method '%s'\n", method);
+			LOG_WRN("http: Unsupported  method '%s'\n >> %s", method, io_get_peer_ip());
 		r = send_error_response(p_vhost, HTTPRC_METHOD_NOT_ALLOWED);
 	}
 
