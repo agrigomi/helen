@@ -13,7 +13,7 @@ _err_t resp_exec_v(_cstr_t argv[],
 	unsigned char bout[16384];
 	int tout = timeout_s * 1000000;
 
-	signal(SIGCHLD, [](__attribute__((unused)) int sig) {});
+	signal(SIGCHLD, SIG_IGN);
 
 	if ((r = proc_exec_v(&proc, argv[0], argv)) == E_OK) {
 		 while (tout > 0 && proc_status(&proc) == -1) {
